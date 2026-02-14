@@ -19,7 +19,7 @@ Jedes Rezept-Objekt hat folgende Felder:
 
 {
   "title": "Name des Gerichts",
-  "category": "Eine von: Vorspeise, Hauptspeise, Nachspeise, Fingerfood, Suppe, Salat, Beilage, Getränk, Snack, Brot/Gebäck",
+  "category": "Eine von: Vorspeise, Hauptspeise, Nachspeise, Fingerfood, Suppe, Salat, Beilage, Getränk, Snack, Brot/Gebäck, Gewürzmischungen",
   "origin": "Länderküche z.B. Deutschland, Italien, USA, Ungarn, Frankreich, etc. oder 'International' wenn unklar",
   "prepTime": Zubereitungszeit in Minuten als Zahl oder null wenn unbekannt,
   "mainIngredient": "Hauptzutat z.B. Rind, Huhn, Schwein, Fisch, Gemüse, Pasta, etc.",
@@ -36,6 +36,7 @@ Wichtige Regeln:
 - Wenn das Rezept kein Fleisch enthält, füge "Freitag-tauglich" zu den Tags hinzu
 - Wenn die Zubereitungszeit unter 30 Minuten ist, füge "schnell" zu den Tags hinzu
 - Schätze die Zubereitungszeit wenn möglich, auch wenn sie nicht explizit angegeben ist
+- Gewürzmischungen (z.B. Hähnchen-Gewürz, Gyros-Gewürz, Rubs, Marinaden-Mischungen) gehören in die Kategorie "Gewürzmischungen" – NICHT in "Beilage" oder "Snack". Bei Gewürzmischungen ist "sides" ein leeres Array.
 - Trenne die Rezepte sauber voneinander – jedes bekommt seinen eigenen recipeText mit Zutaten + Anleitung
 - Antworte NUR mit dem JSON, kein anderer Text`;
 }
@@ -114,27 +115,41 @@ export async function analyzeRecipeImage(base64Data, mediaType) {
 /**
  * Parst die API-Antwort und gibt immer ein Array von Rezepten zurück.
  * Erkennt sowohl einzelne Objekte als auch Arrays.
+ * Entfernt Markdown-Code-Fences falls vorhanden.
  */
 function parseRecipeResponse(content) {
-  let parsed;
-  try {
-    parsed = JSON.parse(content);
-  } catch {
-    // Try to extract JSON from surrounding text
-    const arrayMatch = content.match(/\[[\s\S]*\]/);
-    if (arrayMatch) {
-      parsed = JSON.parse(arrayMatch[0]);
-    } else {
-      const objMatch = content.match(/\{[\s\S]*\}/);
-      if (objMatch) {
-        parsed = JSON.parse(objMatch[0]);
-      } else {
-        throw new Error('Konnte die KI-Antwort nicht verarbeiten.');
-      }
-    }
+  // Strip markdown code fences (```json ... ``` or ``` ... ```)
+  let cleaned = content.trim();
+  const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) {
+    cleaned = fenceMatch[1].trim();
   }
-  // Normalize: always return an array
-  return Array.isArray(parsed) ? parsed : [parsed];
+
+  // Try direct parse
+  try {
+    const parsed = JSON.parse(cleaned);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch { /* fallback to regex extraction */ }
+
+  // Try object regex first (single recipe is most common)
+  const objMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (objMatch) {
+    try {
+      const parsed = JSON.parse(objMatch[0]);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch { /* continue */ }
+  }
+
+  // Try array regex (multiple recipes)
+  const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+  if (arrayMatch) {
+    try {
+      const parsed = JSON.parse(arrayMatch[0]);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch { /* continue */ }
+  }
+
+  throw new Error('Konnte die KI-Antwort nicht verarbeiten.');
 }
 
 export async function suggestRecipes(question, recipes) {

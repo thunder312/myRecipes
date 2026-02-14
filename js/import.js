@@ -47,17 +47,8 @@ export async function processPDF(file) {
   if (fullText.trim().length < 20) {
     // PDF might be image-based, convert first page to image
     const page = await pdf.getPage(1);
-    const scale = 2;
-    const viewport = page.getViewport({ scale });
-    const canvas = document.createElement('canvas');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const ctx = canvas.getContext('2d');
-    await page.render({ canvasContext: ctx, viewport }).promise;
-
-    const dataUrl = canvas.toDataURL('image/png');
-    const base64 = dataUrl.split(',')[1];
-    const results = await analyzeRecipeImage(base64, 'image/png');
+    const base64 = await renderPageToBase64(page);
+    const results = await analyzeRecipeImage(base64, 'image/jpeg');
     return tagResults(results, 'pdf', file.name);
   }
 
@@ -66,8 +57,28 @@ export async function processPDF(file) {
 }
 
 export async function processImage(file) {
-  const base64 = await fileToBase64(file);
-  const mediaType = file.type || 'image/jpeg';
+  let base64 = await fileToBase64(file);
+  let mediaType = file.type || 'image/jpeg';
+  const byteSize = Math.ceil(base64.length * 3 / 4);
+
+  if (byteSize > MAX_IMAGE_BYTES) {
+    // Re-encode via canvas as compressed JPEG
+    const img = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+
+    let quality = 0.85;
+    while (quality >= 0.4) {
+      const dataUrl = canvas.toDataURL('image/jpeg', quality);
+      base64 = dataUrl.split(',')[1];
+      if (Math.ceil(base64.length * 3 / 4) <= MAX_IMAGE_BYTES) break;
+      quality -= 0.15;
+    }
+    mediaType = 'image/jpeg';
+  }
+
   const results = await analyzeRecipeImage(base64, mediaType);
   return tagResults(results, 'image', file.name);
 }
@@ -86,6 +97,45 @@ function tagResults(results, sourceType, sourceRef) {
     r.sourceRef = sourceRef;
   }
   return results;
+}
+
+const MAX_IMAGE_BYTES = 4.5 * 1024 * 1024; // stay well under API's 5 MB limit
+
+async function renderPageToBase64(page) {
+  let scale = 2;
+  let quality = 0.85;
+
+  while (scale >= 1) {
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport }).promise;
+
+    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+    const base64 = dataUrl.split(',')[1];
+    const byteSize = Math.ceil(base64.length * 3 / 4);
+
+    if (byteSize <= MAX_IMAGE_BYTES) return base64;
+
+    // Try lower quality first, then reduce scale
+    if (quality > 0.5) {
+      quality -= 0.15;
+    } else {
+      scale -= 0.5;
+      quality = 0.85;
+    }
+  }
+
+  // Last resort: smallest scale + lowest quality
+  const viewport = page.getViewport({ scale: 1 });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext('2d');
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  return canvas.toDataURL('image/jpeg', 0.4).split(',')[1];
 }
 
 function fileToBase64(file) {

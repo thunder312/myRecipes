@@ -1,4 +1,4 @@
-const CATEGORIES = ['Vorspeise','Hauptspeise','Nachspeise','Fingerfood','Suppe','Salat','Beilage','Getränk','Snack','Brot/Gebäck'];
+const CATEGORIES = ['Vorspeise','Hauptspeise','Nachspeise','Fingerfood','Suppe','Salat','Beilage','Getränk','Snack','Brot/Gebäck','Gewürzmischungen'];
 const DIFFICULTIES = ['leicht','mittel','schwer'];
 
 export function renderRecipeForm(targetEl, data) {
@@ -48,8 +48,8 @@ export function renderRecipeForm(targetEl, data) {
       <input type="text" class="input" data-field="tags" value="${esc((data.tags || []).join(', '))}" />
     </div>
     <div class="form-group">
-      <label>Zutaten (kommagetrennt)</label>
-      <textarea class="input input--textarea" data-field="ingredients" rows="3">${esc((data.ingredients || []).join(', '))}</textarea>
+      <label>Zutaten (Strichpunkt-getrennt)</label>
+      <textarea class="input input--textarea" data-field="ingredients" rows="3">${esc((data.ingredients || []).join('; '))}</textarea>
     </div>
     <div class="form-group">
       <label>Beschreibung</label>
@@ -71,7 +71,7 @@ export function readRecipeForm(formEl) {
     mainIngredient: get('mainIngredient'),
     sides: get('sides').split(',').map(s => s.trim()).filter(Boolean),
     tags: get('tags').split(',').map(s => s.trim()).filter(Boolean),
-    ingredients: get('ingredients').split(',').map(s => s.trim()).filter(Boolean),
+    ingredients: get('ingredients').split(';').map(s => s.trim()).filter(Boolean),
     description: get('description'),
     servings: parseInt(get('servings')) || null,
     difficulty: get('difficulty'),
