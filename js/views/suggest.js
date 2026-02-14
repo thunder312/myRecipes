@@ -1,7 +1,7 @@
 import { getAllRecipes } from '../db.js';
 import { getSetting } from '../db.js';
 import { suggestRecipes } from '../api.js';
-import { $, createElement, showToast } from '../utils/helpers.js';
+import { $, createElement, showToast, categoryChipClass } from '../utils/helpers.js';
 
 const QUICK_FILTERS = [
   'Was kann ich schnell kochen?',
@@ -115,7 +115,7 @@ export async function render(container) {
             className: 'suggest-card__title'
           }, [recipe.title]),
           createElement('div', { className: 'suggest-card__meta' }, [
-            recipe.category ? createElement('span', { className: 'chip chip--category', textContent: recipe.category }) : null,
+            recipe.category ? createElement('span', { className: `chip ${categoryChipClass(recipe.category)}`, textContent: recipe.category }) : null,
             recipe.origin ? createElement('span', { className: 'chip chip--origin', textContent: recipe.origin }) : null,
             recipe.prepTime ? createElement('span', { className: 'chip chip--time', textContent: `${recipe.prepTime} Min.` }) : null
           ].filter(Boolean)),

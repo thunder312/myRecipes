@@ -1,8 +1,8 @@
 import { getAllRecipes, deleteRecipe } from '../db.js';
-import { $, createElement, formatDate, debounce, showToast } from '../utils/helpers.js';
+import { $, createElement, formatDate, debounce, showToast, categoryChipClass } from '../utils/helpers.js';
 import { isAuthenticated } from '../utils/auth.js';
 
-const CATEGORIES = ['Alle', 'Vorspeise', 'Hauptspeise', 'Nachspeise', 'Fingerfood', 'Suppe', 'Salat', 'Beilage', 'Getränk', 'Snack', 'Brot/Gebäck'];
+const CATEGORIES = ['Alle', 'Vorspeise', 'Hauptspeise', 'Nachspeise', 'Fingerfood', 'Suppe', 'Salat', 'Beilage', 'Getränk', 'Snack', 'Brot/Gebäck', 'Gewürzmischungen', 'Kuchen', 'Soße', 'Sauerkonserven', 'Wurstrezept'];
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Neueste zuerst' },
   { value: 'alpha', label: 'Alphabetisch' },
@@ -34,7 +34,7 @@ export async function render(container) {
           ${SORT_OPTIONS.map(s => `<option value="${s.value}">${s.label}</option>`).join('')}
         </select>
       </div>
-      <div class="recipe-grid" id="recipeGrid"></div>
+      <div class="recipe-list" id="recipeGrid"></div>
       <div class="empty-state hidden" id="emptyState">
         <div class="empty-state__icon">📖</div>
         <p>Noch keine Rezepte vorhanden.</p>
@@ -81,40 +81,34 @@ export async function render(container) {
     emptyState.classList.add('hidden');
 
     filtered.forEach(recipe => {
-      const card = document.createElement('div');
-      card.className = 'recipe-card' + (selectMode ? ' recipe-card--selectable' : '') + (selected.has(recipe.id) ? ' recipe-card--selected' : '');
-      card.dataset.id = recipe.id;
+      const row = document.createElement('div');
+      row.className = 'recipe-row' + (selectMode ? ' recipe-row--selectable' : '') + (selected.has(recipe.id) ? ' recipe-row--selected' : '');
+      row.dataset.id = recipe.id;
 
-      card.innerHTML = `
-        ${selectMode ? `<div class="recipe-card__checkbox"><input type="checkbox" ${selected.has(recipe.id) ? 'checked' : ''} /></div>` : ''}
-        <div class="recipe-card__body">
-          <h3 class="recipe-card__title">${esc(recipe.title)}</h3>
-          <div class="recipe-card__meta">
-            ${recipe.category ? `<span class="chip chip--category">${esc(recipe.category)}</span>` : ''}
-            ${recipe.origin ? `<span class="chip chip--origin">${esc(recipe.origin)}</span>` : ''}
-            ${recipe.prepTime ? `<span class="chip chip--time">${recipe.prepTime} Min.</span>` : ''}
-          </div>
-          <p class="recipe-card__desc">${esc(recipe.description || '')}</p>
-          <div class="recipe-card__footer">
-            <span class="recipe-card__cooked">${recipe.cookedCount ? `${recipe.cookedCount}× gekocht` : 'Noch nie gekocht'}</span>
-            ${recipe.cookedDates?.length ? `<span class="recipe-card__date">Zuletzt: ${formatDate(recipe.cookedDates[recipe.cookedDates.length - 1])}</span>` : ''}
-          </div>
+      row.innerHTML = `
+        ${selectMode ? `<div class="recipe-row__checkbox"><input type="checkbox" ${selected.has(recipe.id) ? 'checked' : ''} /></div>` : ''}
+        <div class="recipe-row__title">${esc(recipe.title)}</div>
+        <div class="recipe-row__chips">
+          ${recipe.category ? `<span class="chip ${categoryChipClass(recipe.category)}">${esc(recipe.category)}</span>` : ''}
+          ${recipe.origin ? `<span class="chip chip--origin">${esc(recipe.origin)}</span>` : ''}
         </div>
+        ${recipe.prepTime ? `<div class="recipe-row__time">${recipe.prepTime} Min.</div>` : '<div class="recipe-row__time"></div>'}
+        <div class="recipe-row__cooked">${recipe.cookedCount ? `${recipe.cookedCount}×` : '–'}</div>
       `;
 
       if (selectMode) {
-        card.addEventListener('click', (e) => {
+        row.addEventListener('click', (e) => {
           e.preventDefault();
           toggleSelect(recipe.id);
         });
       } else {
-        card.addEventListener('click', () => {
+        row.addEventListener('click', () => {
           window.location.hash = `#detail/${recipe.id}`;
         });
-        card.style.cursor = 'pointer';
+        row.style.cursor = 'pointer';
       }
 
-      grid.appendChild(card);
+      grid.appendChild(row);
     });
   }
 
@@ -126,10 +120,10 @@ export async function render(container) {
     }
     updateBulkUI();
     // Update card visual
-    const card = grid.querySelector(`[data-id="${id}"]`);
-    if (card) {
-      card.classList.toggle('recipe-card--selected', selected.has(id));
-      const cb = card.querySelector('input[type="checkbox"]');
+    const row = grid.querySelector(`[data-id="${id}"]`);
+    if (row) {
+      row.classList.toggle('recipe-row--selected', selected.has(id));
+      const cb = row.querySelector('input[type="checkbox"]');
       if (cb) cb.checked = selected.has(id);
     }
   }

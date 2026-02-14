@@ -1,6 +1,6 @@
 import { getRecipe, updateRecipe, deleteRecipe } from '../db.js';
 import { generateRecipePDF } from '../pdf-generator.js';
-import { $, createElement, formatDate, todayISO, showToast } from '../utils/helpers.js';
+import { $, createElement, formatDate, todayISO, showToast, categoryChipClass } from '../utils/helpers.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
 import { isAuthenticated } from '../utils/auth.js';
 
@@ -43,7 +43,7 @@ function renderDetailView(container, recipe) {
       <h1 class="detail__title">${esc(recipe.title)}</h1>
 
       <div class="detail__meta">
-        ${recipe.category ? `<span class="chip chip--category">${esc(recipe.category)}</span>` : ''}
+        ${recipe.category ? `<span class="chip ${categoryChipClass(recipe.category)}">${esc(recipe.category)}</span>` : ''}
         ${recipe.origin ? `<span class="chip chip--origin">${esc(recipe.origin)}</span>` : ''}
         ${recipe.prepTime ? `<span class="chip chip--time">${recipe.prepTime} Min.</span>` : ''}
         ${recipe.difficulty ? `<span class="chip chip--difficulty">${esc(recipe.difficulty)}</span>` : ''}

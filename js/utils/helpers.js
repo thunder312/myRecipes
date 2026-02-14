@@ -42,6 +42,28 @@ export function showToast(message, type = 'info') {
   }, 3000);
 }
 
+const CATEGORY_CLASS_MAP = {
+  'Vorspeise': 'chip--cat-vorspeise',
+  'Hauptspeise': 'chip--cat-hauptspeise',
+  'Nachspeise': 'chip--cat-nachspeise',
+  'Fingerfood': 'chip--cat-fingerfood',
+  'Suppe': 'chip--cat-suppe',
+  'Salat': 'chip--cat-salat',
+  'Beilage': 'chip--cat-beilage',
+  'Getränk': 'chip--cat-getraenk',
+  'Snack': 'chip--cat-snack',
+  'Brot/Gebäck': 'chip--cat-brot',
+  'Gewürzmischungen': 'chip--cat-gewuerz',
+  'Kuchen': 'chip--cat-kuchen',
+  'Soße': 'chip--cat-sosse',
+  'Sauerkonserven': 'chip--cat-sauerkonserven',
+  'Wurstrezept': 'chip--cat-wurst',
+};
+
+export function categoryChipClass(category) {
+  return CATEGORY_CLASS_MAP[category] || 'chip--category';
+}
+
 export function debounce(fn, ms = 300) {
   let timer;
   return (...args) => {

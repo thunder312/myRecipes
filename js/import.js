@@ -58,7 +58,7 @@ export async function processPDF(file) {
 
 export async function processImage(file) {
   let base64 = await fileToBase64(file);
-  let mediaType = file.type || 'image/jpeg';
+  let mediaType = detectMediaType(base64) || file.type || 'image/jpeg';
   const byteSize = Math.ceil(base64.length * 3 / 4);
 
   if (byteSize > MAX_IMAGE_BYTES) {
@@ -97,6 +97,19 @@ function tagResults(results, sourceType, sourceRef) {
     r.sourceRef = sourceRef;
   }
   return results;
+}
+
+/**
+ * Erkennt den tatsächlichen Bildtyp anhand der Magic Bytes im Base64-String.
+ */
+function detectMediaType(base64) {
+  const prefix = base64.slice(0, 16);
+  if (prefix.startsWith('/9j/'))           return 'image/jpeg';
+  if (prefix.startsWith('iVBORw'))         return 'image/png';
+  if (prefix.startsWith('R0lGOD'))         return 'image/gif';
+  if (prefix.startsWith('UklGR'))          return 'image/webp';
+  if (prefix.startsWith('Qk'))             return 'image/bmp';
+  return null;
 }
 
 const MAX_IMAGE_BYTES = 4.5 * 1024 * 1024; // stay well under API's 5 MB limit

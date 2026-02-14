@@ -19,7 +19,7 @@ Jedes Rezept-Objekt hat folgende Felder:
 
 {
   "title": "Name des Gerichts",
-  "category": "Eine von: Vorspeise, Hauptspeise, Nachspeise, Fingerfood, Suppe, Salat, Beilage, Getränk, Snack, Brot/Gebäck, Gewürzmischungen",
+  "category": "Eine von: Vorspeise, Hauptspeise, Nachspeise, Fingerfood, Suppe, Salat, Beilage, Getränk, Snack, Brot/Gebäck, Gewürzmischungen, Kuchen, Soße, Sauerkonserven, Wurstrezept",
   "origin": "Länderküche z.B. Deutschland, Italien, USA, Ungarn, Frankreich, etc. oder 'International' wenn unklar",
   "prepTime": Zubereitungszeit in Minuten als Zahl oder null wenn unbekannt,
   "mainIngredient": "Hauptzutat z.B. Rind, Huhn, Schwein, Fisch, Gemüse, Pasta, etc.",

@@ -1,4 +1,4 @@
-const CATEGORIES = ['Vorspeise','Hauptspeise','Nachspeise','Fingerfood','Suppe','Salat','Beilage','Getränk','Snack','Brot/Gebäck','Gewürzmischungen'];
+const CATEGORIES = ['Vorspeise','Hauptspeise','Nachspeise','Fingerfood','Suppe','Salat','Beilage','Getränk','Snack','Brot/Gebäck','Gewürzmischungen','Kuchen','Soße','Sauerkonserven','Wurstrezept'];
 const DIFFICULTIES = ['leicht','mittel','schwer'];
 
 export function renderRecipeForm(targetEl, data) {

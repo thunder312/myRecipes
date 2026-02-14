@@ -3,8 +3,8 @@ import { addRecipe } from '../db.js';
 import { processURL, processPDF, processImage, processText } from '../import.js';
 import { generateRecipePDF } from '../pdf-generator.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
-import { $, showToast } from '../utils/helpers.js';
-import { isAuthenticated, setAuthenticated } from '../utils/auth.js';
+import { $, showToast, categoryChipClass } from '../utils/helpers.js';
+import { isAuthenticated, setAuthenticated, setImportRunning } from '../utils/auth.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
 
 const SUPPORTED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.txt', '.text', '.md'];
@@ -275,6 +275,7 @@ function renderImportForm(container) {
     const loading = $('#importLoading', container);
     allHideables.forEach(sel => $(sel, container).classList.add('hidden'));
     loading.classList.remove('hidden');
+    setImportRunning(true);
 
     try {
       const results = await processFn(); // always an array now
@@ -292,6 +293,7 @@ function renderImportForm(container) {
       showToast(`Fehler: ${err.message}`, 'error');
     } finally {
       loading.classList.add('hidden');
+      setImportRunning(false);
     }
   }
 
@@ -349,7 +351,7 @@ function renderImportForm(container) {
         <div class="multi-confirm__item-info">
           <strong class="multi-confirm__item-title">${esc(r.title || 'Unbekanntes Rezept')}</strong>
           <span class="multi-confirm__item-meta">
-            ${r.category ? `<span class="chip chip--category chip--sm">${esc(r.category)}</span>` : ''}
+            ${r.category ? `<span class="chip ${categoryChipClass(r.category)} chip--sm">${esc(r.category)}</span>` : ''}
             ${r.origin ? `<span class="chip chip--origin chip--sm">${esc(r.origin)}</span>` : ''}
             ${r.mainIngredient ? `<span class="chip chip--sm">${esc(r.mainIngredient)}</span>` : ''}
           </span>
@@ -394,6 +396,7 @@ function renderImportForm(container) {
     $('#multiConfirm', container).classList.add('hidden');
     const progressEl = $('#multiProgress', container);
     progressEl.classList.remove('hidden');
+    setImportRunning(true);
 
     const total = selectedRecipes.length;
     let success = 0;
@@ -466,6 +469,7 @@ function renderImportForm(container) {
 
     summaryEl.innerHTML = html;
     currentMultiData = null;
+    setImportRunning(false);
   });
 
   $('#btnMultiDone', container).addEventListener('click', () => {
@@ -519,6 +523,7 @@ function renderImportForm(container) {
     $('#panel-batch', container).classList.add('hidden');
     $('#batchProgress', container).classList.remove('hidden');
     $('#batchResults', container).classList.add('hidden');
+    setImportRunning(true);
 
     const results = { success: [], failed: [], skipped: [] };
     const total = files.length;
@@ -595,6 +600,7 @@ function renderImportForm(container) {
       }
     }
 
+    setImportRunning(false);
     showBatchResults(container, results, total);
   });
 
