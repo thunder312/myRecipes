@@ -1,0 +1,23 @@
+Hi Claude, ich will eine dynamische Sammlung meiner Lieblings-Rezepte machen.
+Ich stelle mir eine WEB-GUI vor, auf dem man:
+
+1. neue Rezepte einfach importieren kann (passwort-geschützt)
+Die Rezepte sollen beim Import automatisch unabhängig nach Format nach Kategorie (Vorspeise, Hauptspeise, Nachspeise, Fingerfood...), nach der Herkunft (USA, Deutschland, Ungarn...),
+Nach der Zubereitungszeit (falls dies auf dem Rezept vermerkt ist), nach der Hauptzutat und passenden Beilagen kategorisiert werden und gespeichert werden.
+Hierzu kann die Datei an eine passende externe KI übergeben werden.
+Mögliche Import Formate sind URLs des Rezepts, PDF, Bildformate und txt Dateien.
+Nach dem Import sollen sie in ein normiertes PDF konvertiert werden und als Blob in der DB landen.
+Die erhaltenen Zusatz-Informationen, sollen natürlich in der DB mit dem Gericht verknüpft sein, um...
+
+2. Gerichte nach gängigen Hausfrauen-Fragen vorgeschlagen bekommt,
+dazu müssen möglichst viele Kategorisierungen beim Import gefunden werden.
+Beispiel:
+Was kann man mit der Beilage Knödel machen?
+Heute ist Freitag, bitte kein Fleisch.
+Ich habe nicht viel Zeit, was könnte ich kochen?
+
+Wenn ein Rezept vorgeschlagen wird, soll auch aufgezeigt werden, nach welchen Kategorien, das Rezept gewählt wurde zur besseren Nachvollziehbarkeit.
+Wenn das Rezept tatächlich gekocht wurde, kann man dasDatum (meist aktueller Tag) eintragen, so kann es bei den vorschlägen als erst gekocht weiter nach hinten wandern.
+Zusätzlich sollen alle Rezepte einen Counter bekommen wie oft sie schon gekocht wurden, nur zur Statistik.
+
+Als Datenbank kannst du IndexedDB verwenden.

@@ -24,10 +24,8 @@ export async function processURL(url) {
     throw new Error('Zu wenig Text auf der Seite gefunden. Bitte kopiere den Rezepttext manuell.');
   }
 
-  const result = await analyzeRecipeText(text);
-  result.sourceType = 'url';
-  result.sourceRef = url;
-  return result;
+  const results = await analyzeRecipeText(text);
+  return tagResults(results, 'url', url);
 }
 
 export async function processPDF(file) {
@@ -59,32 +57,35 @@ export async function processPDF(file) {
 
     const dataUrl = canvas.toDataURL('image/png');
     const base64 = dataUrl.split(',')[1];
-    const result = await analyzeRecipeImage(base64, 'image/png');
-    result.sourceType = 'pdf';
-    result.sourceRef = file.name;
-    return result;
+    const results = await analyzeRecipeImage(base64, 'image/png');
+    return tagResults(results, 'pdf', file.name);
   }
 
-  const result = await analyzeRecipeText(fullText);
-  result.sourceType = 'pdf';
-  result.sourceRef = file.name;
-  return result;
+  const results = await analyzeRecipeText(fullText);
+  return tagResults(results, 'pdf', file.name);
 }
 
 export async function processImage(file) {
   const base64 = await fileToBase64(file);
   const mediaType = file.type || 'image/jpeg';
-  const result = await analyzeRecipeImage(base64, mediaType);
-  result.sourceType = 'image';
-  result.sourceRef = file.name;
-  return result;
+  const results = await analyzeRecipeImage(base64, mediaType);
+  return tagResults(results, 'image', file.name);
 }
 
 export async function processText(text) {
-  const result = await analyzeRecipeText(text);
-  result.sourceType = 'text';
-  result.sourceRef = 'Manueller Text';
-  return result;
+  const results = await analyzeRecipeText(text);
+  return tagResults(results, 'text', 'Manueller Text');
+}
+
+/**
+ * Setzt sourceType und sourceRef auf jedes Ergebnis im Array.
+ */
+function tagResults(results, sourceType, sourceRef) {
+  for (const r of results) {
+    r.sourceType = sourceType;
+    r.sourceRef = sourceRef;
+  }
+  return results;
 }
 
 function fileToBase64(file) {

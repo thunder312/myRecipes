@@ -9,9 +9,13 @@ async function getApiKey() {
 }
 
 function buildRecipeAnalysisPrompt() {
-  return `Du bist ein Rezept-Analyse-Assistent. Analysiere das folgende Rezept und extrahiere strukturierte Informationen.
+  return `Du bist ein Rezept-Analyse-Assistent. Analysiere den folgenden Text und extrahiere strukturierte Informationen.
 
-Antworte AUSSCHLIESSLICH mit einem JSON-Objekt (kein Markdown, kein Text drumherum) mit folgenden Feldern:
+WICHTIG: Der Text kann EIN oder MEHRERE Rezepte enthalten!
+- Wenn der Text MEHRERE Rezepte enthält, antworte mit einem JSON-ARRAY von Rezept-Objekten.
+- Wenn der Text nur EIN Rezept enthält, antworte mit einem einzelnen JSON-Objekt (kein Array).
+
+Jedes Rezept-Objekt hat folgende Felder:
 
 {
   "title": "Name des Gerichts",
@@ -32,6 +36,7 @@ Wichtige Regeln:
 - Wenn das Rezept kein Fleisch enthält, füge "Freitag-tauglich" zu den Tags hinzu
 - Wenn die Zubereitungszeit unter 30 Minuten ist, füge "schnell" zu den Tags hinzu
 - Schätze die Zubereitungszeit wenn möglich, auch wenn sie nicht explizit angegeben ist
+- Trenne die Rezepte sauber voneinander – jedes bekommt seinen eigenen recipeText mit Zutaten + Anleitung
 - Antworte NUR mit dem JSON, kein anderer Text`;
 }
 
@@ -48,10 +53,10 @@ export async function analyzeRecipeText(text) {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 4096,
+      max_tokens: 8192,
       messages: [{
         role: 'user',
-        content: `${buildRecipeAnalysisPrompt()}\n\nHier ist das Rezept:\n\n${text}`
+        content: `${buildRecipeAnalysisPrompt()}\n\nHier ist der Text:\n\n${text}`
       }]
     })
   });
@@ -63,14 +68,7 @@ export async function analyzeRecipeText(text) {
 
   const data = await response.json();
   const content = data.content[0].text;
-
-  try {
-    return JSON.parse(content);
-  } catch {
-    const match = content.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
-    throw new Error('Konnte die KI-Antwort nicht verarbeiten.');
-  }
+  return parseRecipeResponse(content);
 }
 
 export async function analyzeRecipeImage(base64Data, mediaType) {
@@ -86,7 +84,7 @@ export async function analyzeRecipeImage(base64Data, mediaType) {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 4096,
+      max_tokens: 8192,
       messages: [{
         role: 'user',
         content: [
@@ -96,7 +94,7 @@ export async function analyzeRecipeImage(base64Data, mediaType) {
           },
           {
             type: 'text',
-            text: buildRecipeAnalysisPrompt() + '\n\nAnalysiere das Rezept im Bild.'
+            text: buildRecipeAnalysisPrompt() + '\n\nAnalysiere die Rezepte im Bild.'
           }
         ]
       }]
@@ -110,14 +108,33 @@ export async function analyzeRecipeImage(base64Data, mediaType) {
 
   const data = await response.json();
   const content = data.content[0].text;
+  return parseRecipeResponse(content);
+}
 
+/**
+ * Parst die API-Antwort und gibt immer ein Array von Rezepten zurück.
+ * Erkennt sowohl einzelne Objekte als auch Arrays.
+ */
+function parseRecipeResponse(content) {
+  let parsed;
   try {
-    return JSON.parse(content);
+    parsed = JSON.parse(content);
   } catch {
-    const match = content.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
-    throw new Error('Konnte die KI-Antwort nicht verarbeiten.');
+    // Try to extract JSON from surrounding text
+    const arrayMatch = content.match(/\[[\s\S]*\]/);
+    if (arrayMatch) {
+      parsed = JSON.parse(arrayMatch[0]);
+    } else {
+      const objMatch = content.match(/\{[\s\S]*\}/);
+      if (objMatch) {
+        parsed = JSON.parse(objMatch[0]);
+      } else {
+        throw new Error('Konnte die KI-Antwort nicht verarbeiten.');
+      }
+    }
   }
+  // Normalize: always return an array
+  return Array.isArray(parsed) ? parsed : [parsed];
 }
 
 export async function suggestRecipes(question, recipes) {
