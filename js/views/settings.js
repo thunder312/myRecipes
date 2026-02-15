@@ -1,91 +1,10 @@
 import { getSetting, setSetting, exportAll, importAll } from '../db.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { $, showToast } from '../utils/helpers.js';
-import { isAuthenticated, setAuthenticated } from '../utils/auth.js';
+import { ensureAuthenticated } from '../utils/auth-ui.js';
 
 export async function render(container) {
-  const passwordHash = await getSetting('passwordHash');
-
-  if (!passwordHash) {
-    renderSetPassword(container);
-    return;
-  }
-
-  if (!isAuthenticated()) {
-    renderLogin(container, passwordHash);
-    return;
-  }
-
-  renderSettings(container);
-}
-
-function renderSetPassword(container) {
-  container.innerHTML = `
-    <div class="settings">
-      <h1>Master-Passwort festlegen</h1>
-      <section class="settings__section">
-        <p class="settings__hint">Lege ein Master-Passwort fest, das die Einstellungen und den Import schützt.</p>
-        <div class="form-group">
-          <label for="newPw">Neues Passwort</label>
-          <input type="password" id="newPw" class="input" placeholder="Passwort" />
-        </div>
-        <div class="form-group">
-          <label for="confirmPw">Passwort bestätigen</label>
-          <input type="password" id="confirmPw" class="input" placeholder="Passwort bestätigen" />
-        </div>
-        <button class="btn btn--primary" id="btnSetPw">Passwort setzen</button>
-      </section>
-    </div>
-  `;
-
-  $('#btnSetPw', container).addEventListener('click', async () => {
-    const pw = $('#newPw', container).value;
-    const conf = $('#confirmPw', container).value;
-    if (!pw || pw.length < 4) {
-      showToast('Passwort muss mindestens 4 Zeichen haben.', 'warning');
-      return;
-    }
-    if (pw !== conf) {
-      showToast('Passwörter stimmen nicht überein.', 'warning');
-      return;
-    }
-    await setSetting('passwordHash', await hashPassword(pw));
-    setAuthenticated(true);
-    showToast('Master-Passwort gesetzt!', 'success');
-    render(container);
-  });
-}
-
-function renderLogin(container, passwordHash) {
-  container.innerHTML = `
-    <div class="settings">
-      <h1>Einstellungen</h1>
-      <section class="settings__section">
-        <h2>Geschützter Bereich</h2>
-        <p class="settings__hint">Bitte Master-Passwort eingeben, um die Einstellungen zu öffnen.</p>
-        <div class="form-group">
-          <input type="password" id="loginPw" class="input" placeholder="Master-Passwort" />
-          <button class="btn btn--primary" id="btnLogin">Entsperren</button>
-        </div>
-      </section>
-    </div>
-  `;
-
-  const doLogin = async () => {
-    const pw = $('#loginPw', container).value;
-    if (await verifyPassword(pw, passwordHash)) {
-      setAuthenticated(true);
-      showToast('Einstellungen entsperrt.', 'success');
-      render(container);
-    } else {
-      showToast('Falsches Passwort.', 'error');
-    }
-  };
-
-  $('#btnLogin', container).addEventListener('click', doLogin);
-  $('#loginPw', container).addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') doLogin();
-  });
+  await ensureAuthenticated(container, () => renderSettings(container));
 }
 
 async function renderSettings(container) {

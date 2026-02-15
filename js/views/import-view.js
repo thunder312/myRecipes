@@ -2,9 +2,9 @@ import { getSetting } from '../db.js';
 import { addRecipe } from '../db.js';
 import { processURL, processPDF, processImage, processText } from '../import.js';
 import { generateRecipePDF } from '../pdf-generator.js';
-import { hashPassword, verifyPassword } from '../utils/password.js';
 import { $, showToast, categoryChipClass } from '../utils/helpers.js';
-import { isAuthenticated, setAuthenticated, setImportRunning } from '../utils/auth.js';
+import { setImportRunning } from '../utils/auth.js';
+import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
 
 const SUPPORTED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.txt', '.text', '.md'];
@@ -29,83 +29,7 @@ function isTextFile(file) {
 }
 
 export async function render(container) {
-  const passwordHash = await getSetting('passwordHash');
-
-  if (!passwordHash) {
-    renderSetPassword(container);
-    return;
-  }
-
-  if (!isAuthenticated()) {
-    renderLogin(container, passwordHash);
-    return;
-  }
-
-  renderImportForm(container);
-}
-
-function renderSetPassword(container) {
-  container.innerHTML = `
-    <div class="import">
-      <h1>Import-Passwort festlegen</h1>
-      <p>Beim ersten Mal musst du ein Passwort festlegen, das den Import schützt.</p>
-      <div class="form-group">
-        <label for="newPw">Neues Passwort</label>
-        <input type="password" id="newPw" class="input" placeholder="Passwort" />
-      </div>
-      <div class="form-group">
-        <label for="confirmPw">Passwort bestätigen</label>
-        <input type="password" id="confirmPw" class="input" placeholder="Passwort bestätigen" />
-      </div>
-      <button class="btn btn--primary" id="btnSetPw">Passwort setzen</button>
-    </div>
-  `;
-
-  $('#btnSetPw', container).addEventListener('click', async () => {
-    const pw = $('#newPw', container).value;
-    const confirm = $('#confirmPw', container).value;
-    if (!pw || pw.length < 4) {
-      showToast('Passwort muss mindestens 4 Zeichen haben.', 'warning');
-      return;
-    }
-    if (pw !== confirm) {
-      showToast('Passwörter stimmen nicht überein.', 'warning');
-      return;
-    }
-    const { setSetting } = await import('../db.js');
-    await setSetting('passwordHash', await hashPassword(pw));
-    setAuthenticated(true);
-    showToast('Passwort gesetzt!', 'success');
-    render(container);
-  });
-}
-
-function renderLogin(container, passwordHash) {
-  container.innerHTML = `
-    <div class="import">
-      <h1>Rezept importieren</h1>
-      <p>Bitte Passwort eingeben, um den Import zu öffnen.</p>
-      <div class="form-group">
-        <input type="password" id="loginPw" class="input" placeholder="Passwort" />
-        <button class="btn btn--primary" id="btnLogin">Entsperren</button>
-      </div>
-    </div>
-  `;
-
-  const doLogin = async () => {
-    const pw = $('#loginPw', container).value;
-    if (await verifyPassword(pw, passwordHash)) {
-      setAuthenticated(true);
-      render(container);
-    } else {
-      showToast('Falsches Passwort.', 'error');
-    }
-  };
-
-  $('#btnLogin', container).addEventListener('click', doLogin);
-  $('#loginPw', container).addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') doLogin();
-  });
+  await ensureAuthenticated(container, () => renderImportForm(container));
 }
 
 function renderImportForm(container) {
