@@ -12,7 +12,8 @@
       "Bash(cmd /c \"where gh\")",
       "Bash(cmd /c \"gh --version\")",
       "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" auth status)",
-      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" repo create myRecipes --private --source=. --remote=origin --push)"
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" repo create myRecipes --private --source=. --remote=origin --push)",
+      "Bash(git push:*)"
     ]
   }
 }
