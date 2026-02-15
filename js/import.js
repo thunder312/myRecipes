@@ -1,7 +1,9 @@
-import { analyzeRecipeText, analyzeRecipeImage } from './api.js';
+import { analyzeRecipeText, analyzeRecipeImages, analyzeRecipeImage, validateRecipeResults } from './api.js';
 
-export async function processURL(url) {
-  // Try direct fetch first, then CORS proxy
+const MAX_IMAGE_BYTES = 4.5 * 1024 * 1024; // stay well under API's 5 MB limit
+const MAX_PDF_IMAGE_PAGES = 20;
+
+export async function processURL(url, { multiHint = false } = {}) {
   let html;
   try {
     const resp = await fetch(url);
@@ -16,7 +18,6 @@ export async function processURL(url) {
     }
   }
 
-  // Strip HTML tags to get plain text
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const text = doc.body.innerText || doc.body.textContent || '';
 
@@ -24,11 +25,11 @@ export async function processURL(url) {
     throw new Error('Zu wenig Text auf der Seite gefunden. Bitte kopiere den Rezepttext manuell.');
   }
 
-  const results = await analyzeRecipeText(text);
-  return tagResults(results, 'url', url);
+  const results = await analyzeRecipeText(text, { multiHint });
+  return applyFilter(tagResults(results, 'url', url));
 }
 
-export async function processPDF(file) {
+export async function processPDF(file, { multiHint = false } = {}) {
   const pdfjsLib = await import('pdfjs-dist');
   const pdfjsVersion = pdfjsLib.version;
   pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.mjs`;
@@ -45,24 +46,30 @@ export async function processPDF(file) {
   }
 
   if (fullText.trim().length < 20) {
-    // PDF might be image-based, convert first page to image
-    const page = await pdf.getPage(1);
-    const base64 = await renderPageToBase64(page);
-    const results = await analyzeRecipeImage(base64, 'image/jpeg');
-    return tagResults(results, 'pdf', file.name);
+    // Image-based PDF: render all pages as images
+    const pageCount = Math.min(pdf.numPages, MAX_PDF_IMAGE_PAGES);
+    const images = [];
+
+    for (let i = 1; i <= pageCount; i++) {
+      const page = await pdf.getPage(i);
+      const base64 = await renderPageToBase64(page);
+      images.push({ base64, mediaType: 'image/jpeg' });
+    }
+
+    const results = await analyzeRecipeImages(images, { multiHint: multiHint || pageCount > 1 });
+    return applyFilter(tagResults(results, 'pdf', file.name));
   }
 
-  const results = await analyzeRecipeText(fullText);
-  return tagResults(results, 'pdf', file.name);
+  const results = await analyzeRecipeText(fullText, { multiHint });
+  return applyFilter(tagResults(results, 'pdf', file.name));
 }
 
-export async function processImage(file) {
+export async function processImage(file, { multiHint = false } = {}) {
   let base64 = await fileToBase64(file);
   let mediaType = detectMediaType(base64) || file.type || 'image/jpeg';
   const byteSize = Math.ceil(base64.length * 3 / 4);
 
   if (byteSize > MAX_IMAGE_BYTES) {
-    // Re-encode via canvas as compressed JPEG
     const img = await createImageBitmap(file);
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
@@ -79,13 +86,13 @@ export async function processImage(file) {
     mediaType = 'image/jpeg';
   }
 
-  const results = await analyzeRecipeImage(base64, mediaType);
-  return tagResults(results, 'image', file.name);
+  const results = await analyzeRecipeImage(base64, mediaType, { multiHint });
+  return applyFilter(tagResults(results, 'image', file.name));
 }
 
-export async function processText(text) {
-  const results = await analyzeRecipeText(text);
-  return tagResults(results, 'text', 'Manueller Text');
+export async function processText(text, { multiHint = false } = {}) {
+  const results = await analyzeRecipeText(text, { multiHint });
+  return applyFilter(tagResults(results, 'text', 'Manueller Text'));
 }
 
 /**
@@ -100,6 +107,16 @@ function tagResults(results, sourceType, sourceRef) {
 }
 
 /**
+ * Wendet den Qualitätsfilter an und hängt die Anzahl gefilterter Rezepte an.
+ * Gibt das Array zurück mit ._filtered Property.
+ */
+function applyFilter(results) {
+  const { valid, filtered } = validateRecipeResults(results);
+  valid._filtered = filtered;
+  return valid;
+}
+
+/**
  * Erkennt den tatsächlichen Bildtyp anhand der Magic Bytes im Base64-String.
  */
 function detectMediaType(base64) {
@@ -111,8 +128,6 @@ function detectMediaType(base64) {
   if (prefix.startsWith('Qk'))             return 'image/bmp';
   return null;
 }
-
-const MAX_IMAGE_BYTES = 4.5 * 1024 * 1024; // stay well under API's 5 MB limit
 
 async function renderPageToBase64(page) {
   let scale = 2;
@@ -132,7 +147,6 @@ async function renderPageToBase64(page) {
 
     if (byteSize <= MAX_IMAGE_BYTES) return base64;
 
-    // Try lower quality first, then reduce scale
     if (quality > 0.5) {
       quality -= 0.15;
     } else {
@@ -141,7 +155,6 @@ async function renderPageToBase64(page) {
     }
   }
 
-  // Last resort: smallest scale + lowest quality
   const viewport = page.getViewport({ scale: 1 });
   const canvas = document.createElement('canvas');
   canvas.width = viewport.width;

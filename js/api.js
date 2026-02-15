@@ -62,12 +62,14 @@ export async function validateApiKey(apiKey) {
   return { valid: true, reason: 'ok' };
 }
 
-function buildRecipeAnalysisPrompt() {
-  return `Du bist ein Rezept-Analyse-Assistent. Analysiere den folgenden Text und extrahiere strukturierte Informationen.
+function buildRecipeAnalysisPrompt({ multiHint = false } = {}) {
+  let prompt = `Du bist ein Rezept-Analyse-Assistent. Analysiere den folgenden Inhalt und extrahiere strukturierte Informationen.
 
-WICHTIG: Der Text kann EIN oder MEHRERE Rezepte enthalten!
-- Wenn der Text MEHRERE Rezepte enthält, antworte mit einem JSON-ARRAY von Rezept-Objekten.
-- Wenn der Text nur EIN Rezept enthält, antworte mit einem einzelnen JSON-Objekt (kein Array).
+WICHTIG: Der Inhalt kann EIN oder MEHRERE Rezepte enthalten!
+- Wenn der Inhalt MEHRERE Rezepte enthält, antworte mit einem JSON-ARRAY von Rezept-Objekten.
+- Wenn der Inhalt nur EIN Rezept enthält, antworte mit einem einzelnen JSON-Objekt (kein Array).
+- Wenn du den Inhalt NICHT lesen kannst oder KEIN Rezept erkennst, antworte mit einem leeren Array: []
+- Erfinde NIEMALS Platzhalter-Rezepte. Lieber ein leeres Array als ein Rezept mit erfundenem Titel.
 
 Jedes Rezept-Objekt hat folgende Felder:
 
@@ -93,9 +95,15 @@ Wichtige Regeln:
 - Gewürzmischungen (z.B. Hähnchen-Gewürz, Gyros-Gewürz, Rubs, Marinaden-Mischungen) gehören in die Kategorie "Gewürzmischungen" – NICHT in "Beilage" oder "Snack". Bei Gewürzmischungen ist "sides" ein leeres Array.
 - Trenne die Rezepte sauber voneinander – jedes bekommt seinen eigenen recipeText mit Zutaten + Anleitung
 - Antworte NUR mit dem JSON, kein anderer Text`;
+
+  if (multiHint) {
+    prompt += `\n\nWICHTIG: Der Benutzer hat angegeben, dass diese Quelle MEHRERE Rezepte enthält. Analysiere den gesamten Inhalt sorgfältig und trenne ALLE Rezepte einzeln voneinander. Übersehe keines!`;
+  }
+
+  return prompt;
 }
 
-export async function analyzeRecipeText(text) {
+export async function analyzeRecipeText(text, { multiHint = false } = {}) {
   const apiKey = await getApiKey();
 
   const response = await fetch(API_URL, {
@@ -111,7 +119,7 @@ export async function analyzeRecipeText(text) {
       max_tokens: 8192,
       messages: [{
         role: 'user',
-        content: `${buildRecipeAnalysisPrompt()}\n\nHier ist der Text:\n\n${text}`
+        content: `${buildRecipeAnalysisPrompt({ multiHint })}\n\nHier ist der Text:\n\n${text}`
       }]
     })
   });
@@ -126,8 +134,20 @@ export async function analyzeRecipeText(text) {
   return parseRecipeResponse(content);
 }
 
-export async function analyzeRecipeImage(base64Data, mediaType) {
+export async function analyzeRecipeImages(images, { multiHint = false } = {}) {
   const apiKey = await getApiKey();
+
+  const contentParts = [];
+  for (const img of images) {
+    contentParts.push({
+      type: 'image',
+      source: { type: 'base64', media_type: img.mediaType, data: img.base64 }
+    });
+  }
+  contentParts.push({
+    type: 'text',
+    text: buildRecipeAnalysisPrompt({ multiHint }) + '\n\nAnalysiere die Rezepte in den Bildern.'
+  });
 
   const response = await fetch(API_URL, {
     method: 'POST',
@@ -140,19 +160,7 @@ export async function analyzeRecipeImage(base64Data, mediaType) {
     body: JSON.stringify({
       model: 'claude-sonnet-4-5-20250929',
       max_tokens: 8192,
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: mediaType, data: base64Data }
-          },
-          {
-            type: 'text',
-            text: buildRecipeAnalysisPrompt() + '\n\nAnalysiere die Rezepte im Bild.'
-          }
-        ]
-      }]
+      messages: [{ role: 'user', content: contentParts }]
     })
   });
 
@@ -164,6 +172,11 @@ export async function analyzeRecipeImage(base64Data, mediaType) {
   const data = await response.json();
   const content = data.content[0].text;
   return parseRecipeResponse(content);
+}
+
+// Legacy single-image wrapper
+export async function analyzeRecipeImage(base64Data, mediaType, { multiHint = false } = {}) {
+  return analyzeRecipeImages([{ base64: base64Data, mediaType }], { multiHint });
 }
 
 /**
@@ -182,19 +195,11 @@ function parseRecipeResponse(content) {
   // Try direct parse
   try {
     const parsed = JSON.parse(cleaned);
-    return Array.isArray(parsed) ? parsed : [parsed];
+    if (Array.isArray(parsed)) return parsed;
+    return [parsed];
   } catch { /* fallback to regex extraction */ }
 
-  // Try object regex first (single recipe is most common)
-  const objMatch = cleaned.match(/\{[\s\S]*\}/);
-  if (objMatch) {
-    try {
-      const parsed = JSON.parse(objMatch[0]);
-      return Array.isArray(parsed) ? parsed : [parsed];
-    } catch { /* continue */ }
-  }
-
-  // Try array regex (multiple recipes)
+  // Try array regex first (catches [] for empty)
   const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
   if (arrayMatch) {
     try {
@@ -203,7 +208,37 @@ function parseRecipeResponse(content) {
     } catch { /* continue */ }
   }
 
+  // Try object regex (single recipe)
+  const objMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (objMatch) {
+    try {
+      const parsed = JSON.parse(objMatch[0]);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch { /* continue */ }
+  }
+
   throw new Error('Konnte die KI-Antwort nicht verarbeiten.');
+}
+
+/**
+ * Filtert ungültige/sinnlose Rezepte aus den API-Ergebnissen.
+ * Gibt { valid: [...], filtered: number } zurück.
+ */
+const INVALID_TITLE_PATTERNS = /konnte nicht|nicht lesbar|unleserlich|kein rezept|nicht erkannt|nicht lesen|unbekannt|placeholder|example|test/i;
+
+export function validateRecipeResults(results) {
+  const valid = [];
+  let filtered = 0;
+
+  for (const r of results) {
+    if (!r || typeof r !== 'object') { filtered++; continue; }
+    if (!r.title || r.title.trim().length < 2) { filtered++; continue; }
+    if (INVALID_TITLE_PATTERNS.test(r.title)) { filtered++; continue; }
+    if ((!r.ingredients || r.ingredients.length === 0) && (!r.recipeText || r.recipeText.trim().length < 20)) { filtered++; continue; }
+    valid.push(r);
+  }
+
+  return { valid, filtered };
 }
 
 export async function suggestRecipes(question, recipes) {

@@ -20,6 +20,10 @@ export async function render(container) {
 
       <div class="suggest__input-group">
         <textarea id="questionInput" class="input input--textarea" rows="2" placeholder="z.B. Was kann ich mit Kartoffeln machen?"></textarea>
+        <div class="suggest__filters">
+          <label class="suggest__filter-check"><input type="checkbox" id="filterHauptgericht" checked /> Nur Hauptgerichte</label>
+          <label class="suggest__filter-check"><input type="checkbox" id="filterSalat" checked /> Salate einschließen</label>
+        </div>
         <button class="btn btn--primary" id="btnAsk">Rezepte vorschlagen</button>
       </div>
 
@@ -70,10 +74,25 @@ export async function render(container) {
       return;
     }
 
-    const recipes = await getAllRecipes();
-    if (recipes.length === 0) {
+    const allRecipes = await getAllRecipes();
+    if (allRecipes.length === 0) {
       showToast('Noch keine Rezepte vorhanden. Importiere zuerst ein Rezept.', 'warning');
       return;
+    }
+
+    const hauptOnly = $('#filterHauptgericht', container).checked;
+    const includeSalat = $('#filterSalat', container).checked;
+
+    let recipes = allRecipes;
+    if (hauptOnly) {
+      const allowed = ['Hauptspeise'];
+      if (includeSalat) allowed.push('Salat');
+      recipes = allRecipes.filter(r => allowed.includes(r.category));
+
+      if (recipes.length === 0) {
+        showToast('Keine Rezepte in den gefilterten Kategorien gefunden.', 'warning');
+        return;
+      }
     }
 
     loading.classList.remove('hidden');
@@ -82,7 +101,7 @@ export async function render(container) {
 
     try {
       const suggestions = await suggestRecipes(question, recipes);
-      renderResults(suggestions, recipes);
+      renderResults(suggestions, allRecipes);
     } catch (err) {
       showToast(`Fehler: ${err.message}`, 'error');
     } finally {

@@ -1127,6 +1127,7 @@ h1, h2, h3, h4 {
 
 .suggest__input-group {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-md);
   margin-bottom: var(--space-lg);
   align-items: flex-start;
@@ -1134,11 +1135,32 @@ h1, h2, h3, h4 {
 
 .suggest__input-group .input {
   flex: 1;
+  min-width: 200px;
 }
 
 .suggest__input-group .btn {
   margin-top: 0;
   padding: 0.65rem 1.5rem;
+}
+
+.suggest__filters {
+  display: flex;
+  gap: var(--space-lg);
+  width: 100%;
+}
+
+.suggest__filter-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.suggest__filter-check input[type="checkbox"] {
+  accent-color: var(--color-primary);
+  cursor: pointer;
 }
 
 .suggest__chips {

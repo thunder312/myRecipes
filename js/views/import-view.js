@@ -50,6 +50,10 @@ function renderImportForm(container) {
           <label for="recipeUrl">Rezept-URL</label>
           <input type="url" id="recipeUrl" class="input" placeholder="https://www.chefkoch.de/rezepte/..." />
         </div>
+        <label class="import__multi-hint">
+          <input type="checkbox" id="multiHintUrl" />
+          Enthält mehrere Rezepte
+        </label>
         <button class="btn btn--primary" id="btnImportUrl">URL importieren</button>
       </div>
 
@@ -58,6 +62,10 @@ function renderImportForm(container) {
           <label for="recipeFile">PDF oder Bild hochladen</label>
           <input type="file" id="recipeFile" class="input" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp" />
         </div>
+        <label class="import__multi-hint">
+          <input type="checkbox" id="multiHintFile" />
+          Enthält mehrere Rezepte
+        </label>
         <button class="btn btn--primary" id="btnImportFile">Datei importieren</button>
       </div>
 
@@ -66,6 +74,10 @@ function renderImportForm(container) {
           <label for="recipeText">Rezepttext einfügen</label>
           <textarea id="recipeText" class="input input--textarea" rows="10" placeholder="Rezepttext hier einfügen..."></textarea>
         </div>
+        <label class="import__multi-hint">
+          <input type="checkbox" id="multiHintText" />
+          Enthält mehrere Rezepte
+        </label>
         <button class="btn btn--primary" id="btnImportText">Text importieren</button>
       </div>
 
@@ -93,14 +105,18 @@ function renderImportForm(container) {
         <p id="loadingText">Rezept wird analysiert...</p>
       </div>
 
-      <!-- Multi-recipe confirmation -->
-      <div class="multi-confirm hidden" id="multiConfirm">
-        <div class="multi-confirm__header">
-          <h2>Mehrere Rezepte erkannt</h2>
-          <p class="multi-confirm__desc">In der Quelle wurden mehrere Rezepte gefunden. Bitte prüfe die erkannten Titel und wähle aus, welche importiert werden sollen.</p>
+      <!-- Multi-recipe review -->
+      <div class="multi-review hidden" id="multiReview">
+        <div class="multi-review__header">
+          <h2 id="multiReviewTitle">Mehrere Rezepte erkannt</h2>
+          <p class="multi-review__desc" id="multiReviewDesc"></p>
         </div>
-        <div class="multi-confirm__list" id="multiList"></div>
-        <div class="multi-confirm__actions">
+        <div class="multi-review__toolbar">
+          <button class="btn btn--ghost btn--sm" id="btnSelectAll">Alle auswählen</button>
+          <button class="btn btn--ghost btn--sm" id="btnSelectNone">Keine auswählen</button>
+        </div>
+        <div class="multi-review__list" id="multiList"></div>
+        <div class="multi-review__actions">
           <button class="btn btn--primary" id="btnMultiImport">Ausgewählte importieren</button>
           <button class="btn btn--ghost" id="btnMultiCancel">Abbrechen</button>
         </div>
@@ -155,7 +171,7 @@ function renderImportForm(container) {
   `;
 
   // Tabs
-  const allHideables = ['#importLoading', '#importPreview', '#multiConfirm', '#multiProgress', '#multiResults', '#batchProgress', '#batchResults'];
+  const allHideables = ['#importLoading', '#importPreview', '#multiReview', '#multiProgress', '#multiResults', '#batchProgress', '#batchResults'];
   container.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
       container.querySelectorAll('.tab').forEach(t => t.classList.remove('tab--active'));
@@ -167,27 +183,30 @@ function renderImportForm(container) {
   });
 
   let currentData = null;       // single recipe data for preview
-  let currentMultiData = null;  // array of recipe data for multi-confirm
+  let currentMultiData = null;  // array of recipe data for multi-review
 
   // --- Single import handlers ---
 
   $('#btnImportUrl', container).addEventListener('click', async () => {
     const url = $('#recipeUrl', container).value.trim();
     if (!url) { showToast('Bitte URL eingeben.', 'warning'); return; }
-    await doImport(() => processURL(url));
+    const multiHint = $('#multiHintUrl', container).checked;
+    await doImport(() => processURL(url, { multiHint }));
   });
 
   $('#btnImportFile', container).addEventListener('click', async () => {
     const file = $('#recipeFile', container).files[0];
     if (!file) { showToast('Bitte Datei auswählen.', 'warning'); return; }
+    const multiHint = $('#multiHintFile', container).checked;
     const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf');
-    await doImport(() => isPdf ? processPDF(file) : processImage(file));
+    await doImport(() => isPdf ? processPDF(file, { multiHint }) : processImage(file, { multiHint }));
   });
 
   $('#btnImportText', container).addEventListener('click', async () => {
     const text = $('#recipeText', container).value.trim();
     if (!text) { showToast('Bitte Text eingeben.', 'warning'); return; }
-    await doImport(() => processText(text));
+    const multiHint = $('#multiHintText', container).checked;
+    await doImport(() => processText(text, { multiHint }));
   });
 
   async function doImport(processFn) {
@@ -203,16 +222,25 @@ function renderImportForm(container) {
     setImportRunning(true);
 
     try {
-      const results = await processFn(); // always an array now
+      const results = await processFn(); // always an array, with ._filtered count
+      const filteredCount = results._filtered || 0;
 
-      if (results.length === 1) {
-        // Single recipe → show preview as before
+      if (results.length === 0) {
+        const msg = filteredCount > 0
+          ? `Keine brauchbaren Rezepte erkannt (${filteredCount} ungültige Einträge gefiltert).`
+          : 'Keine Rezepte erkannt. Bitte versuche es mit einer anderen Quelle.';
+        showToast(msg, 'warning', { duration: 5000 });
+        return;
+      }
+
+      if (results.length === 1 && filteredCount === 0) {
+        // Single recipe → show preview
         currentData = results[0];
         showPreview(currentData);
       } else {
-        // Multiple recipes → show confirmation screen
+        // Multiple recipes or some filtered → show multi-review
         currentMultiData = results;
-        showMultiConfirm(results);
+        showMultiReview(results, filteredCount);
       }
     } catch (err) {
       if (err instanceof ApiError && err.isHtml) {
@@ -267,44 +295,99 @@ function renderImportForm(container) {
     $('#importPreview', container).classList.add('hidden');
   });
 
-  // --- Multi-recipe confirmation ---
+  // --- Multi-recipe review with accordion ---
 
-  function showMultiConfirm(recipes) {
-    const multiEl = $('#multiConfirm', container);
-    multiEl.classList.remove('hidden');
+  function showMultiReview(recipes, filteredCount) {
+    const reviewEl = $('#multiReview', container);
+    reviewEl.classList.remove('hidden');
+
+    const titleEl = $('#multiReviewTitle', container);
+    titleEl.textContent = `${recipes.length} Rezept${recipes.length !== 1 ? 'e' : ''} erkannt`;
+
+    const descEl = $('#multiReviewDesc', container);
+    let desc = 'Prüfe die erkannten Rezepte, bearbeite sie bei Bedarf und wähle aus, welche importiert werden sollen.';
+    if (filteredCount > 0) {
+      desc += ` (${filteredCount} ungültige Eintr${filteredCount !== 1 ? 'äge' : 'ag'} wurden automatisch gefiltert)`;
+    }
+    descEl.textContent = desc;
 
     const listEl = $('#multiList', container);
     listEl.innerHTML = recipes.map((r, idx) => `
-      <label class="multi-confirm__item">
-        <input type="checkbox" checked data-multi-idx="${idx}" />
-        <div class="multi-confirm__item-info">
-          <strong class="multi-confirm__item-title">${esc(r.title || 'Unbekanntes Rezept')}</strong>
-          <span class="multi-confirm__item-meta">
-            ${r.category ? `<span class="chip ${categoryChipClass(r.category)} chip--sm">${esc(r.category)}</span>` : ''}
-            ${r.origin ? `<span class="chip chip--origin chip--sm">${esc(r.origin)}</span>` : ''}
-            ${r.mainIngredient ? `<span class="chip chip--sm">${esc(r.mainIngredient)}</span>` : ''}
-          </span>
-          ${r.description ? `<p class="multi-confirm__item-desc">${esc(r.description)}</p>` : ''}
+      <div class="review-card" data-review-idx="${idx}">
+        <div class="review-card__header">
+          <label class="review-card__select">
+            <input type="checkbox" checked data-multi-idx="${idx}" />
+          </label>
+          <div class="review-card__summary" data-toggle-idx="${idx}">
+            <strong class="review-card__title">${esc(r.title || 'Unbekanntes Rezept')}</strong>
+            <span class="review-card__meta">
+              ${r.category ? `<span class="chip ${categoryChipClass(r.category)} chip--sm">${esc(r.category)}</span>` : ''}
+              ${r.origin ? `<span class="chip chip--origin chip--sm">${esc(r.origin)}</span>` : ''}
+              ${r.mainIngredient ? `<span class="chip chip--sm">${esc(r.mainIngredient)}</span>` : ''}
+            </span>
+          </div>
+          <button class="review-card__toggle" data-toggle-idx="${idx}" title="Details ein-/ausklappen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
         </div>
-      </label>
+        <div class="review-card__body hidden" id="reviewBody-${idx}">
+          <div class="review-card__form" id="reviewForm-${idx}"></div>
+        </div>
+      </div>
     `).join('');
+
+    // Initialize forms and toggle handlers
+    recipes.forEach((r, idx) => {
+      const formEl = $(`#reviewForm-${idx}`, container);
+      renderRecipeForm(formEl, r);
+    });
+
+    // Toggle accordion
+    container.querySelectorAll('[data-toggle-idx]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        // Don't toggle on checkbox click
+        if (e.target.tagName === 'INPUT') return;
+        const idx = el.dataset.toggleIdx;
+        const body = $(`#reviewBody-${idx}`, container);
+        const card = body.closest('.review-card');
+        body.classList.toggle('hidden');
+        card.classList.toggle('review-card--open');
+      });
+    });
   }
+
+  // Select all / none
+  $('#btnSelectAll', container).addEventListener('click', () => {
+    container.querySelectorAll('#multiList input[type="checkbox"]').forEach(cb => cb.checked = true);
+  });
+
+  $('#btnSelectNone', container).addEventListener('click', () => {
+    container.querySelectorAll('#multiList input[type="checkbox"]').forEach(cb => cb.checked = false);
+  });
 
   $('#btnMultiCancel', container).addEventListener('click', () => {
     currentMultiData = null;
-    $('#multiConfirm', container).classList.add('hidden');
+    $('#multiReview', container).classList.add('hidden');
   });
 
   $('#btnMultiImport', container).addEventListener('click', async () => {
     if (!currentMultiData) return;
 
-    // Collect selected indices
+    // Collect selected recipes with edited form data
     const checkboxes = container.querySelectorAll('#multiList input[type="checkbox"]');
     const selectedRecipes = [];
     checkboxes.forEach(cb => {
       if (cb.checked) {
         const idx = parseInt(cb.dataset.multiIdx, 10);
-        selectedRecipes.push(currentMultiData[idx]);
+        const formEl = $(`#reviewForm-${idx}`, container);
+        const edited = readRecipeForm(formEl);
+        // Merge edited fields with original source data
+        selectedRecipes.push({
+          ...edited,
+          recipeText: currentMultiData[idx].recipeText,
+          sourceType: currentMultiData[idx].sourceType,
+          sourceRef: currentMultiData[idx].sourceRef
+        });
       }
     });
 
@@ -313,16 +396,8 @@ function renderImportForm(container) {
       return;
     }
 
-    // If only one selected, go to single preview for editing
-    if (selectedRecipes.length === 1) {
-      $('#multiConfirm', container).classList.add('hidden');
-      currentData = selectedRecipes[0];
-      showPreview(currentData);
-      return;
-    }
-
-    // Multiple selected → import all with progress
-    $('#multiConfirm', container).classList.add('hidden');
+    // Import all selected with progress
+    $('#multiReview', container).classList.add('hidden');
     const progressEl = $('#multiProgress', container);
     progressEl.classList.remove('hidden');
     setImportRunning(true);
@@ -474,7 +549,7 @@ function renderImportForm(container) {
       $('#batchCurrentFile', container).textContent = filePath;
 
       try {
-        let analysisResults; // now always an array
+        let analysisResults;
 
         if (isPdfFile(file)) {
           analysisResults = await processPDF(file);
@@ -493,7 +568,12 @@ function renderImportForm(container) {
           continue;
         }
 
-        // Save each recipe from the results
+        if (analysisResults.length === 0) {
+          const filtered = analysisResults._filtered || 0;
+          results.skipped.push({ file: filePath, reason: filtered > 0 ? `${filtered} ungültige Einträge gefiltert` : 'Kein Rezept erkannt' });
+          continue;
+        }
+
         for (const analysisResult of analysisResults) {
           const recipe = {
             title: analysisResult.title || file.name,
