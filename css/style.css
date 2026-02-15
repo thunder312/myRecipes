@@ -249,6 +249,32 @@ h1, h2, h3, h4 {
   transform: scale(1.1);
 }
 
+.nav__logout {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 0.7rem var(--space-md);
+  margin: auto var(--space-md) var(--space-md);
+  border: none;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-weight: 500;
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  transition: all var(--duration) var(--ease);
+}
+
+.nav__logout:hover {
+  background: var(--color-danger-light, #fef2f2);
+  color: var(--color-danger, #dc2626);
+}
+
+.nav__logout:hover .nav__icon {
+  transform: scale(1.1);
+}
+
 /* ==========================================================================
    Main Content
    ========================================================================== */
@@ -1741,6 +1767,10 @@ details[open] > .batch__log-heading::before,
   }
 
   .nav__brand {
+    display: none;
+  }
+
+  .nav__logout {
     display: none;
   }
 

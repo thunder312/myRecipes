@@ -1,5 +1,5 @@
 import { $, showToast } from './utils/helpers.js';
-import { isImportRunning } from './utils/auth.js';
+import { isAuthenticated, isImportRunning, logout } from './utils/auth.js';
 
 const routes = {
   overview: () => import('./views/overview.js'),
@@ -40,14 +40,33 @@ async function navigate() {
     const module = await loader();
     currentView = viewName;
     await module.render(container, ...params);
+    updateLogoutButton();
   } catch (err) {
     console.error('Navigation error:', err);
     container.innerHTML = `<div class="error-state"><h2>Fehler</h2><p>${err.message}</p></div>`;
   }
 }
 
+function updateLogoutButton() {
+  const btn = $('#btnLogout');
+  if (!btn) return;
+  btn.classList.toggle('hidden', !isAuthenticated());
+}
+
 function init() {
   window.addEventListener('hashchange', navigate);
+
+  const logoutBtn = $('#btnLogout');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      logout();
+      showToast('Abgemeldet.', 'success');
+      updateLogoutButton();
+      // Re-render current view so auth-protected views show login
+      navigate();
+    });
+  }
+
   navigate();
 }
 
