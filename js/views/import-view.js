@@ -62,6 +62,16 @@ function renderImportForm(container) {
           <label for="recipeFile">PDF oder Bild hochladen</label>
           <input type="file" id="recipeFile" class="input" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp" />
         </div>
+        <div class="import__camera-group">
+          <button class="btn btn--secondary" id="btnCamera" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Rezept fotografieren
+          </button>
+          <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" />
+        </div>
         <label class="import__multi-hint">
           <input type="checkbox" id="multiHintFile" />
           Enthält mehrere Rezepte
@@ -200,6 +210,25 @@ function renderImportForm(container) {
     const multiHint = $('#multiHintFile', container).checked;
     const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf');
     await doImport(() => isPdf ? processPDF(file, { multiHint }) : processImage(file, { multiHint }));
+  });
+
+  // Camera button – triggers hidden file input with capture="environment"
+  const cameraBtn = $('#btnCamera', container);
+  const cameraInput = $('#cameraInput', container);
+
+  // Show camera button only on devices with a camera (touch devices)
+  if (!('ontouchstart' in window) && !navigator.maxTouchPoints) {
+    cameraBtn.style.display = 'none';
+  }
+
+  cameraBtn.addEventListener('click', () => cameraInput.click());
+
+  cameraInput.addEventListener('change', async () => {
+    const file = cameraInput.files[0];
+    if (!file) return;
+    const multiHint = $('#multiHintFile', container).checked;
+    await doImport(() => processImage(file, { multiHint }));
+    cameraInput.value = '';
   });
 
   $('#btnImportText', container).addEventListener('click', async () => {

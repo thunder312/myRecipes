@@ -1502,6 +1502,20 @@ h1, h2, h3, h4 {
 
 /* --- Multi-hint checkbox --- */
 
+.import__camera-group {
+  margin: var(--space-sm) 0;
+}
+
+#btnCamera {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+#btnCamera svg {
+  flex-shrink: 0;
+}
+
 .import__multi-hint {
   display: flex;
   align-items: center;
