@@ -32,14 +32,19 @@ export function todayISO() {
   return new Date().toISOString().split('T')[0];
 }
 
-export function showToast(message, type = 'info') {
-  const toast = createElement('div', { className: `toast toast--${type}`, textContent: message });
+export function showToast(message, type = 'info', { html = false, duration = 3000 } = {}) {
+  const toast = createElement('div', { className: `toast toast--${type}` });
+  if (html) {
+    toast.innerHTML = message;
+  } else {
+    toast.textContent = message;
+  }
   document.body.appendChild(toast);
   requestAnimationFrame(() => toast.classList.add('toast--visible'));
   setTimeout(() => {
     toast.classList.remove('toast--visible');
     setTimeout(() => toast.remove(), 300);
-  }, 3000);
+  }, duration);
 }
 
 const CATEGORY_CLASS_MAP = {

@@ -1714,6 +1714,46 @@ details[open] > .batch__log-heading::before,
   cursor: pointer;
 }
 
+.settings__api-status {
+  margin-top: var(--space-sm);
+  min-height: 1.2em;
+}
+
+.api-status {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.api-status--ok {
+  color: var(--color-success, #16a34a);
+}
+
+.api-status--warning {
+  color: var(--color-warning, #d97706);
+}
+
+.api-status--warning a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.api-status--error {
+  color: var(--color-danger, #dc2626);
+}
+
+.btn--sm {
+  padding: 0.4rem 0.8rem;
+  font-size: var(--font-size-sm);
+  margin-top: var(--space-sm);
+  display: inline-block;
+}
+
+.toast a {
+  color: inherit;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
 /* ==========================================================================
    Responsive – Tablet
    ========================================================================== */

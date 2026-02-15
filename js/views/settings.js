@@ -2,6 +2,7 @@ import { getSetting, setSetting, exportAll, importAll } from '../db.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { $, showToast } from '../utils/helpers.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
+import { validateApiKey, BILLING_URL } from '../api.js';
 
 export async function render(container) {
   await ensureAuthenticated(container, () => renderSettings(container));
@@ -22,6 +23,8 @@ async function renderSettings(container) {
           <input type="password" id="apiKeyInput" class="input" value="${escapeAttr(apiKey)}" placeholder="sk-ant-..." />
           <button class="btn btn--primary" id="btnSaveKey">Speichern</button>
         </div>
+        <div class="settings__api-status" id="apiStatus"></div>
+        <a href="${BILLING_URL}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">Guthaben &amp; Billing verwalten</a>
       </section>
 
       <section class="settings__section">
@@ -62,15 +65,49 @@ async function renderSettings(container) {
     </div>
   `;
 
-  // Save API Key
+  // Save API Key with validation
   $('#btnSaveKey', container).addEventListener('click', async () => {
     const key = $('#apiKeyInput', container).value.trim();
     if (!key) {
       showToast('Bitte API-Key eingeben.', 'warning');
       return;
     }
-    await setSetting('apiKey', key);
-    showToast('API-Key gespeichert.', 'success');
+
+    const btn = $('#btnSaveKey', container);
+    const statusEl = $('#apiStatus', container);
+    btn.disabled = true;
+    btn.textContent = 'Wird geprüft...';
+    statusEl.innerHTML = '';
+
+    try {
+      const result = await validateApiKey(key);
+
+      if (!result.valid) {
+        statusEl.innerHTML = '<span class="api-status api-status--error">Ungültiger API-Key</span>';
+        showToast('API-Key ist ungültig. Bitte prüfen.', 'error');
+        return;
+      }
+
+      await setSetting('apiKey', key);
+
+      if (result.reason === 'no_credit') {
+        statusEl.innerHTML = `<span class="api-status api-status--warning">Key gültig, aber kein Guthaben. <a href="${BILLING_URL}" target="_blank" rel="noopener">Aufladen</a></span>`;
+        showToast('API-Key gespeichert, aber kein Guthaben vorhanden.', 'warning');
+      } else if (result.reason === 'rate_limited') {
+        statusEl.innerHTML = '<span class="api-status api-status--warning">Key gültig. Rate-Limit aktiv, bitte kurz warten.</span>';
+        showToast('API-Key gespeichert.', 'success');
+      } else {
+        statusEl.innerHTML = '<span class="api-status api-status--ok">Key gültig und einsatzbereit</span>';
+        showToast('API-Key gespeichert und geprüft.', 'success');
+      }
+    } catch (err) {
+      statusEl.innerHTML = `<span class="api-status api-status--error">Prüfung fehlgeschlagen: ${escapeAttr(err.message)}</span>`;
+      await setSetting('apiKey', key);
+      showToast('API-Key gespeichert (Prüfung fehlgeschlagen).', 'warning');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Speichern';
+    }
   });
 
   // Change Password

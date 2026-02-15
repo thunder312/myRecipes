@@ -5,6 +5,7 @@ import { generateRecipePDF } from '../pdf-generator.js';
 import { $, showToast, categoryChipClass } from '../utils/helpers.js';
 import { setImportRunning } from '../utils/auth.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
+import { ApiError } from '../api.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
 
 const SUPPORTED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.txt', '.text', '.md'];
@@ -214,7 +215,11 @@ function renderImportForm(container) {
         showMultiConfirm(results);
       }
     } catch (err) {
-      showToast(`Fehler: ${err.message}`, 'error');
+      if (err instanceof ApiError && err.isHtml) {
+        showToast(err.message, 'error', { html: true, duration: 6000 });
+      } else {
+        showToast(`Fehler: ${err.message}`, 'error');
+      }
     } finally {
       loading.classList.add('hidden');
       setImportRunning(false);

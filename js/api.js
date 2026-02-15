@@ -1,11 +1,65 @@
 import { getSetting } from './db.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
+const BILLING_URL = 'https://console.anthropic.com/settings/billing';
 
 async function getApiKey() {
   const key = await getSetting('apiKey');
   if (!key) throw new Error('Kein API-Key gesetzt. Bitte unter Einstellungen hinterlegen.');
   return key;
+}
+
+function handleApiError(response, errBody) {
+  const status = response.status;
+  const msg = errBody?.error?.message || response.statusText;
+
+  if (status === 401) {
+    throw new ApiError('Ungültiger API-Key. Bitte in den Einstellungen prüfen.', status);
+  }
+  if (status === 429 || (status === 400 && /credit|balance|billing/i.test(msg))) {
+    throw new ApiError(
+      `Kein Guthaben oder Rate-Limit erreicht. <a href="${BILLING_URL}" target="_blank" rel="noopener">Guthaben aufladen</a>`,
+      status
+    );
+  }
+  throw new ApiError(`API-Fehler: ${msg}`, status);
+}
+
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+    this.isHtml = message.includes('<a ');
+  }
+}
+
+export { BILLING_URL };
+
+export async function validateApiKey(apiKey) {
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 1,
+      messages: [{ role: 'user', content: 'Hi' }]
+    })
+  });
+
+  if (response.status === 401) return { valid: false, reason: 'invalid_key' };
+  if (response.status === 429) return { valid: true, reason: 'rate_limited' };
+  if (response.status === 400) {
+    const err = await response.json().catch(() => ({}));
+    if (/credit|balance|billing/i.test(err?.error?.message || '')) {
+      return { valid: true, reason: 'no_credit' };
+    }
+  }
+  return { valid: true, reason: 'ok' };
 }
 
 function buildRecipeAnalysisPrompt() {
@@ -64,7 +118,7 @@ export async function analyzeRecipeText(text) {
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(`API-Fehler: ${err.error?.message || response.statusText}`);
+    handleApiError(response, err);
   }
 
   const data = await response.json();
@@ -104,7 +158,7 @@ export async function analyzeRecipeImage(base64Data, mediaType) {
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(`API-Fehler: ${err.error?.message || response.statusText}`);
+    handleApiError(response, err);
   }
 
   const data = await response.json();
@@ -213,7 +267,7 @@ Regeln:
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(`API-Fehler: ${err.error?.message || response.statusText}`);
+    handleApiError(response, err);
   }
 
   const data = await response.json();
