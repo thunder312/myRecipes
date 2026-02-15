@@ -1352,82 +1352,125 @@ h1, h2, h3, h4 {
 
 /* Multi-recipe confirmation */
 
-.multi-confirm__header {
+/* --- Multi-recipe review --- */
+
+.multi-review__header {
   margin-bottom: var(--space-xl);
 }
 
-.multi-confirm__header h2 {
+.multi-review__header h2 {
   font-size: var(--font-size-xl);
   margin-bottom: var(--space-sm);
 }
 
-.multi-confirm__desc {
+.multi-review__desc {
   color: var(--color-text-muted);
   line-height: 1.6;
 }
 
-.multi-confirm__list {
+.multi-review__toolbar {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.multi-review__list {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   margin-bottom: var(--space-xl);
 }
 
-.multi-confirm__item {
+.multi-review__actions {
   display: flex;
-  align-items: flex-start;
   gap: var(--space-md);
-  padding: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--color-border-light);
+}
+
+/* --- Review card (accordion) --- */
+
+.review-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border-light);
   border-radius: var(--radius-lg);
-  cursor: pointer;
   transition: all var(--duration-fast) var(--ease);
 }
 
-.multi-confirm__item:hover {
+.review-card:hover {
   border-color: var(--color-primary);
   box-shadow: var(--shadow-sm);
 }
 
-.multi-confirm__item:has(input:checked) {
+.review-card:has(input:checked) {
   border-color: var(--color-primary);
   background: #f9731608;
 }
 
-.multi-confirm__item input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  margin-top: 2px;
-  accent-color: var(--color-primary);
+.review-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
   cursor: pointer;
+}
+
+.review-card__select {
   flex-shrink: 0;
 }
 
-.multi-confirm__item-info {
+.review-card__select input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.review-card__summary {
   flex: 1;
   min-width: 0;
 }
 
-.multi-confirm__item-title {
+.review-card__title {
   display: block;
   font-size: var(--font-size-base);
   font-weight: 600;
   margin-bottom: var(--space-xs);
 }
 
-.multi-confirm__item-meta {
+.review-card__meta {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-xs);
-  margin-bottom: var(--space-xs);
 }
 
-.multi-confirm__item-desc {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-  line-height: 1.5;
-  margin: 0;
+.review-card__toggle {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: var(--space-xs);
+  border-radius: var(--radius);
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.review-card__toggle:hover {
+  background: var(--color-border-light);
+  color: var(--color-text);
+}
+
+.review-card--open .review-card__toggle svg {
+  transform: rotate(180deg);
+}
+
+.review-card__body {
+  padding: 0 var(--space-lg) var(--space-lg);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.review-card__form {
+  padding-top: var(--space-md);
 }
 
 .chip--sm {
@@ -1435,11 +1478,21 @@ h1, h2, h3, h4 {
   padding: 1px 8px;
 }
 
-.multi-confirm__actions {
+/* --- Multi-hint checkbox --- */
+
+.import__multi-hint {
   display: flex;
-  gap: var(--space-md);
-  padding-top: var(--space-lg);
-  border-top: 1px solid var(--color-border-light);
+  align-items: center;
+  gap: var(--space-sm);
+  margin: var(--space-sm) 0 var(--space-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.import__multi-hint input[type="checkbox"] {
+  accent-color: var(--color-primary);
+  cursor: pointer;
 }
 
 .multi-results__list {
@@ -1712,6 +1765,54 @@ details[open] > .batch__log-heading::before,
 
 .settings__actions .btn {
   cursor: pointer;
+}
+
+/* --- Toast Log --- */
+
+.toast-log {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--space-md);
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius);
+}
+
+.toast-log__empty {
+  padding: var(--space-md);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  margin: 0;
+}
+
+.toast-log__entry {
+  display: flex;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-sm);
+  border-left: 3px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.toast-log__entry--success { border-left-color: var(--color-success, #16a34a); }
+.toast-log__entry--error   { border-left-color: var(--color-danger, #dc2626); }
+.toast-log__entry--warning { border-left-color: var(--color-warning, #d97706); }
+.toast-log__entry--info    { border-left-color: var(--color-primary); }
+
+.toast-log__time {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 90px;
+}
+
+.toast-log__msg {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
 }
 
 .settings__api-status {

@@ -32,6 +32,9 @@ export function todayISO() {
   return new Date().toISOString().split('T')[0];
 }
 
+const TOAST_LOG_KEY = 'myRecipes_toastLog';
+const TOAST_LOG_MAX = 10;
+
 export function showToast(message, type = 'info', { html = false, duration = 3000 } = {}) {
   const toast = createElement('div', { className: `toast toast--${type}` });
   if (html) {
@@ -45,6 +48,29 @@ export function showToast(message, type = 'info', { html = false, duration = 300
     toast.classList.remove('toast--visible');
     setTimeout(() => toast.remove(), 300);
   }, duration);
+
+  // Persist to rolling log
+  const plainText = html ? message.replace(/<[^>]*>/g, '') : message;
+  addToToastLog(plainText, type);
+}
+
+function addToToastLog(message, type) {
+  try {
+    const log = JSON.parse(localStorage.getItem(TOAST_LOG_KEY) || '[]');
+    log.push({ message, type, time: new Date().toISOString() });
+    while (log.length > TOAST_LOG_MAX) log.shift();
+    localStorage.setItem(TOAST_LOG_KEY, JSON.stringify(log));
+  } catch { /* localStorage unavailable */ }
+}
+
+export function getToastLog() {
+  try {
+    return JSON.parse(localStorage.getItem(TOAST_LOG_KEY) || '[]');
+  } catch { return []; }
+}
+
+export function clearToastLog() {
+  try { localStorage.removeItem(TOAST_LOG_KEY); } catch { /* */ }
 }
 
 const CATEGORY_CLASS_MAP = {

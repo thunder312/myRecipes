@@ -1,6 +1,6 @@
 import { getSetting, setSetting, exportAll, importAll } from '../db.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
-import { $, showToast } from '../utils/helpers.js';
+import { $, showToast, getToastLog, clearToastLog } from '../utils/helpers.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { validateApiKey, BILLING_URL } from '../api.js';
 
@@ -55,6 +55,13 @@ async function renderSettings(container) {
             <input type="file" id="importFile" accept=".json" class="hidden" />
           </label>
         </div>
+      </section>
+
+      <section class="settings__section">
+        <h2>Benachrichtigungs-Log</h2>
+        <p class="settings__hint">Die letzten 10 Meldungen zum Nachlesen.</p>
+        <div class="toast-log" id="toastLog"></div>
+        <button class="btn btn--ghost btn--sm" id="btnClearLog">Log leeren</button>
       </section>
 
       <section class="settings__section">
@@ -156,6 +163,14 @@ async function renderSettings(container) {
     }
   });
 
+  // Toast Log
+  renderToastLog(container);
+  $('#btnClearLog', container).addEventListener('click', () => {
+    clearToastLog();
+    renderToastLog(container);
+    showToast('Log geleert.', 'success');
+  });
+
   // Import
   $('#importFile', container).addEventListener('change', async (e) => {
     const file = e.target.files[0];
@@ -178,6 +193,25 @@ async function renderSettings(container) {
       showToast(`Import-Fehler: ${err.message}`, 'error');
     }
   });
+}
+
+function renderToastLog(container) {
+  const logEl = $('#toastLog', container);
+  const entries = getToastLog();
+
+  if (entries.length === 0) {
+    logEl.innerHTML = '<p class="toast-log__empty">Keine Meldungen vorhanden.</p>';
+    return;
+  }
+
+  logEl.innerHTML = entries.slice().reverse().map(e => {
+    const d = new Date(e.time);
+    const time = d.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    return `<div class="toast-log__entry toast-log__entry--${escapeAttr(e.type)}">
+      <span class="toast-log__time">${time}</span>
+      <span class="toast-log__msg">${escapeAttr(e.message)}</span>
+    </div>`;
+  }).join('');
 }
 
 function escapeAttr(str) {
