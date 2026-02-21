@@ -1,22 +1,35 @@
-import { getSetting, setSetting } from '../db.js';
-import { hashPassword, verifyPassword } from './password.js';
 import { $, showToast } from './helpers.js';
-import { isAuthenticated, setAuthenticated } from './auth.js';
+import { isAuthenticated, setAuthenticated, getAuthToken } from './auth.js';
 
 export async function ensureAuthenticated(container, onSuccess) {
-  const passwordHash = await getSetting('passwordHash');
+  // If local session is valid (within 15-min timeout), trust it and proceed.
+  // The server will still validate the token on every API call.
+  if (isAuthenticated()) {
+    onSuccess();
+    return;
+  }
 
-  if (!passwordHash) {
+  // No local session – check server for password state
+  let authState;
+  try {
+    const headers = {};
+    const token = getAuthToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch('/api/auth/check', { headers });
+    authState = await res.json();
+  } catch {
+    showToast('Server nicht erreichbar.', 'error');
+    return;
+  }
+
+  // No password set yet → initial setup
+  if (!authState.hasPassword) {
     renderSetPassword(container, onSuccess);
     return;
   }
 
-  if (!isAuthenticated()) {
-    renderLogin(container, passwordHash, onSuccess);
-    return;
-  }
-
-  onSuccess();
+  // Not authenticated → show login
+  renderLogin(container, onSuccess);
 }
 
 function renderSetPassword(container, onSuccess) {
@@ -49,10 +62,25 @@ function renderSetPassword(container, onSuccess) {
       showToast('Passwörter stimmen nicht überein.', 'warning');
       return;
     }
-    await setSetting('passwordHash', await hashPassword(pw));
-    setAuthenticated(true);
-    showToast('Master-Passwort gesetzt!', 'success');
-    onSuccess();
+
+    try {
+      const res = await fetch('/api/auth/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        showToast(err.error || 'Fehler beim Setzen des Passworts.', 'error');
+        return;
+      }
+      const data = await res.json();
+      setAuthenticated(data.token);
+      showToast('Master-Passwort gesetzt!', 'success');
+      onSuccess();
+    } catch (err) {
+      showToast(`Fehler: ${err.message}`, 'error');
+    }
   };
 
   $('#btnSetPw', container).addEventListener('click', doSet);
@@ -61,7 +89,7 @@ function renderSetPassword(container, onSuccess) {
   });
 }
 
-function renderLogin(container, passwordHash, onSuccess) {
+function renderLogin(container, onSuccess) {
   container.innerHTML = `
     <div class="auth">
       <h1>Geschützter Bereich</h1>
@@ -77,12 +105,26 @@ function renderLogin(container, passwordHash, onSuccess) {
 
   const doLogin = async () => {
     const pw = $('#loginPw', container).value;
-    if (await verifyPassword(pw, passwordHash)) {
-      setAuthenticated(true);
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Falsches Passwort.', 'error');
+        return;
+      }
+
+      const data = await res.json();
+      setAuthenticated(data.token);
       showToast('Entsperrt.', 'success');
       onSuccess();
-    } else {
-      showToast('Falsches Passwort.', 'error');
+    } catch (err) {
+      showToast(`Fehler: ${err.message}`, 'error');
     }
   };
 

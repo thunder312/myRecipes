@@ -1,145 +1,149 @@
-import { openDB } from 'idb';
+// REST API wrapper – replaces the former IndexedDB layer.
+// All functions keep the same signature so no other module needs changes.
 
-const DB_NAME = 'myRecipesDB';
-const DB_VERSION = 1;
+import { getAuthToken } from './utils/auth.js';
 
-let dbPromise = null;
+const API = '/api';
 
-function getDB() {
-  if (!dbPromise) {
-    dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains('recipes')) {
-          const store = db.createObjectStore('recipes', { keyPath: 'id', autoIncrement: true });
-          store.createIndex('category', 'category');
-          store.createIndex('origin', 'origin');
-          store.createIndex('mainIngredient', 'mainIngredient');
-          store.createIndex('createdAt', 'createdAt');
-        }
-        if (!db.objectStoreNames.contains('settings')) {
-          db.createObjectStore('settings', { keyPath: 'key' });
-        }
-      }
-    });
-  }
-  return dbPromise;
-}
+async function apiFetch(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
 
-// --- Recipes ---
-
-export async function getAllRecipes() {
-  const db = await getDB();
-  return db.getAll('recipes');
-}
-
-export async function getRecipe(id) {
-  const db = await getDB();
-  return db.get('recipes', id);
-}
-
-export async function addRecipe(recipe) {
-  const db = await getDB();
-  const now = new Date().toISOString();
-  recipe.createdAt = now;
-  recipe.updatedAt = now;
-  recipe.cookedDates = recipe.cookedDates || [];
-  recipe.cookedCount = recipe.cookedCount || 0;
-  return db.add('recipes', recipe);
-}
-
-export async function updateRecipe(recipe) {
-  const db = await getDB();
-  recipe.updatedAt = new Date().toISOString();
-  return db.put('recipes', recipe);
-}
-
-export async function deleteRecipe(id) {
-  const db = await getDB();
-  return db.delete('recipes', id);
-}
-
-// --- Settings ---
-
-export async function getSetting(key) {
-  const db = await getDB();
-  const entry = await db.get('settings', key);
-  return entry ? entry.value : null;
-}
-
-export async function setSetting(key, value) {
-  const db = await getDB();
-  return db.put('settings', { key, value });
-}
-
-// --- Backup ---
-
-export async function exportAll() {
-  const db = await getDB();
-  const recipes = await db.getAll('recipes');
-  const settings = await db.getAll('settings');
-
-  // Convert Blobs to base64 for JSON export
-  const recipesExport = await Promise.all(recipes.map(async (r) => {
-    const copy = { ...r };
-    if (copy.pdfBlob instanceof Blob) {
-      copy.pdfBlob = await blobToBase64(copy.pdfBlob);
-      copy._pdfBlobType = 'base64';
-    }
-    if (copy.thumbnailBlob instanceof Blob) {
-      copy.thumbnailBlob = await blobToBase64(copy.thumbnailBlob);
-      copy._thumbnailBlobType = 'base64';
-    }
-    return copy;
-  }));
-
-  return { recipes: recipesExport, settings };
-}
-
-export async function importAll(data) {
-  const db = await getDB();
-  const tx = db.transaction(['recipes', 'settings'], 'readwrite');
-
-  // Clear existing data
-  await tx.objectStore('recipes').clear();
-  await tx.objectStore('settings').clear();
-
-  // Import recipes
-  for (const r of data.recipes) {
-    if (r._pdfBlobType === 'base64' && typeof r.pdfBlob === 'string') {
-      r.pdfBlob = base64ToBlob(r.pdfBlob, 'application/pdf');
-      delete r._pdfBlobType;
-    }
-    if (r._thumbnailBlobType === 'base64' && typeof r.thumbnailBlob === 'string') {
-      r.thumbnailBlob = base64ToBlob(r.thumbnailBlob, 'image/png');
-      delete r._thumbnailBlobType;
-    }
-    await tx.objectStore('recipes').add(r);
+  // Attach auth token if available
+  const token = getAuthToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Import settings
-  for (const s of data.settings) {
-    await tx.objectStore('settings').put(s);
+  const res = await fetch(API + path, { ...options, headers });
+
+  if (res.status === 401) {
+    throw new Error('Nicht authentifiziert – bitte zuerst anmelden.');
   }
 
-  await tx.done;
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `API-Fehler: ${res.status}`);
+  }
+
+  return res;
 }
 
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
+// --- Blob helpers ---
 
-function base64ToBlob(dataUrl, type) {
-  const parts = dataUrl.split(',');
-  const byteString = atob(parts[1]);
+function base64ToBlob(base64, type) {
+  const byteString = atob(base64);
   const ab = new ArrayBuffer(byteString.length);
   const ia = new Uint8Array(ab);
   for (let i = 0; i < byteString.length; i++) {
     ia[i] = byteString.charCodeAt(i);
   }
   return new Blob([ab], { type });
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      // Strip the data:...;base64, prefix – server expects raw base64
+      const result = reader.result;
+      const idx = result.indexOf(',');
+      resolve(idx >= 0 ? result.slice(idx + 1) : result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function hydrateBlobs(recipe) {
+  if (!recipe) return recipe;
+  if (typeof recipe.pdfBlob === 'string' && recipe.pdfBlob) {
+    recipe.pdfBlob = base64ToBlob(recipe.pdfBlob, 'application/pdf');
+  } else {
+    recipe.pdfBlob = null;
+  }
+  if (typeof recipe.thumbnailBlob === 'string' && recipe.thumbnailBlob) {
+    recipe.thumbnailBlob = base64ToBlob(recipe.thumbnailBlob, 'image/png');
+  } else {
+    recipe.thumbnailBlob = null;
+  }
+  return recipe;
+}
+
+async function dehydrateBlobs(recipe) {
+  const copy = { ...recipe };
+  if (copy.pdfBlob instanceof Blob) {
+    copy.pdfBlob = await blobToBase64(copy.pdfBlob);
+  }
+  if (copy.thumbnailBlob instanceof Blob) {
+    copy.thumbnailBlob = await blobToBase64(copy.thumbnailBlob);
+  }
+  return copy;
+}
+
+// --- Recipes ---
+
+export async function getAllRecipes() {
+  const res = await apiFetch('/recipes');
+  const recipes = await res.json();
+  return recipes.map(hydrateBlobs);
+}
+
+export async function getRecipe(id) {
+  const res = await apiFetch(`/recipes/${id}`);
+  return hydrateBlobs(await res.json());
+}
+
+export async function addRecipe(recipe) {
+  const body = await dehydrateBlobs(recipe);
+  const res = await apiFetch('/recipes', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  const { id } = await res.json();
+  return id;
+}
+
+export async function updateRecipe(recipe) {
+  const body = await dehydrateBlobs(recipe);
+  await apiFetch(`/recipes/${recipe.id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteRecipe(id) {
+  await apiFetch(`/recipes/${id}`, { method: 'DELETE' });
+}
+
+// --- Settings ---
+
+export async function getSetting(key) {
+  try {
+    const res = await apiFetch(`/settings/${encodeURIComponent(key)}`);
+    const { value } = await res.json();
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+export async function setSetting(key, value) {
+  await apiFetch(`/settings/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ value }),
+  });
+}
+
+// --- Backup ---
+
+export async function exportAll() {
+  const res = await apiFetch('/backup/export');
+  return res.json();
+}
+
+export async function importAll(data) {
+  await apiFetch('/backup/import', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }

@@ -1,5 +1,4 @@
 import { getSetting, setSetting, exportAll, importAll } from '../db.js';
-import { hashPassword, verifyPassword } from '../utils/password.js';
 import { $, showToast, getToastLog, clearToastLog } from '../utils/helpers.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { validateApiKey, BILLING_URL } from '../api.js';
@@ -17,7 +16,7 @@ async function renderSettings(container) {
 
       <section class="settings__section">
         <h2>Anthropic API-Key</h2>
-        <p class="settings__hint">Der API-Key wird lokal in deinem Browser gespeichert und nur für die Rezept-Analyse verwendet.</p>
+        <p class="settings__hint">Der API-Key wird auf dem Server gespeichert und nur für die Rezept-Analyse verwendet.</p>
         <div class="form-group">
           <label for="apiKeyInput">API-Key</label>
           <input type="password" id="apiKeyInput" class="input" value="${escapeAttr(apiKey)}" placeholder="sk-ant-..." />
@@ -67,7 +66,7 @@ async function renderSettings(container) {
       <section class="settings__section">
         <h2>Über myRecipes</h2>
         <p>Persönliche Rezeptsammlung mit KI-gestützter Kategorisierung.</p>
-        <p><small>Deine Daten werden ausschließlich lokal in deinem Browser gespeichert (IndexedDB).</small></p>
+        <p><small>Deine Daten werden auf dem Server in einer SQLite-Datenbank gespeichert.</small></p>
       </section>
     </div>
   `;
@@ -117,18 +116,11 @@ async function renderSettings(container) {
     }
   });
 
-  // Change Password
+  // Change Password (via server API)
   $('#btnChangePw', container).addEventListener('click', async () => {
     const currentPw = $('#currentPassword', container).value;
     const newPw = $('#newPassword', container).value;
     const confirmPw = $('#confirmPassword', container).value;
-
-    // Verify current password first
-    const currentHash = await getSetting('passwordHash');
-    if (!(await verifyPassword(currentPw, currentHash))) {
-      showToast('Aktuelles Passwort ist falsch.', 'error');
-      return;
-    }
 
     if (!newPw || newPw.length < 4) {
       showToast('Neues Passwort muss mindestens 4 Zeichen haben.', 'warning');
@@ -138,11 +130,26 @@ async function renderSettings(container) {
       showToast('Neue Passwörter stimmen nicht überein.', 'warning');
       return;
     }
-    await setSetting('passwordHash', await hashPassword(newPw));
-    showToast('Passwort geändert.', 'success');
-    $('#currentPassword', container).value = '';
-    $('#newPassword', container).value = '';
-    $('#confirmPassword', container).value = '';
+
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Passwort-Änderung fehlgeschlagen.', 'error');
+        return;
+      }
+      showToast('Passwort geändert.', 'success');
+      $('#currentPassword', container).value = '';
+      $('#newPassword', container).value = '';
+      $('#confirmPassword', container).value = '';
+    } catch (err) {
+      showToast(`Fehler: ${err.message}`, 'error');
+    }
   });
 
   // Export

@@ -18,7 +18,7 @@ npm install
 npm run build
 ```
 
-Das erzeugt den Ordner `dist/` mit allen Dateien, die auf den Server kommen.
+Das erzeugt den Ordner `dist/` mit dem Frontend.
 
 ---
 
@@ -39,13 +39,21 @@ systemctl enable nginx
 systemctl start nginx
 ```
 
-### 2.3 SSL mit Let's Encrypt einrichten
+### 2.3 Node.js installieren
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+node --version  # sollte v20.x zeigen
+```
+
+### 2.4 SSL mit Let's Encrypt einrichten
 
 ```bash
 apt install certbot python3-certbot-nginx -y
 ```
 
-### 2.4 Verzeichnis anlegen
+### 2.5 Verzeichnis anlegen
 
 ```bash
 mkdir -p /var/www/myrecipes
@@ -62,23 +70,35 @@ Neue Konfiguration anlegen:
 nano /etc/nginx/sites-available/myrecipes
 ```
 
-Folgenden Inhalt einfügen (Domain anpassen!):
+Folgenden Inhalt einfuegen (Domain anpassen!):
 
 ```nginx
 server {
     listen 80;
     server_name rezepte.deine-domain.de;
 
-    root /var/www/myrecipes;
-    index index.html;
+    # API-Requests an den Express-Server weiterleiten
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+        client_max_body_size 50M;
+    }
 
-    # SPA: Alle Routen auf index.html
+    # Frontend: Statische Dateien
     location / {
+        root /var/www/myrecipes/dist;
+        index index.html;
         try_files $uri $uri/ /index.html;
     }
 
     # Cache-Header fuer statische Assets
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|webp|woff2?)$ {
+        root /var/www/myrecipes/dist;
         expires 30d;
         add_header Cache-Control "public, immutable";
     }
@@ -95,9 +115,10 @@ server {
 }
 ```
 
-Konfiguration aktivieren:
+Default-Konfig entfernen und neue aktivieren:
 
 ```bash
+rm -f /etc/nginx/sites-enabled/default
 ln -s /etc/nginx/sites-available/myrecipes /etc/nginx/sites-enabled/
 nginx -t            # Syntax pruefen
 systemctl reload nginx
@@ -115,30 +136,78 @@ Certbot passt die Nginx-Konfig automatisch an (Redirect HTTP -> HTTPS).
 
 ---
 
-## 4. Dateien hochladen
+## 4. Dateien hochladen und Server einrichten
 
-### Variante A: rsync (empfohlen)
+### 4.1 Dateien hochladen
 
 Vom lokalen Rechner aus:
 
 ```bash
-rsync -avz --delete dist/ root@dein-server-ip:/var/www/myrecipes/
+# Frontend
+rsync -avz --delete dist/ root@dein-server-ip:/var/www/myrecipes/dist/
+
+# Backend
+rsync -avz server/ root@dein-server-ip:/var/www/myrecipes/server/
+rsync -avz package.json package-lock.json root@dein-server-ip:/var/www/myrecipes/
 ```
 
-`--delete` entfernt alte Dateien, die nicht mehr im Build sind.
-
-### Variante B: scp
+### 4.2 Server-Dependencies installieren
 
 ```bash
-scp -r dist/* root@dein-server-ip:/var/www/myrecipes/
+ssh root@dein-server-ip
+cd /var/www/myrecipes
+npm install --production
 ```
 
-### Variante C: FileZilla / SFTP
+### 4.3 Datenbank initialisieren
 
-1. FileZilla oeffnen
-2. Verbinden: `sftp://dein-server-ip`, Port 22, root + Passwort
-3. Lokal `dist/` oeffnen, remote `/var/www/myrecipes/`
-4. Alle Dateien hochladen
+Die Datenbank wird beim ersten Start automatisch erstellt (`data/recipes.db`).
+
+Optional: Bestehendes Backup importieren:
+
+```bash
+node server/migrate.js /pfad/zu/myrecipes-backup.json
+```
+
+### 4.4 Systemd-Service einrichten
+
+```bash
+nano /etc/systemd/system/myrecipes.service
+```
+
+Inhalt:
+
+```ini
+[Unit]
+Description=myRecipes Server
+After=network.target
+
+[Service]
+WorkingDirectory=/var/www/myrecipes
+ExecStart=/usr/bin/node server/index.js
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Restart=on-failure
+User=www-data
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Service aktivieren und starten:
+
+```bash
+# Verzeichnisrechte setzen
+chown -R www-data:www-data /var/www/myrecipes
+
+# Service registrieren und starten
+systemctl daemon-reload
+systemctl enable myrecipes
+systemctl start myrecipes
+
+# Status pruefen
+systemctl status myrecipes
+```
 
 ---
 
@@ -150,7 +219,7 @@ Im Browser oeffnen:
 https://rezepte.deine-domain.de
 ```
 
-Die App sollte direkt laufen. Alle Daten werden lokal im Browser gespeichert (IndexedDB) - der Server liefert nur die statischen Dateien aus.
+Beim ersten Aufruf eines geschuetzten Bereichs (Import, Einstellungen) wird ein Master-Passwort abgefragt.
 
 ---
 
@@ -162,11 +231,16 @@ Bei jeder Aenderung am Code:
 # 1. Lokal bauen
 npm run build
 
-# 2. Hochladen
-rsync -avz --delete dist/ root@dein-server-ip:/var/www/myrecipes/
-```
+# 2. Frontend hochladen
+rsync -avz --delete dist/ root@dein-server-ip:/var/www/myrecipes/dist/
 
-Das war's - kein Server-Neustart noetig, da nur statische Dateien ausgetauscht werden.
+# 3. Backend hochladen (falls geaendert)
+rsync -avz server/ root@dein-server-ip:/var/www/myrecipes/server/
+rsync -avz package.json package-lock.json root@dein-server-ip:/var/www/myrecipes/
+
+# 4. Dependencies aktualisieren und Server neustarten
+ssh root@dein-server-ip "cd /var/www/myrecipes && npm install --production && systemctl restart myrecipes"
+```
 
 ---
 
@@ -181,11 +255,18 @@ set -e
 SERVER="root@dein-server-ip"
 REMOTE_PATH="/var/www/myrecipes"
 
-echo "Building..."
+echo "Building frontend..."
 npm run build
 
-echo "Uploading..."
-rsync -avz --delete dist/ $SERVER:$REMOTE_PATH/
+echo "Uploading frontend..."
+rsync -avz --delete dist/ $SERVER:$REMOTE_PATH/dist/
+
+echo "Uploading backend..."
+rsync -avz server/ $SERVER:$REMOTE_PATH/server/
+rsync -avz package.json package-lock.json $SERVER:$REMOTE_PATH/
+
+echo "Installing dependencies and restarting..."
+ssh $SERVER "cd $REMOTE_PATH && npm install --production && systemctl restart myrecipes"
 
 echo "Done! Live at https://rezepte.deine-domain.de"
 ```
@@ -203,16 +284,19 @@ chmod +x deploy.sh
 
 | Problem | Loesung |
 |---------|---------|
-| Seite zeigt "Welcome to nginx" | Dateien nicht in `/var/www/myrecipes/` oder Konfig nicht aktiviert (`ln -s`) |
+| Seite zeigt "Welcome to nginx" | Nginx-Konfig nicht aktiviert (`ln -s`) oder `default` noch in sites-enabled |
 | 404 bei Seitenreload | `try_files` in Nginx-Konfig fehlt |
+| API gibt 502 Bad Gateway | Express-Server laeuft nicht: `systemctl status myrecipes` pruefen |
 | SSL-Fehler | DNS pruefen: `dig rezepte.deine-domain.de` muss Server-IP zeigen |
-| API-Aufrufe blockiert | Kein Problem: API-Calls gehen direkt vom Browser an Anthropic, nicht ueber den Server |
+| Anthropic-API-Aufrufe blockiert | Kein Problem: API-Calls gehen direkt vom Browser an Anthropic |
 | Aenderungen nicht sichtbar | Browser-Cache leeren (Strg+Shift+R) |
+| Server startet nicht | Logs pruefen: `journalctl -u myrecipes -f` |
 
 ---
 
 ## Hinweise
 
-- **Kein Backend noetig**: myRecipes ist eine reine Client-Side-App. Der Server liefert nur HTML/CSS/JS aus.
-- **HTTPS ist Pflicht**: Die Web Crypto API (Passwort-Hashing) und die Kamera-API funktionieren nur ueber HTTPS.
-- **Daten sind browser-lokal**: Jeder Browser/jedes Geraet hat seine eigene Rezeptsammlung (IndexedDB). Ein Backup laesst sich ueber Einstellungen > Export erstellen.
+- **Backend**: Express-Server mit SQLite-Datenbank. Nginx leitet `/api/*` an Express weiter, alles andere kommt aus `dist/`.
+- **HTTPS ist Pflicht**: Die Kamera-API funktioniert nur ueber HTTPS. Session-Cookies sind im Produktionsmodus auf `secure` gesetzt.
+- **Daten zentral auf dem Server**: Alle Geraete/Browser greifen auf dieselbe Rezeptsammlung zu. Ein Backup laesst sich ueber Einstellungen > Export erstellen.
+- **Datenbank-Backup**: Die SQLite-Datei liegt unter `/var/www/myrecipes/data/recipes.db`. Fuer ein Backup reicht es, diese Datei zu kopieren.

@@ -1,18 +1,18 @@
-// Session management with sessionStorage persistence and timeout
+// Session management with sessionStorage persistence and timeout.
+// The server token is stored in sessionStorage and sent as Authorization header.
 
-const SESSION_KEY = 'myRecipes_session';
+const TOKEN_KEY = 'myRecipes_token';
 const ACTIVITY_KEY = 'myRecipes_lastActivity';
 const TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 let importRunning = false;
 
-function generateToken() {
-  const arr = crypto.getRandomValues(new Uint8Array(24));
-  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+export function getAuthToken() {
+  return sessionStorage.getItem(TOKEN_KEY);
 }
 
 export function isAuthenticated() {
-  const token = sessionStorage.getItem(SESSION_KEY);
+  const token = sessionStorage.getItem(TOKEN_KEY);
   if (!token) return false;
 
   const lastActivity = parseInt(sessionStorage.getItem(ACTIVITY_KEY) || '0', 10);
@@ -26,18 +26,27 @@ export function isAuthenticated() {
   return true;
 }
 
-export function setAuthenticated(value) {
-  if (value) {
-    sessionStorage.setItem(SESSION_KEY, generateToken());
+export function setAuthenticated(token) {
+  if (token) {
+    sessionStorage.setItem(TOKEN_KEY, token);
     sessionStorage.setItem(ACTIVITY_KEY, String(Date.now()));
   } else {
-    logout();
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(ACTIVITY_KEY);
   }
 }
 
 export function logout() {
-  sessionStorage.removeItem(SESSION_KEY);
+  const token = getAuthToken();
+  sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(ACTIVITY_KEY);
+  // Also invalidate server token (fire-and-forget)
+  if (token) {
+    fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+    }).catch(() => {});
+  }
 }
 
 export function isImportRunning() {

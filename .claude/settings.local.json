@@ -13,7 +13,12 @@
       "Bash(cmd /c \"gh --version\")",
       "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" auth status)",
       "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" repo create myRecipes --private --source=. --remote=origin --push)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "WebFetch(domain:rezepte.daniel-ertl.de)",
+      "Bash(wc:*)",
+      "Bash(node -e:*)",
+      "Bash(timeout:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }
