@@ -1,5 +1,5 @@
 import { $, showToast } from './utils/helpers.js';
-import { isAuthenticated, isImportRunning, logout } from './utils/auth.js';
+import { isAuthenticated, logout } from './utils/auth.js';
 
 const routes = {
   overview: () => import('./views/overview.js'),
@@ -14,13 +14,6 @@ let currentView = null;
 async function navigate() {
   const hash = window.location.hash.slice(1) || 'overview';
   const [viewName, ...params] = hash.split('/');
-
-  // Block navigation away from import while an import is running
-  if (isImportRunning() && viewName !== 'import') {
-    showToast('Navigation blockiert – Import läuft noch.', 'warning');
-    window.location.hash = '#import';
-    return;
-  }
 
   const container = $('#app-content');
   if (!container) return;

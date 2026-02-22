@@ -2,6 +2,7 @@ import { getSetting, setSetting, exportAll, importAll } from '../db.js';
 import { $, showToast, getToastLog, clearToastLog } from '../utils/helpers.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { validateApiKey, BILLING_URL } from '../api.js';
+import { getAuthToken } from '../utils/auth.js';
 
 export async function render(container) {
   await ensureAuthenticated(container, () => renderSettings(container));
@@ -132,10 +133,13 @@ async function renderSettings(container) {
     }
 
     try {
+      const token = getAuthToken();
       const res = await fetch('/api/auth/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
       });
       if (!res.ok) {

@@ -1,7 +1,7 @@
 // REST API wrapper – replaces the former IndexedDB layer.
 // All functions keep the same signature so no other module needs changes.
 
-import { getAuthToken } from './utils/auth.js';
+import { getAuthToken, touchActivity } from './utils/auth.js';
 
 const API = '/api';
 
@@ -15,6 +15,11 @@ async function apiFetch(path, options = {}) {
   }
 
   const res = await fetch(API + path, { ...options, headers });
+
+  // Keep the client-side session alive on every authenticated API call
+  if (token && res.ok) {
+    touchActivity();
+  }
 
   if (res.status === 401) {
     throw new Error('Nicht authentifiziert – bitte zuerst anmelden.');

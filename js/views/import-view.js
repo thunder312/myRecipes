@@ -1,5 +1,4 @@
-import { getSetting } from '../db.js';
-import { addRecipe } from '../db.js';
+import { getSetting, addRecipe, getAllRecipes, updateRecipe, deleteRecipe } from '../db.js';
 import { processURL, processPDF, processImage, processText } from '../import.js';
 import { generateRecipePDF } from '../pdf-generator.js';
 import { $, showToast, categoryChipClass } from '../utils/helpers.js';
@@ -9,6 +8,23 @@ import { ApiError } from '../api.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
 
 const SUPPORTED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.txt', '.text', '.md'];
+
+// Module-level batch state – survives view re-renders so the import
+// continues in the background when the user switches tabs.
+let batchJob = null;
+// batchJob = { total, current, currentFileName, results, cancelled, status }
+
+let batchActiveContainer = null;
+
+function updateBatchProgressDOM() {
+  if (!batchJob || !batchActiveContainer) return;
+  const bar = $('#batchBar', batchActiveContainer);
+  if (!bar) return; // import view not currently visible
+  const pct = batchJob.total > 0 ? Math.round((batchJob.current / batchJob.total) * 100) : 0;
+  bar.style.width = `${pct}%`;
+  $('#batchProgressText', batchActiveContainer).textContent = `${batchJob.current} / ${batchJob.total}`;
+  $('#batchCurrentFile', batchActiveContainer).textContent = batchJob.currentFileName;
+}
 
 function getFileExtension(name) {
   const idx = name.lastIndexOf('.');
@@ -34,6 +50,8 @@ export async function render(container) {
 }
 
 function renderImportForm(container) {
+  batchActiveContainer = container;
+
   container.innerHTML = `
     <div class="import">
       <h1>Rezept importieren</h1>
@@ -174,6 +192,7 @@ function renderImportForm(container) {
       <div class="batch__results hidden" id="batchResults">
         <h2>Import abgeschlossen</h2>
         <div class="batch__summary" id="batchSummary"></div>
+        <div class="dup-section hidden" id="dupSection"></div>
         <div class="batch__log" id="batchLog"></div>
         <button class="btn btn--primary" id="btnBatchDone">Zur Übersicht</button>
       </div>
@@ -511,8 +530,6 @@ function renderImportForm(container) {
 
   // --- Batch import ---
 
-  let batchCancelled = false;
-
   $('#batchFolder', container).addEventListener('change', () => {
     const files = getFilteredBatchFiles();
     const info = $('#batchFileInfo', container);
@@ -535,6 +552,11 @@ function renderImportForm(container) {
   }
 
   $('#btnStartBatch', container).addEventListener('click', async () => {
+    if (batchJob && batchJob.status === 'running') {
+      showToast('Ein Import läuft bereits im Hintergrund.', 'warning');
+      return;
+    }
+
     const apiKey = await getSetting('apiKey');
     if (!apiKey) {
       showToast('Bitte zuerst den API-Key in den Einstellungen hinterlegen.', 'warning');
@@ -551,20 +573,28 @@ function renderImportForm(container) {
 
     files.sort((a, b) => (a.webkitRelativePath || a.name).localeCompare(b.webkitRelativePath || b.name));
 
-    batchCancelled = false;
+    batchJob = {
+      total: files.length,
+      current: 0,
+      currentFileName: '',
+      results: { success: [], failed: [], skipped: [] },
+      cancelled: false,
+      status: 'running',
+      importedIds: [],
+      duplicates: [],
+    };
 
     $('#panel-batch', container).classList.add('hidden');
     $('#batchProgress', container).classList.remove('hidden');
     $('#batchResults', container).classList.add('hidden');
     setImportRunning(true);
 
-    const results = { success: [], failed: [], skipped: [] };
     const total = files.length;
 
     for (let i = 0; i < files.length; i++) {
-      if (batchCancelled) {
+      if (batchJob.cancelled) {
         for (let j = i; j < files.length; j++) {
-          results.skipped.push({ file: files[j].webkitRelativePath || files[j].name, reason: 'Abgebrochen' });
+          batchJob.results.skipped.push({ file: files[j].webkitRelativePath || files[j].name, reason: 'Abgebrochen' });
         }
         break;
       }
@@ -572,10 +602,9 @@ function renderImportForm(container) {
       const file = files[i];
       const filePath = file.webkitRelativePath || file.name;
 
-      const pct = Math.round(((i + 1) / total) * 100);
-      $('#batchBar', container).style.width = `${pct}%`;
-      $('#batchProgressText', container).textContent = `${i + 1} / ${total}`;
-      $('#batchCurrentFile', container).textContent = filePath;
+      batchJob.current = i + 1;
+      batchJob.currentFileName = filePath;
+      updateBatchProgressDOM();
 
       try {
         let analysisResults;
@@ -587,19 +616,19 @@ function renderImportForm(container) {
         } else if (isTextFile(file)) {
           const text = await file.text();
           if (text.trim().length < 20) {
-            results.skipped.push({ file: filePath, reason: 'Zu wenig Text' });
+            batchJob.results.skipped.push({ file: filePath, reason: 'Zu wenig Text' });
             continue;
           }
           analysisResults = await processText(text);
           for (const r of analysisResults) r.sourceRef = file.name;
         } else {
-          results.skipped.push({ file: filePath, reason: 'Nicht unterstütztes Format' });
+          batchJob.results.skipped.push({ file: filePath, reason: 'Nicht unterstütztes Format' });
           continue;
         }
 
         if (analysisResults.length === 0) {
           const filtered = analysisResults._filtered || 0;
-          results.skipped.push({ file: filePath, reason: filtered > 0 ? `${filtered} ungültige Einträge gefiltert` : 'Kein Rezept erkannt' });
+          batchJob.results.skipped.push({ file: filePath, reason: filtered > 0 ? `${filtered} ungültige Einträge gefiltert` : 'Kein Rezept erkannt' });
           continue;
         }
 
@@ -626,31 +655,58 @@ function renderImportForm(container) {
           recipe.pdfBlob = generateRecipePDF({ ...recipe, recipeText: analysisResult.recipeText || '' });
           recipe.thumbnailBlob = null;
 
-          await addRecipe(recipe);
-          results.success.push({ file: filePath, title: recipe.title });
+          const newId = await addRecipe(recipe);
+          batchJob.results.success.push({ file: filePath, title: recipe.title, id: newId });
+          batchJob.importedIds.push(newId);
         }
       } catch (err) {
-        results.failed.push({ file: filePath, reason: err.message });
+        batchJob.results.failed.push({ file: filePath, reason: err.message });
       }
 
-      if (i < files.length - 1 && !batchCancelled && delay > 0) {
+      if (i < files.length - 1 && !batchJob.cancelled && delay > 0) {
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
 
+    batchJob.status = batchJob.cancelled ? 'cancelled' : 'completed';
     setImportRunning(false);
-    showBatchResults(container, results, total);
+
+    try {
+      const allRecipes = await getAllRecipes();
+      batchJob.duplicates = findDuplicates(allRecipes, batchJob.importedIds);
+    } catch { batchJob.duplicates = []; }
+
+    // Show results only if the import view is currently displayed
+    if ($('#batchProgress', batchActiveContainer)) {
+      showBatchResults(batchActiveContainer, batchJob.results, total);
+    }
   });
 
   $('#btnCancelBatch', container).addEventListener('click', () => {
-    batchCancelled = true;
+    if (batchJob) batchJob.cancelled = true;
     $('#btnCancelBatch', container).disabled = true;
     $('#btnCancelBatch', container).textContent = 'Wird abgebrochen...';
   });
 
   $('#btnBatchDone', container).addEventListener('click', () => {
+    batchJob = null;
     window.location.hash = '#overview';
   });
+
+  // === Restore batch UI if an import is running in the background or just completed ===
+  if (batchJob) {
+    container.querySelectorAll('.tab').forEach(t => t.classList.remove('tab--active'));
+    container.querySelectorAll('.import__panel').forEach(p => p.classList.add('hidden'));
+    container.querySelector('[data-tab="batch"]').classList.add('tab--active');
+    allHideables.forEach(sel => $(sel, container).classList.add('hidden'));
+
+    if (batchJob.status === 'running') {
+      $('#batchProgress', container).classList.remove('hidden');
+      updateBatchProgressDOM();
+    } else {
+      showBatchResults(container, batchJob.results, batchJob.total);
+    }
+  }
 }
 
 function showBatchResults(container, results, total) {
@@ -708,6 +764,154 @@ function showBatchResults(container, results, total) {
   }
 
   logEl.innerHTML = logHtml;
+
+  if (batchJob?.duplicates?.length > 0) {
+    showDuplicates(container);
+  }
+}
+
+function normTitle(s) { return (s || '').trim().toLowerCase(); }
+
+function ingredientOverlap(a, b) {
+  if (!a?.length || !b?.length) return 0;
+  const na = a.map(s => s.trim().toLowerCase());
+  const nb = b.map(s => s.trim().toLowerCase());
+  const matches = na.filter(i => nb.some(j => j.includes(i) || i.includes(j))).length;
+  return matches / Math.max(na.length, nb.length);
+}
+
+function areDuplicates(r1, r2) {
+  if (normTitle(r1.title) !== normTitle(r2.title)) return false;
+  return ingredientOverlap(r1.ingredients, r2.ingredients) >= 0.4;
+}
+
+function findDuplicates(allRecipes, importedIds) {
+  const importedSet = new Set(importedIds);
+  const newRecipes = allRecipes.filter(r => importedSet.has(r.id));
+  const markedNew = new Set();
+  const result = [];
+  for (const newR of newRecipes) {
+    if (markedNew.has(newR.id)) continue;
+    for (const other of allRecipes) {
+      if (other.id === newR.id) continue;
+      const ov = ingredientOverlap(newR.ingredients, other.ingredients);
+      if (areDuplicates(newR, other)) {
+        result.push({ newRecipe: newR, existingRecipe: other, overlap: ov });
+        markedNew.add(newR.id);
+        break;
+      }
+    }
+  }
+  return result;
+}
+
+function showDuplicates(container) {
+  const section = $('#dupSection', container);
+  if (!section || !batchJob?.duplicates?.length) return;
+  section.classList.remove('hidden');
+
+  const count = batchJob.duplicates.length;
+  let html = `<div class="dup-section__heading">⚠ ${count} mögliche${count !== 1 ? '' : 's'} Duplikat${count !== 1 ? 'e' : ''} gefunden</div>`;
+
+  batchJob.duplicates.forEach(({ newRecipe: newR, existingRecipe: existR, overlap: ov }, idx) => {
+    html += `
+    <div class="dup-card" data-dup-id="${idx}">
+      <div class="dup-card__header">
+        <span class="dup-card__title">„${esc(newR.title)}"</span>
+        <span class="dup-card__overlap">${Math.round(ov * 100)} % Zutaten-Übereinstimmung</span>
+      </div>
+      <div class="dup-card__cols">
+        <div class="dup-card__col">
+          <div class="dup-card__col-label">Neu importiert</div>
+          <div class="dup-card__col-title">${esc(newR.title)}</div>
+          <div class="dup-card__col-meta">${esc(newR.category || '')} · ${esc(newR.origin || '')}</div>
+          <div class="dup-card__col-ing">${esc((newR.ingredients || []).slice(0, 4).join(', '))}${(newR.ingredients || []).length > 4 ? ' …' : ''}</div>
+        </div>
+        <div class="dup-card__col">
+          <div class="dup-card__col-label">Bereits vorhanden</div>
+          <div class="dup-card__col-title">${esc(existR.title)}</div>
+          <div class="dup-card__col-meta">${esc(existR.category || '')} · ${esc(existR.origin || '')}</div>
+          <div class="dup-card__col-ing">${esc((existR.ingredients || []).slice(0, 4).join(', '))}${(existR.ingredients || []).length > 4 ? ' …' : ''}</div>
+        </div>
+      </div>
+      <div class="dup-card__actions">
+        <button class="btn btn--sm btn--secondary" data-dup-rename="${idx}">Namen ändern</button>
+        <button class="btn btn--sm btn--danger"    data-dup-del-old="${idx}">Altes löschen</button>
+        <button class="btn btn--sm btn--ghost"     data-dup-del-new="${idx}">Neues löschen</button>
+      </div>
+      <div class="dup-card__rename hidden" id="dupRenameForm-${idx}">
+        <input type="text" class="input" value="${esc(newR.title)}" id="dupRenameInput-${idx}" />
+        <button class="btn btn--sm btn--primary" data-dup-rename-save="${idx}">Speichern</button>
+        <button class="btn btn--sm btn--ghost"   data-dup-rename-cancel="${idx}">Abbrechen</button>
+      </div>
+    </div>`;
+  });
+
+  section.innerHTML = html;
+
+  section.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+
+    if (btn.dataset.dupRename !== undefined) {
+      const idx = parseInt(btn.dataset.dupRename, 10);
+      section.querySelector(`#dupRenameForm-${idx}`)?.classList.remove('hidden');
+      return;
+    }
+
+    if (btn.dataset.dupRenameCancel !== undefined) {
+      const idx = parseInt(btn.dataset.dupRenameCancel, 10);
+      section.querySelector(`#dupRenameForm-${idx}`)?.classList.add('hidden');
+      return;
+    }
+
+    if (btn.dataset.dupRenameSave !== undefined) {
+      const idx = parseInt(btn.dataset.dupRenameSave, 10);
+      const dup = batchJob.duplicates[idx];
+      const input = section.querySelector(`#dupRenameInput-${idx}`);
+      const newTitle = input?.value.trim();
+      if (!newTitle) { showToast('Bitte einen Namen eingeben.', 'warning'); return; }
+      try {
+        await updateRecipe({ ...dup.newRecipe, title: newTitle });
+        removeDupCard(section, idx);
+      } catch (err) {
+        showToast(`Fehler: ${err.message}`, 'error');
+      }
+      return;
+    }
+
+    if (btn.dataset.dupDelOld !== undefined) {
+      const idx = parseInt(btn.dataset.dupDelOld, 10);
+      const dup = batchJob.duplicates[idx];
+      try {
+        await deleteRecipe(dup.existingRecipe.id);
+        removeDupCard(section, idx);
+      } catch (err) {
+        showToast(`Fehler: ${err.message}`, 'error');
+      }
+      return;
+    }
+
+    if (btn.dataset.dupDelNew !== undefined) {
+      const idx = parseInt(btn.dataset.dupDelNew, 10);
+      const dup = batchJob.duplicates[idx];
+      try {
+        await deleteRecipe(dup.newRecipe.id);
+        removeDupCard(section, idx);
+      } catch (err) {
+        showToast(`Fehler: ${err.message}`, 'error');
+      }
+      return;
+    }
+  });
+}
+
+function removeDupCard(section, idx) {
+  const card = section.querySelector(`[data-dup-id="${idx}"]`);
+  if (card) card.remove();
+  if (!section.querySelector('.dup-card')) {
+    section.innerHTML += `<p class="dup-section__done">✓ Alle Duplikate geprüft</p>`;
+  }
 }
 
 function esc(str) {

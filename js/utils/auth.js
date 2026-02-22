@@ -56,3 +56,9 @@ export function isImportRunning() {
 export function setImportRunning(value) {
   importRunning = value;
 }
+
+export function touchActivity() {
+  if (sessionStorage.getItem(TOKEN_KEY)) {
+    sessionStorage.setItem(ACTIVITY_KEY, String(Date.now()));
+  }
+}
