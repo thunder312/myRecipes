@@ -18,7 +18,8 @@
       "Bash(wc:*)",
       "Bash(node -e:*)",
       "Bash(timeout:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(head:*)"
     ]
   }
 }

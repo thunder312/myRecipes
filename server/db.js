@@ -16,6 +16,7 @@ function getDB() {
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
     initSchema();
+    migrateSchema();
   }
   return db;
 }
@@ -38,6 +39,7 @@ function initSchema() {
       recipeText TEXT,
       sourceType TEXT,
       sourceRef TEXT,
+      sourceNote TEXT,
       createdAt TEXT NOT NULL,
       updatedAt TEXT NOT NULL,
       cookedDates TEXT,
@@ -57,6 +59,13 @@ function initSchema() {
       value TEXT
     );
   `);
+}
+
+function migrateSchema() {
+  const cols = db.pragma('table_info(recipes)').map(r => r.name);
+  if (!cols.includes('sourceNote')) {
+    db.exec('ALTER TABLE recipes ADD COLUMN sourceNote TEXT');
+  }
 }
 
 // --- JSON array fields ---

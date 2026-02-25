@@ -16,6 +16,18 @@ let batchJob = null;
 
 let batchActiveContainer = null;
 
+function appendLiveLog(status, text) {
+  if (!batchActiveContainer) return;
+  const log = $('#batchLiveLog', batchActiveContainer);
+  if (!log) return;
+  const entry = document.createElement('div');
+  entry.className = `batch__live-entry batch__live-entry--${status}`;
+  const icon = { pending: '⏳', success: '✓', failed: '✗', skipped: '–', ratelimit: '⏸' }[status] || '·';
+  entry.textContent = `${icon} ${text}`;
+  log.appendChild(entry);
+  entry.scrollIntoView({ block: 'nearest' });
+}
+
 function updateBatchProgressDOM() {
   if (!batchJob || !batchActiveContainer) return;
   const bar = $('#batchBar', batchActiveContainer);
@@ -68,6 +80,11 @@ function renderImportForm(container) {
           <label for="recipeUrl">Rezept-URL</label>
           <input type="url" id="recipeUrl" class="input" placeholder="https://www.chefkoch.de/rezepte/..." />
         </div>
+        <div class="form-group">
+          <label for="sourceNoteUrl">Von wem / Woher (optional)</label>
+          <input type="text" id="sourceNoteUrl" class="input"
+                 placeholder="z. B. Von Oma, Aus dem Koch-Kurs..." />
+        </div>
         <label class="import__multi-hint">
           <input type="checkbox" id="multiHintUrl" />
           Enthält mehrere Rezepte
@@ -90,6 +107,11 @@ function renderImportForm(container) {
           </button>
           <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" />
         </div>
+        <div class="form-group">
+          <label for="sourceNoteFile">Von wem / Woher (optional)</label>
+          <input type="text" id="sourceNoteFile" class="input"
+                 placeholder="z. B. Von Oma, Aus dem Koch-Kurs..." />
+        </div>
         <label class="import__multi-hint">
           <input type="checkbox" id="multiHintFile" />
           Enthält mehrere Rezepte
@@ -101,6 +123,11 @@ function renderImportForm(container) {
         <div class="form-group">
           <label for="recipeText">Rezepttext einfügen</label>
           <textarea id="recipeText" class="input input--textarea" rows="10" placeholder="Rezepttext hier einfügen..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="sourceNoteText">Von wem / Woher (optional)</label>
+          <input type="text" id="sourceNoteText" class="input"
+                 placeholder="z. B. Von Oma, Aus dem Koch-Kurs..." />
         </div>
         <label class="import__multi-hint">
           <input type="checkbox" id="multiHintText" />
@@ -119,6 +146,11 @@ function renderImportForm(container) {
           <span id="batchFileCount"></span>
         </div>
         <div class="batch__options">
+          <div class="form-group">
+            <label for="batchSourceNote">Von wem / Woher (optional, für alle Rezepte)</label>
+            <input type="text" id="batchSourceNote" class="input"
+                   placeholder="z. B. Von Oma, Aus dem Koch-Kurs..." />
+          </div>
           <div class="form-group">
             <label for="batchDelay">Pause zwischen Dateien (Sekunden)</label>
             <input type="number" id="batchDelay" class="input" value="2" min="0" max="30" style="max-width:120px" />
@@ -185,6 +217,7 @@ function renderImportForm(container) {
         </div>
         <p class="batch__progress-text" id="batchProgressText">0 / 0</p>
         <p class="batch__progress-current" id="batchCurrentFile"></p>
+        <div class="batch__live-log" id="batchLiveLog"></div>
         <button class="btn btn--danger" id="btnCancelBatch">Abbrechen</button>
       </div>
 
@@ -220,7 +253,8 @@ function renderImportForm(container) {
     const url = $('#recipeUrl', container).value.trim();
     if (!url) { showToast('Bitte URL eingeben.', 'warning'); return; }
     const multiHint = $('#multiHintUrl', container).checked;
-    await doImport(() => processURL(url, { multiHint }));
+    const sourceNote = $('#sourceNoteUrl', container).value.trim();
+    await doImport(() => processURL(url, { multiHint }), sourceNote);
   });
 
   $('#btnImportFile', container).addEventListener('click', async () => {
@@ -228,7 +262,8 @@ function renderImportForm(container) {
     if (!file) { showToast('Bitte Datei auswählen.', 'warning'); return; }
     const multiHint = $('#multiHintFile', container).checked;
     const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf');
-    await doImport(() => isPdf ? processPDF(file, { multiHint }) : processImage(file, { multiHint }));
+    const sourceNote = $('#sourceNoteFile', container).value.trim();
+    await doImport(() => isPdf ? processPDF(file, { multiHint }) : processImage(file, { multiHint }), sourceNote);
   });
 
   // Camera button – triggers hidden file input with capture="environment"
@@ -246,7 +281,8 @@ function renderImportForm(container) {
     const file = cameraInput.files[0];
     if (!file) return;
     const multiHint = $('#multiHintFile', container).checked;
-    await doImport(() => processImage(file, { multiHint }));
+    const sourceNote = $('#sourceNoteFile', container).value.trim();
+    await doImport(() => processImage(file, { multiHint }), sourceNote);
     cameraInput.value = '';
   });
 
@@ -254,10 +290,11 @@ function renderImportForm(container) {
     const text = $('#recipeText', container).value.trim();
     if (!text) { showToast('Bitte Text eingeben.', 'warning'); return; }
     const multiHint = $('#multiHintText', container).checked;
-    await doImport(() => processText(text, { multiHint }));
+    const sourceNote = $('#sourceNoteText', container).value.trim();
+    await doImport(() => processText(text, { multiHint }), sourceNote);
   });
 
-  async function doImport(processFn) {
+  async function doImport(processFn, sourceNote = '') {
     const apiKey = await getSetting('apiKey');
     if (!apiKey) {
       showToast('Bitte zuerst den API-Key in den Einstellungen hinterlegen.', 'warning');
@@ -271,6 +308,7 @@ function renderImportForm(container) {
 
     try {
       const results = await processFn(); // always an array, with ._filtered count
+      results.forEach(r => { r.sourceNote = sourceNote || ''; });
       const filteredCount = results._filtered || 0;
 
       if (results.length === 0) {
@@ -478,6 +516,7 @@ function renderImportForm(container) {
           difficulty: r.difficulty || '',
           sourceType: r.sourceType || 'text',
           sourceRef: r.sourceRef || '',
+          sourceNote: r.sourceNote || '',
           notes: [],
           cookedDates: [],
           cookedCount: 0
@@ -582,6 +621,7 @@ function renderImportForm(container) {
       status: 'running',
       importedIds: [],
       duplicates: [],
+      sourceNote: $('#batchSourceNote', container).value.trim(),
     };
 
     $('#panel-batch', container).classList.add('hidden');
@@ -606,6 +646,9 @@ function renderImportForm(container) {
       batchJob.currentFileName = filePath;
       updateBatchProgressDOM();
 
+      console.log(`[Batch] ${i + 1}/${total} Starte: ${filePath}`);
+      appendLiveLog('pending', `${i + 1}/${total}: ${filePath}`);
+
       try {
         let analysisResults;
 
@@ -617,18 +660,22 @@ function renderImportForm(container) {
           const text = await file.text();
           if (text.trim().length < 20) {
             batchJob.results.skipped.push({ file: filePath, reason: 'Zu wenig Text' });
+            appendLiveLog('skipped', `${i + 1}/${total}: ${filePath} – Zu wenig Text`);
             continue;
           }
           analysisResults = await processText(text);
           for (const r of analysisResults) r.sourceRef = file.name;
         } else {
           batchJob.results.skipped.push({ file: filePath, reason: 'Nicht unterstütztes Format' });
+          appendLiveLog('skipped', `${i + 1}/${total}: ${filePath} – Nicht unterstützt`);
           continue;
         }
 
         if (analysisResults.length === 0) {
           const filtered = analysisResults._filtered || 0;
-          batchJob.results.skipped.push({ file: filePath, reason: filtered > 0 ? `${filtered} ungültige Einträge gefiltert` : 'Kein Rezept erkannt' });
+          const skipReason = filtered > 0 ? `${filtered} ungültige Einträge gefiltert` : 'Kein Rezept erkannt';
+          batchJob.results.skipped.push({ file: filePath, reason: skipReason });
+          appendLiveLog('skipped', `${i + 1}/${total}: ${filePath} – ${skipReason}`);
           continue;
         }
 
@@ -647,6 +694,7 @@ function renderImportForm(container) {
             difficulty: analysisResult.difficulty || '',
             sourceType: analysisResult.sourceType || 'file',
             sourceRef: analysisResult.sourceRef || filePath,
+            sourceNote: batchJob.sourceNote || '',
             notes: [],
             cookedDates: [],
             cookedCount: 0
@@ -658,9 +706,23 @@ function renderImportForm(container) {
           const newId = await addRecipe(recipe);
           batchJob.results.success.push({ file: filePath, title: recipe.title, id: newId });
           batchJob.importedIds.push(newId);
+          appendLiveLog('success', `${i + 1}/${total}: ${recipe.title} (${filePath})`);
         }
       } catch (err) {
-        batchJob.results.failed.push({ file: filePath, reason: err.message });
+        const isRateLimit = err.isRateLimit === true || err.status === 429 || err.status === 529;
+        const reason = err.message?.replace(/<[^>]+>/g, '') || 'Unbekannter Fehler';
+        console.error(`[Batch] ${i + 1}/${total} Fehler (HTTP ${err.status ?? '–'}):`, filePath, reason);
+        batchJob.results.failed.push({ file: filePath, reason });
+        appendLiveLog('failed', `${i + 1}/${total}: ${filePath} – ${reason}`);
+
+        if (isRateLimit) {
+          console.warn('[Batch] Rate-Limit erkannt – warte 60 Sekunden vor dem nächsten Versuch...');
+          appendLiveLog('ratelimit', 'Rate-Limit – 60s Pause vor dem nächsten Versuch...');
+          batchJob.currentFileName = `⏸ Rate-Limit – 60s Pause... (${filePath})`;
+          updateBatchProgressDOM();
+          await new Promise(resolve => setTimeout(resolve, 60_000));
+          batchJob.currentFileName = filePath;
+        }
       }
 
       if (i < files.length - 1 && !batchJob.cancelled && delay > 0) {

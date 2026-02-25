@@ -2,6 +2,14 @@ import { getSetting } from './db.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const BILLING_URL = 'https://console.anthropic.com/settings/billing';
+const API_TIMEOUT_MS = 120_000; // 2 Minuten – hängende Requests erkennen
+
+function fetchWithTimeout(url, options) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(timer));
+}
 
 async function getApiKey() {
   const key = await getSetting('apiKey');
@@ -12,24 +20,26 @@ async function getApiKey() {
 function handleApiError(response, errBody) {
   const status = response.status;
   const msg = errBody?.error?.message || response.statusText;
+  console.error(`[API] HTTP ${status}:`, msg);
 
   if (status === 401) {
-    throw new ApiError('Ungültiger API-Key. Bitte in den Einstellungen prüfen.', status);
+    throw new ApiError('Ungültiger API-Key. Bitte in den Einstellungen prüfen.', status, false);
   }
-  if (status === 429 || (status === 400 && /credit|balance|billing/i.test(msg))) {
+  if (status === 429 || status === 529 || (status === 400 && /credit|balance|billing/i.test(msg))) {
     throw new ApiError(
-      `Kein Guthaben oder Rate-Limit erreicht. <a href="${BILLING_URL}" target="_blank" rel="noopener">Guthaben aufladen</a>`,
-      status
+      `Kein Guthaben oder Rate-Limit erreicht (HTTP ${status}). <a href="${BILLING_URL}" target="_blank" rel="noopener">Guthaben aufladen</a>`,
+      status, true
     );
   }
-  throw new ApiError(`API-Fehler: ${msg}`, status);
+  throw new ApiError(`API-Fehler ${status}: ${msg}`, status, false);
 }
 
 export class ApiError extends Error {
-  constructor(message, status) {
+  constructor(message, status, isRateLimit = false) {
     super(message);
     this.status = status;
     this.isHtml = message.includes('<a ');
+    this.isRateLimit = isRateLimit;
   }
 }
 
@@ -106,23 +116,30 @@ Wichtige Regeln:
 export async function analyzeRecipeText(text, { multiHint = false } = {}) {
   const apiKey = await getApiKey();
 
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 8192,
-      messages: [{
-        role: 'user',
-        content: `${buildRecipeAnalysisPrompt({ multiHint })}\n\nHier ist der Text:\n\n${text}`
-      }]
-    })
-  });
+  let response;
+  try {
+    response = await fetchWithTimeout(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 8192,
+        messages: [{
+          role: 'user',
+          content: `${buildRecipeAnalysisPrompt({ multiHint })}\n\nHier ist der Text:\n\n${text}`
+        }]
+      })
+    });
+  } catch (fetchErr) {
+    const msg = fetchErr.name === 'AbortError' ? 'Timeout: API hat nicht innerhalb von 2 Minuten geantwortet.' : fetchErr.message;
+    console.error('[API] Fetch-Fehler:', msg);
+    throw new ApiError(msg, 0, false);
+  }
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -149,20 +166,27 @@ export async function analyzeRecipeImages(images, { multiHint = false } = {}) {
     text: buildRecipeAnalysisPrompt({ multiHint }) + '\n\nAnalysiere die Rezepte in den Bildern.'
   });
 
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 8192,
-      messages: [{ role: 'user', content: contentParts }]
-    })
-  });
+  let response;
+  try {
+    response = await fetchWithTimeout(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 8192,
+        messages: [{ role: 'user', content: contentParts }]
+      })
+    });
+  } catch (fetchErr) {
+    const msg = fetchErr.name === 'AbortError' ? 'Timeout: API hat nicht innerhalb von 2 Minuten geantwortet.' : fetchErr.message;
+    console.error('[API] Fetch-Fehler:', msg);
+    throw new ApiError(msg, 0, false);
+  }
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));

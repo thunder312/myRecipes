@@ -55,6 +55,12 @@ export function renderRecipeForm(targetEl, data) {
       <label>Beschreibung</label>
       <textarea class="input input--textarea" data-field="description" rows="2">${esc(data.description || '')}</textarea>
     </div>
+    <div class="form-group">
+      <label>Von wem / Woher</label>
+      <input type="text" class="input" data-field="sourceNote"
+             value="${esc(data.sourceNote || '')}"
+             placeholder="z. B. Von Oma, Aus dem Koch-Kurs..." />
+    </div>
   `;
 }
 
@@ -75,6 +81,7 @@ export function readRecipeForm(formEl) {
     description: get('description'),
     servings: parseInt(get('servings')) || null,
     difficulty: get('difficulty'),
+    sourceNote: get('sourceNote'),
   };
 }
 
