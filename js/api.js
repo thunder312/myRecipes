@@ -95,7 +95,7 @@ Jedes Rezept-Objekt hat folgende Felder:
   "description": "Kurze Beschreibung des Gerichts in 1-2 Sätzen",
   "servings": Portionen als Zahl oder null,
   "difficulty": "Eine von: leicht, mittel, schwer",
-  "recipeText": "Nur die Zubereitungsschritte als formatierter Text – KEIN Titel, KEINE Zutatenliste (die steht bereits in 'ingredients')"
+  "recipeText": "Nur die Zubereitungsschritte als reiner Text – KEIN Markdown, KEIN HTML, KEIN Titel, KEINE Zutatenliste (die steht bereits in 'ingredients'). Schritte durch Zeilenumbrüche trennen, z.B. '1. Schritt\\n2. Schritt'"
 }
 
 Wichtige Regeln:

@@ -52,6 +52,10 @@ export function renderRecipeForm(targetEl, data) {
       <textarea class="input input--textarea" data-field="ingredients" rows="3">${esc((data.ingredients || []).join('; '))}</textarea>
     </div>
     <div class="form-group">
+      <label>Zubereitung</label>
+      <textarea class="input input--textarea" data-field="recipeText" rows="8" placeholder="Zubereitungsschritte...">${esc(data.recipeText || '')}</textarea>
+    </div>
+    <div class="form-group">
       <label>Beschreibung</label>
       <textarea class="input input--textarea" data-field="description" rows="2">${esc(data.description || '')}</textarea>
     </div>
@@ -79,6 +83,7 @@ export function readRecipeForm(formEl) {
     tags: get('tags').split(',').map(s => s.trim()).filter(Boolean),
     ingredients: get('ingredients').split(';').map(s => s.trim()).filter(Boolean),
     description: get('description'),
+    recipeText: get('recipeText'),
     servings: parseInt(get('servings')) || null,
     difficulty: get('difficulty'),
     sourceNote: get('sourceNote'),
