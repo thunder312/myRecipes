@@ -927,12 +927,33 @@ h1, h2, h3, h4 {
   break-inside: avoid;
 }
 
+.detail__recipe-text {
+  margin: var(--space-2xl) 0;
+}
+
+.detail__recipe-text h3 {
+  margin-bottom: var(--space-md);
+  font-size: var(--font-size-lg);
+}
+
+.recipe-text {
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
 .detail__pdf {
   margin: var(--space-2xl) 0;
 }
 
 .detail__pdf h3 {
   margin-bottom: var(--space-md);
+}
+
+.pdf-actions {
+  display: flex;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+  flex-wrap: wrap;
 }
 
 .pdf-frame {
@@ -2168,7 +2189,7 @@ details[open] > .batch__log-heading::before,
   }
 
   .pdf-frame {
-    height: 400px;
+    display: none;
   }
 
   /* Notes */

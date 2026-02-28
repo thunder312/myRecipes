@@ -72,8 +72,19 @@ function renderDetailView(container, recipe) {
         </div>
       ` : ''}
 
+      ${recipe.recipeText ? `
+        <div class="detail__recipe-text">
+          <h3>Zubereitung</h3>
+          <p class="recipe-text">${esc(recipe.recipeText).replace(/\n/g, '<br>')}</p>
+        </div>
+      ` : ''}
+
       <div class="detail__pdf" id="pdfContainer">
         <h3>Rezept-PDF</h3>
+        <div class="pdf-actions" id="pdfActions" style="display:none">
+          <a id="pdfDownload" class="btn btn--secondary" download>PDF herunterladen</a>
+          <button id="pdfOpen" class="btn btn--primary">PDF öffnen</button>
+        </div>
         <div id="pdfEmbed"></div>
       </div>
 
@@ -133,6 +144,15 @@ function renderDetailView(container, recipe) {
   // Embed PDF
   if (recipe.pdfBlob instanceof Blob) {
     const url = URL.createObjectURL(recipe.pdfBlob);
+    const filename = `${recipe.title || 'rezept'}.pdf`;
+
+    const actionsEl = $('#pdfActions', container);
+    actionsEl.style.display = '';
+    const dlBtn = $('#pdfDownload', container);
+    dlBtn.href = url;
+    dlBtn.download = filename;
+    $('#pdfOpen', container).addEventListener('click', () => window.open(url, '_blank'));
+
     $('#pdfEmbed', container).innerHTML = `<iframe src="${url}" class="pdf-frame" title="Rezept-PDF"></iframe>`;
   }
 
