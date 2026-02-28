@@ -95,7 +95,7 @@ Jedes Rezept-Objekt hat folgende Felder:
   "description": "Kurze Beschreibung des Gerichts in 1-2 Sätzen",
   "servings": Portionen als Zahl oder null,
   "difficulty": "Eine von: leicht, mittel, schwer",
-  "recipeText": "Das vollständige Rezept (Zutaten + Anleitung) als formatierter Text"
+  "recipeText": "Nur die Zubereitungsschritte als formatierter Text – KEIN Titel, KEINE Zutatenliste (die steht bereits in 'ingredients')"
 }
 
 Wichtige Regeln:
@@ -103,7 +103,7 @@ Wichtige Regeln:
 - Wenn die Zubereitungszeit unter 30 Minuten ist, füge "schnell" zu den Tags hinzu
 - Schätze die Zubereitungszeit wenn möglich, auch wenn sie nicht explizit angegeben ist
 - Gewürzmischungen (z.B. Hähnchen-Gewürz, Gyros-Gewürz, Rubs, Marinaden-Mischungen) gehören in die Kategorie "Gewürzmischungen" – NICHT in "Beilage" oder "Snack". Bei Gewürzmischungen ist "sides" ein leeres Array.
-- Trenne die Rezepte sauber voneinander – jedes bekommt seinen eigenen recipeText mit Zutaten + Anleitung
+- Trenne die Rezepte sauber voneinander – jedes bekommt seinen eigenen recipeText nur mit den Zubereitungsschritten
 - Antworte NUR mit dem JSON, kein anderer Text`;
 
   if (multiHint) {

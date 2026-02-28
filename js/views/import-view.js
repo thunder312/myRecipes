@@ -1,6 +1,5 @@
 import { getSetting, addRecipe, getAllRecipes, updateRecipe, deleteRecipe } from '../db.js';
 import { processURL, processPDF, processImage, processText } from '../import.js';
-import { generateRecipePDF } from '../pdf-generator.js';
 import { $, showToast, categoryChipClass } from '../utils/helpers.js';
 import { setImportRunning } from '../utils/auth.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
@@ -362,8 +361,6 @@ function renderImportForm(container) {
       cookedCount: 0
     };
 
-    const pdfData = { ...recipe, recipeText: currentData.recipeText || '' };
-    recipe.pdfBlob = generateRecipePDF(pdfData);
     recipe.thumbnailBlob = null;
 
     try {
@@ -522,7 +519,6 @@ function renderImportForm(container) {
           cookedCount: 0
         };
 
-        recipe.pdfBlob = generateRecipePDF({ ...recipe, recipeText: r.recipeText || '' });
         recipe.thumbnailBlob = null;
 
         await addRecipe(recipe);
@@ -700,7 +696,6 @@ function renderImportForm(container) {
             cookedCount: 0
           };
 
-          recipe.pdfBlob = generateRecipePDF({ ...recipe, recipeText: analysisResult.recipeText || '' });
           recipe.thumbnailBlob = null;
 
           const newId = await addRecipe(recipe);

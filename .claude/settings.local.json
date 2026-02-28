@@ -28,7 +28,8 @@
       "Bash(pip install:*)",
       "Bash(py:*)",
       "Bash(python3.12:*)",
-      "Bash(chmod 600:*)"
+      "Bash(chmod 600:*)",
+      "Bash(scp:*)"
     ]
   }
 }

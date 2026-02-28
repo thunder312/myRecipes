@@ -79,13 +79,12 @@ function renderDetailView(container, recipe) {
         </div>
       ` : ''}
 
-      <div class="detail__pdf" id="pdfContainer">
+      <div class="detail__pdf">
         <h3>Rezept-PDF</h3>
-        <div class="pdf-actions" id="pdfActions" style="display:none">
-          <a id="pdfDownload" class="btn btn--secondary" download>PDF herunterladen</a>
+        <div class="pdf-actions">
+          <a id="pdfDownload" class="btn btn--secondary">PDF herunterladen</a>
           <button id="pdfOpen" class="btn btn--primary">PDF öffnen</button>
         </div>
-        <div id="pdfEmbed"></div>
       </div>
 
       <!-- Notes Section -->
@@ -141,20 +140,25 @@ function renderDetailView(container, recipe) {
     </div>
   `;
 
-  // Embed PDF
-  if (recipe.pdfBlob instanceof Blob) {
-    const url = URL.createObjectURL(recipe.pdfBlob);
-    const filename = `${recipe.title || 'rezept'}.pdf`;
-
-    const actionsEl = $('#pdfActions', container);
-    actionsEl.style.display = '';
-    const dlBtn = $('#pdfDownload', container);
-    dlBtn.href = url;
-    dlBtn.download = filename;
-    $('#pdfOpen', container).addEventListener('click', () => window.open(url, '_blank'));
-
-    $('#pdfEmbed', container).innerHTML = `<iframe src="${url}" class="pdf-frame" title="Rezept-PDF"></iframe>`;
+  // PDF on demand
+  let pdfUrl = null;
+  function getPdfUrl() {
+    if (!pdfUrl) {
+      const blob = generateRecipePDF(recipe);
+      pdfUrl = URL.createObjectURL(blob);
+    }
+    return pdfUrl;
   }
+
+  const filename = `${recipe.title || 'rezept'}.pdf`;
+  $('#pdfDownload', container).addEventListener('click', (e) => {
+    e.preventDefault();
+    const a = document.createElement('a');
+    a.href = getPdfUrl();
+    a.download = filename;
+    a.click();
+  });
+  $('#pdfOpen', container).addEventListener('click', () => window.open(getPdfUrl(), '_blank'));
 
   // "Heute gekocht"
   $('#btnCooked', container).addEventListener('click', async () => {
@@ -238,12 +242,6 @@ function renderEditView(container, recipe) {
 
     // Merge edited fields into existing recipe
     Object.assign(recipe, formData);
-
-    // Regenerate PDF with updated data
-    recipe.pdfBlob = generateRecipePDF({
-      ...recipe,
-      recipeText: recipe.recipeText || ''
-    });
 
     await updateRecipe(recipe);
     showToast(`"${recipe.title}" aktualisiert!`, 'success');

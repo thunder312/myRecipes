@@ -61,11 +61,7 @@ function blobToBase64(blob) {
 
 function hydrateBlobs(recipe) {
   if (!recipe) return recipe;
-  if (typeof recipe.pdfBlob === 'string' && recipe.pdfBlob) {
-    recipe.pdfBlob = base64ToBlob(recipe.pdfBlob, 'application/pdf');
-  } else {
-    recipe.pdfBlob = null;
-  }
+  recipe.pdfBlob = null;
   if (typeof recipe.thumbnailBlob === 'string' && recipe.thumbnailBlob) {
     recipe.thumbnailBlob = base64ToBlob(recipe.thumbnailBlob, 'image/png');
   } else {
@@ -76,9 +72,7 @@ function hydrateBlobs(recipe) {
 
 async function dehydrateBlobs(recipe) {
   const copy = { ...recipe };
-  if (copy.pdfBlob instanceof Blob) {
-    copy.pdfBlob = await blobToBase64(copy.pdfBlob);
-  }
+  delete copy.pdfBlob;
   if (copy.thumbnailBlob instanceof Blob) {
     copy.thumbnailBlob = await blobToBase64(copy.thumbnailBlob);
   }
