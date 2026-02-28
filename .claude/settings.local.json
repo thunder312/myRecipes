@@ -19,7 +19,16 @@
       "Bash(node -e:*)",
       "Bash(timeout:*)",
       "Bash(npm run build:*)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(ls:*)",
+      "Bash(plink:*)",
+      "Bash(ssh:*)",
+      "Bash(\"/c/Program Files/PuTTY/puttygen.exe\":*)",
+      "Bash(python3:*)",
+      "Bash(pip install:*)",
+      "Bash(py:*)",
+      "Bash(python3.12:*)",
+      "Bash(chmod 600:*)"
     ]
   }
 }
