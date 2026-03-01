@@ -29,7 +29,8 @@
       "Bash(py:*)",
       "Bash(python3.12:*)",
       "Bash(chmod 600:*)",
-      "Bash(scp:*)"
+      "Bash(scp:*)",
+      "Bash(xargs grep:*)"
     ]
   }
 }
