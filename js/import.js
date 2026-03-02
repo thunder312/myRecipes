@@ -90,6 +90,37 @@ export async function processImage(file, { multiHint = false } = {}) {
   return applyFilter(tagResults(results, 'image', file.name));
 }
 
+export async function processImages(files, { multiHint = false } = {}) {
+  const images = [];
+  for (const file of files) {
+    let base64 = await fileToBase64(file);
+    let mediaType = detectMediaType(base64) || file.type || 'image/jpeg';
+    const byteSize = Math.ceil(base64.length * 3 / 4);
+
+    if (byteSize > MAX_IMAGE_BYTES) {
+      const img = await createImageBitmap(file);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+
+      let quality = 0.85;
+      while (quality >= 0.4) {
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        base64 = dataUrl.split(',')[1];
+        if (Math.ceil(base64.length * 3 / 4) <= MAX_IMAGE_BYTES) break;
+        quality -= 0.15;
+      }
+      mediaType = 'image/jpeg';
+    }
+
+    images.push({ base64, mediaType });
+  }
+
+  const results = await analyzeRecipeImages(images, { multiHint: multiHint || files.length > 1 });
+  return applyFilter(tagResults(results, 'image', files.map(f => f.name).join(', ')));
+}
+
 export async function processText(text, { multiHint = false } = {}) {
   const results = await analyzeRecipeText(text, { multiHint });
   return applyFilter(tagResults(results, 'text', 'Manueller Text'));

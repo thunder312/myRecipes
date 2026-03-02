@@ -1,5 +1,5 @@
 import { getSetting, addRecipe, getAllRecipes, updateRecipe, deleteRecipe } from '../db.js';
-import { processURL, processPDF, processImage, processText } from '../import.js';
+import { processURL, processPDF, processImage, processImages, processText } from '../import.js';
 import { $, showToast, categoryChipClass } from '../utils/helpers.js';
 import { setImportRunning } from '../utils/auth.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
@@ -96,7 +96,7 @@ function renderImportForm(container) {
           <label for="recipeFile">PDF oder Bild hochladen</label>
           <input type="file" id="recipeFile" class="input" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp" />
         </div>
-        <div class="import__camera-group">
+        <div class="import__camera-group" id="cameraGroup">
           <button class="btn btn--secondary" id="btnCamera" type="button">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -105,6 +105,21 @@ function renderImportForm(container) {
             Rezept fotografieren
           </button>
           <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" />
+        </div>
+        <div class="camera-collector hidden" id="cameraCollector">
+          <p class="camera-collector__label">Aufgenommene Seiten:</p>
+          <div class="camera-collector__photos" id="cameraPhotos"></div>
+          <div class="camera-collector__actions">
+            <button class="btn btn--secondary btn--sm" id="btnAddPhoto" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              Weitere Seite
+            </button>
+            <button class="btn btn--primary" id="btnAnalyzePhotos" type="button">Rezept analysieren</button>
+            <button class="btn btn--ghost btn--sm" id="btnClearPhotos" type="button">Abbrechen</button>
+          </div>
         </div>
         <div class="form-group">
           <label for="sourceNoteFile">Von wem / Woher (optional)</label>
@@ -268,21 +283,75 @@ function renderImportForm(container) {
   // Camera button – triggers hidden file input with capture="environment"
   const cameraBtn = $('#btnCamera', container);
   const cameraInput = $('#cameraInput', container);
+  const cameraGroup = $('#cameraGroup', container);
+  const cameraCollector = $('#cameraCollector', container);
+  const cameraPhotos = $('#cameraPhotos', container);
 
   // Show camera button only on devices with a camera (touch devices)
   if (!('ontouchstart' in window) && !navigator.maxTouchPoints) {
-    cameraBtn.style.display = 'none';
+    cameraGroup.style.display = 'none';
+  }
+
+  let capturedPhotos = [];
+
+  function buildPhotoThumbnails() {
+    cameraPhotos.innerHTML = '';
+    capturedPhotos.forEach((file, idx) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'camera-collector__photo';
+      const url = URL.createObjectURL(file);
+      thumb.innerHTML = `
+        <img src="${url}" alt="Seite ${idx + 1}" />
+        <span class="camera-collector__photo-num">${idx + 1}</span>
+        <button class="camera-collector__remove" data-idx="${idx}" title="Entfernen">&times;</button>
+      `;
+      cameraPhotos.appendChild(thumb);
+    });
+  }
+
+  function resetCameraCollector() {
+    capturedPhotos = [];
+    cameraPhotos.innerHTML = '';
+    cameraCollector.classList.add('hidden');
+    cameraGroup.classList.remove('hidden');
   }
 
   cameraBtn.addEventListener('click', () => cameraInput.click());
 
-  cameraInput.addEventListener('change', async () => {
+  cameraInput.addEventListener('change', () => {
     const file = cameraInput.files[0];
     if (!file) return;
-    const multiHint = $('#multiHintFile', container).checked;
-    const sourceNote = $('#sourceNoteFile', container).value.trim();
-    await doImport(() => processImage(file, { multiHint }), sourceNote);
+    capturedPhotos.push(file);
+    buildPhotoThumbnails();
+    cameraCollector.classList.remove('hidden');
+    cameraGroup.classList.add('hidden');
     cameraInput.value = '';
+  });
+
+  cameraPhotos.addEventListener('click', (e) => {
+    const btn = e.target.closest('.camera-collector__remove');
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.idx, 10);
+    capturedPhotos.splice(idx, 1);
+    if (capturedPhotos.length === 0) {
+      resetCameraCollector();
+    } else {
+      buildPhotoThumbnails();
+    }
+  });
+
+  $('#btnAddPhoto', container).addEventListener('click', () => cameraInput.click());
+
+  $('#btnAnalyzePhotos', container).addEventListener('click', async () => {
+    if (capturedPhotos.length === 0) return;
+    const files = [...capturedPhotos];
+    const sourceNote = $('#sourceNoteFile', container).value.trim();
+    resetCameraCollector();
+    await doImport(() => processImages(files), sourceNote);
+  });
+
+  $('#btnClearPhotos', container).addEventListener('click', () => {
+    resetCameraCollector();
   });
 
   $('#btnImportText', container).addEventListener('click', async () => {
