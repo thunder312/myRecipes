@@ -1,4 +1,4 @@
-import { getAllRecipes, deleteRecipe } from '../db.js';
+import { getAllRecipes, deleteRecipe, getAllCookbooks, assignRecipesToCookbook } from '../db.js';
 import { $, createElement, formatDate, debounce, showToast, categoryChipClass } from '../utils/helpers.js';
 import { isAuthenticated } from '../utils/auth.js';
 
@@ -13,6 +13,7 @@ const SORT_OPTIONS = [
 export async function render(container) {
   let recipes = await getAllRecipes();
   const canEdit = isAuthenticated();
+  let cookbooks = canEdit ? await getAllCookbooks() : [];
   let selectMode = false;
   const selected = new Set();
 
@@ -48,7 +49,21 @@ export async function render(container) {
         </div>
         <div class="bulk-bar__actions">
           <button class="btn btn--ghost btn--sm" id="btnCancelSelect">Abbrechen</button>
+          <button class="btn btn--secondary btn--sm" id="btnBulkAssign">Kochbuch zuordnen</button>
           <button class="btn btn--danger btn--sm" id="btnBulkDelete">Ausgewählte löschen</button>
+        </div>
+      </div>
+      <!-- Cookbook assign picker -->
+      <div class="modal hidden" id="assignCookbookModal">
+        <div class="modal__backdrop" id="assignCookbookBackdrop"></div>
+        <div class="modal__box">
+          <h2>Kochbuch auswählen</h2>
+          <p class="settings__hint">Ordne die ausgewählten Rezepte einem Kochbuch zu.</p>
+          <div class="assign-list" id="assignCookbookList"></div>
+          <div class="modal__actions">
+            <button class="btn btn--primary" id="btnConfirmCookbookAssign">Zuordnen</button>
+            <button class="btn btn--ghost" id="btnCancelCookbookAssign">Abbrechen</button>
+          </div>
         </div>
       </div>` : ''}
     </div>
@@ -210,6 +225,42 @@ export async function render(container) {
       applyFilters();
     });
 
+    $('#btnBulkAssign', container).addEventListener('click', () => {
+      if (selected.size === 0) { showToast('Bitte erst Rezepte auswählen.', 'warning'); return; }
+      const list = $('#assignCookbookList', container);
+      list.innerHTML = cookbooks.map(cb => `
+        <label class="assign-item">
+          <input type="radio" name="assignCookbook" value="${cb.id}" ${cb.id === 1 ? 'checked' : ''} />
+          <span class="assign-item__title">${escOv(cb.name)}</span>
+          ${cb.description ? `<span class="assign-item__sub">${escOv(cb.description)}</span>` : ''}
+        </label>
+      `).join('');
+      $('#assignCookbookModal', container).classList.remove('hidden');
+    });
+
+    $('#btnConfirmCookbookAssign', container).addEventListener('click', async () => {
+      const radio = container.querySelector('input[name="assignCookbook"]:checked');
+      if (!radio) { showToast('Bitte ein Kochbuch wählen.', 'warning'); return; }
+      const cookbookId = parseInt(radio.value, 10);
+      const recipeIds = Array.from(selected);
+      try {
+        await assignRecipesToCookbook(recipeIds, cookbookId);
+        const cb = cookbooks.find(c => c.id === cookbookId);
+        showToast(`${recipeIds.length} Rezept${recipeIds.length !== 1 ? 'e' : ''} dem Kochbuch „${cb?.name}" zugeordnet.`, 'success');
+        $('#assignCookbookModal', container).classList.add('hidden');
+        exitSelectMode();
+      } catch (err) {
+        showToast(`Fehler: ${err.message}`, 'error');
+      }
+    });
+
+    $('#btnCancelCookbookAssign', container).addEventListener('click', () => {
+      $('#assignCookbookModal', container).classList.add('hidden');
+    });
+    $('#assignCookbookBackdrop', container).addEventListener('click', () => {
+      $('#assignCookbookModal', container).classList.add('hidden');
+    });
+
     $('#btnBulkDelete', container).addEventListener('click', async () => {
       const count = selected.size;
       if (count === 0) return;
@@ -233,4 +284,8 @@ export async function render(container) {
 function esc(str) {
   if (!str) return '';
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function escOv(str) {
+  return esc(str);
 }

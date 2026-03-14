@@ -92,8 +92,11 @@ export async function getRecipe(id) {
   return hydrateBlobs(await res.json());
 }
 
-export async function addRecipe(recipe) {
+export async function addRecipe(recipe, extraCookbookIds = []) {
   const body = await dehydrateBlobs(recipe);
+  if (extraCookbookIds.length > 0) {
+    body._cookbookIds = extraCookbookIds;
+  }
   const res = await apiFetch('/recipes', {
     method: 'POST',
     body: JSON.stringify(body),
@@ -112,6 +115,58 @@ export async function updateRecipe(recipe) {
 
 export async function deleteRecipe(id) {
   await apiFetch(`/recipes/${id}`, { method: 'DELETE' });
+}
+
+// --- Cookbooks ---
+
+export async function getAllCookbooks() {
+  const res = await apiFetch('/cookbooks');
+  return res.json();
+}
+
+export async function addCookbook(cookbook) {
+  const res = await apiFetch('/cookbooks', {
+    method: 'POST',
+    body: JSON.stringify(cookbook),
+  });
+  const { id } = await res.json();
+  return id;
+}
+
+export async function updateCookbook(cookbook) {
+  await apiFetch(`/cookbooks/${cookbook.id}`, {
+    method: 'PUT',
+    body: JSON.stringify(cookbook),
+  });
+}
+
+export async function deleteCookbook(id) {
+  await apiFetch(`/cookbooks/${id}`, { method: 'DELETE' });
+}
+
+export async function getCookbookRecipes(cookbookId) {
+  const res = await apiFetch(`/cookbooks/${cookbookId}/recipes`);
+  const recipes = await res.json();
+  return recipes.map(hydrateBlobs);
+}
+
+export async function assignRecipesToCookbook(recipeIds, cookbookId) {
+  await apiFetch(`/cookbooks/${cookbookId}/assign`, {
+    method: 'POST',
+    body: JSON.stringify({ recipeIds }),
+  });
+}
+
+export async function getRecipeCookbooks(recipeId) {
+  const res = await apiFetch(`/cookbooks/recipe/${recipeId}`);
+  return res.json();
+}
+
+export async function setRecipeCookbooks(recipeId, cookbookIds) {
+  await apiFetch(`/cookbooks/recipe/${recipeId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ cookbookIds }),
+  });
 }
 
 // --- Settings ---

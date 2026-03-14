@@ -7,6 +7,7 @@ const recipesRouter = require('./routes/recipes');
 const settingsRouter = require('./routes/settings');
 const authRouter = require('./routes/auth');
 const backupRouter = require('./routes/backup');
+const cookbooksRouter = require('./routes/cookbooks');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -81,6 +82,11 @@ app.use('/api/recipes', (req, res, next) => {
 }, recipesRouter);
 app.use('/api/settings', requireAuth, settingsRouter);
 app.use('/api/backup', requireAuth, backupRouter);
+// Cookbooks: GET public, write requires auth
+app.use('/api/cookbooks', (req, res, next) => {
+  if (req.method === 'GET') return next();
+  requireAuth(req, res, next);
+}, cookbooksRouter);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

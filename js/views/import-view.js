@@ -1,4 +1,4 @@
-import { getSetting, addRecipe, getAllRecipes, updateRecipe, deleteRecipe } from '../db.js';
+import { getSetting, addRecipe, getAllRecipes, updateRecipe, deleteRecipe, getAllCookbooks } from '../db.js';
 import { processURL, processPDF, processImage, processImages, processText } from '../import.js';
 import { $, showToast, categoryChipClass } from '../utils/helpers.js';
 import { setImportRunning } from '../utils/auth.js';
@@ -60,8 +60,45 @@ export async function render(container) {
   await ensureAuthenticated(container, () => renderImportForm(container));
 }
 
+let importCookbooks = [];
+
+async function loadCookbooks() {
+  try {
+    importCookbooks = await getAllCookbooks();
+  } catch {
+    importCookbooks = [];
+  }
+}
+
+function renderCookbookCheckboxes(container) {
+  const box = $('#cookbookCheckboxes', container);
+  if (!box) return;
+  const extra = importCookbooks.filter(cb => cb.id !== 1);
+  if (extra.length === 0) {
+    box.innerHTML = '<span class="settings__hint">Keine weiteren Kochbücher vorhanden.</span>';
+    return;
+  }
+  box.innerHTML = extra.map(cb => `
+    <label class="assign-item">
+      <input type="checkbox" name="importCookbook" value="${cb.id}" />
+      <span class="assign-item__title">${escImport(cb.name)}</span>
+    </label>
+  `).join('');
+}
+
+function getSelectedImportCookbookIds(container) {
+  return Array.from(container.querySelectorAll('input[name="importCookbook"]:checked'))
+    .map(cb => parseInt(cb.value, 10));
+}
+
+function escImport(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function renderImportForm(container) {
   batchActiveContainer = container;
+  loadCookbooks();
 
   container.innerHTML = `
     <div class="import">
@@ -190,6 +227,11 @@ function renderImportForm(container) {
           <button class="btn btn--ghost btn--sm" id="btnSelectNone">Keine auswählen</button>
         </div>
         <div class="multi-review__list" id="multiList"></div>
+        <div class="form-group" id="multiCookbookSelectGroup">
+          <label>Zusätzliche Kochbücher (optional)</label>
+          <div class="cookbook-checkboxes" id="multiCookbookCheckboxes"></div>
+          <p class="settings__hint">Alle importierten Rezepte werden dem Standard-Kochbuch zugeordnet.</p>
+        </div>
         <div class="multi-review__actions">
           <button class="btn btn--primary" id="btnMultiImport">Ausgewählte importieren</button>
           <button class="btn btn--ghost" id="btnMultiCancel">Abbrechen</button>
@@ -200,6 +242,11 @@ function renderImportForm(container) {
       <div class="import__preview hidden" id="importPreview">
         <h2>Vorschau & Bearbeitung</h2>
         <div class="preview-form" id="previewForm"></div>
+        <div class="form-group" id="cookbookSelectGroup">
+          <label>Zusätzliche Kochbücher (optional)</label>
+          <div class="cookbook-checkboxes" id="cookbookCheckboxes"></div>
+          <p class="settings__hint">Das Rezept wird immer dem Standard-Kochbuch zugeordnet.</p>
+        </div>
         <div class="import__preview-actions">
           <button class="btn btn--primary" id="btnSave">Rezept speichern</button>
           <button class="btn btn--ghost" id="btnCancel">Abbrechen</button>
@@ -415,6 +462,7 @@ function renderImportForm(container) {
     const form = $('#previewForm', container);
     preview.classList.remove('hidden');
     renderRecipeForm(form, data);
+    renderCookbookCheckboxes(container);
   }
 
   $('#btnSave', container).addEventListener('click', async () => {
@@ -431,9 +479,10 @@ function renderImportForm(container) {
     };
 
     recipe.thumbnailBlob = null;
+    const extraCookbookIds = getSelectedImportCookbookIds(container);
 
     try {
-      await addRecipe(recipe);
+      await addRecipe(recipe, extraCookbookIds);
       showToast(`"${recipe.title}" erfolgreich importiert!`, 'success');
       currentData = null;
       window.location.hash = '#overview';
@@ -494,6 +543,22 @@ function renderImportForm(container) {
       renderRecipeForm(formEl, r);
     });
 
+    // Render cookbook checkboxes for multi-import
+    const multiCbBox = $('#multiCookbookCheckboxes', container);
+    if (multiCbBox) {
+      const extra = importCookbooks.filter(cb => cb.id !== 1);
+      if (extra.length === 0) {
+        multiCbBox.innerHTML = '<span class="settings__hint">Keine weiteren Kochbücher vorhanden.</span>';
+      } else {
+        multiCbBox.innerHTML = extra.map(cb => `
+          <label class="assign-item">
+            <input type="checkbox" name="multiImportCookbook" value="${cb.id}" />
+            <span class="assign-item__title">${escImport(cb.name)}</span>
+          </label>
+        `).join('');
+      }
+    }
+
     // Toggle accordion
     container.querySelectorAll('[data-toggle-idx]').forEach(el => {
       el.addEventListener('click', (e) => {
@@ -548,6 +613,9 @@ function renderImportForm(container) {
       return;
     }
 
+    const extraCookbookIds = Array.from(container.querySelectorAll('input[name="multiImportCookbook"]:checked'))
+      .map(cb => parseInt(cb.value, 10));
+
     // Import all selected with progress
     $('#multiReview', container).classList.add('hidden');
     const progressEl = $('#multiProgress', container);
@@ -590,7 +658,7 @@ function renderImportForm(container) {
 
         recipe.thumbnailBlob = null;
 
-        await addRecipe(recipe);
+        await addRecipe(recipe, extraCookbookIds);
         imported.push(recipe.title);
         success++;
       } catch (err) {

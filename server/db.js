@@ -58,6 +58,23 @@ function initSchema() {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS cookbooks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      coverTitle TEXT,
+      coverSubtitle TEXT,
+      createdAt TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS recipe_cookbooks (
+      recipeId INTEGER NOT NULL,
+      cookbookId INTEGER NOT NULL,
+      PRIMARY KEY (recipeId, cookbookId),
+      FOREIGN KEY (recipeId) REFERENCES recipes(id) ON DELETE CASCADE,
+      FOREIGN KEY (cookbookId) REFERENCES cookbooks(id) ON DELETE CASCADE
+    );
   `);
 }
 
@@ -66,6 +83,23 @@ function migrateSchema() {
   if (!cols.includes('sourceNote')) {
     db.exec('ALTER TABLE recipes ADD COLUMN sourceNote TEXT');
   }
+
+  // Ensure Standard cookbook exists
+  const standard = db.prepare('SELECT id FROM cookbooks WHERE id = 1').get();
+  if (!standard) {
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO cookbooks (id, name, description, coverTitle, coverSubtitle, createdAt)
+       VALUES (1, 'Standard', 'Alle Rezepte', 'Meine Rezepte', '', ?)`
+    ).run(now);
+  }
+
+  // Assign all recipes not yet in any cookbook to Standard
+  db.exec(`
+    INSERT OR IGNORE INTO recipe_cookbooks (recipeId, cookbookId)
+    SELECT id, 1 FROM recipes
+    WHERE id NOT IN (SELECT recipeId FROM recipe_cookbooks)
+  `);
 }
 
 // --- JSON array fields ---
@@ -130,7 +164,7 @@ function getRecipe(id) {
   return deserializeRecipe(row);
 }
 
-function addRecipe(recipe) {
+function addRecipe(recipe, extraCookbookIds = []) {
   const now = new Date().toISOString();
   const data = serializeRecipe({
     ...recipe,
@@ -147,11 +181,21 @@ function addRecipe(recipe) {
   const placeholders = columns.map(() => '?').join(', ');
   const values = columns.map(c => data[c]);
 
-  const stmt = getDB().prepare(
+  const d = getDB();
+  const stmt = d.prepare(
     `INSERT INTO recipes (${columns.join(', ')}) VALUES (${placeholders})`
   );
   const result = stmt.run(...values);
-  return result.lastInsertRowid;
+  const newId = result.lastInsertRowid;
+
+  // Always assign to Standard cookbook (id=1) plus any extras
+  const cookbookIds = [1, ...extraCookbookIds.filter(id => id !== 1)];
+  const cbStmt = d.prepare('INSERT OR IGNORE INTO recipe_cookbooks (recipeId, cookbookId) VALUES (?, ?)');
+  for (const cbId of cookbookIds) {
+    cbStmt.run(newId, cbId);
+  }
+
+  return newId;
 }
 
 function updateRecipe(recipe) {
@@ -171,6 +215,87 @@ function updateRecipe(recipe) {
 
 function deleteRecipe(id) {
   getDB().prepare('DELETE FROM recipes WHERE id = ?').run(id);
+}
+
+// --- Cookbooks ---
+
+function getAllCookbooks() {
+  return getDB().prepare('SELECT * FROM cookbooks ORDER BY id ASC').all();
+}
+
+function getCookbook(id) {
+  return getDB().prepare('SELECT * FROM cookbooks WHERE id = ?').get(id);
+}
+
+function addCookbook(cookbook) {
+  const now = new Date().toISOString();
+  const result = getDB().prepare(
+    `INSERT INTO cookbooks (name, description, coverTitle, coverSubtitle, createdAt)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    cookbook.name || 'Neues Kochbuch',
+    cookbook.description || '',
+    cookbook.coverTitle || cookbook.name || '',
+    cookbook.coverSubtitle || '',
+    now
+  );
+  return result.lastInsertRowid;
+}
+
+function updateCookbook(cookbook) {
+  getDB().prepare(
+    `UPDATE cookbooks SET name = ?, description = ?, coverTitle = ?, coverSubtitle = ?
+     WHERE id = ?`
+  ).run(
+    cookbook.name,
+    cookbook.description || '',
+    cookbook.coverTitle || cookbook.name || '',
+    cookbook.coverSubtitle || '',
+    cookbook.id
+  );
+}
+
+function deleteCookbook(id) {
+  if (id === 1) throw new Error('Das Standard-Kochbuch kann nicht gelöscht werden.');
+  getDB().prepare('DELETE FROM cookbooks WHERE id = ?').run(id);
+}
+
+function getCookbookRecipes(cookbookId) {
+  const rows = getDB().prepare(
+    `SELECT r.* FROM recipes r
+     JOIN recipe_cookbooks rc ON r.id = rc.recipeId
+     WHERE rc.cookbookId = ?
+     ORDER BY r.title ASC`
+  ).all(cookbookId);
+  return rows.map(deserializeRecipe);
+}
+
+function getRecipeCookbooks(recipeId) {
+  return getDB().prepare(
+    'SELECT cookbookId FROM recipe_cookbooks WHERE recipeId = ?'
+  ).all(recipeId).map(r => r.cookbookId);
+}
+
+function setRecipeCookbooks(recipeId, cookbookIds) {
+  const d = getDB();
+  const run = d.transaction(() => {
+    d.prepare('DELETE FROM recipe_cookbooks WHERE recipeId = ?').run(recipeId);
+    for (const cbId of cookbookIds) {
+      d.prepare('INSERT OR IGNORE INTO recipe_cookbooks (recipeId, cookbookId) VALUES (?, ?)').run(recipeId, cbId);
+    }
+  });
+  run();
+}
+
+function assignRecipesToCookbook(recipeIds, cookbookId) {
+  const d = getDB();
+  const stmt = d.prepare('INSERT OR IGNORE INTO recipe_cookbooks (recipeId, cookbookId) VALUES (?, ?)');
+  const run = d.transaction(() => {
+    for (const rid of recipeIds) {
+      stmt.run(rid, cookbookId);
+    }
+  });
+  run();
 }
 
 // --- Settings ---
@@ -280,4 +405,13 @@ module.exports = {
   importAll,
   hashPassword,
   verifyPassword,
+  getAllCookbooks,
+  getCookbook,
+  addCookbook,
+  updateCookbook,
+  deleteCookbook,
+  getCookbookRecipes,
+  getRecipeCookbooks,
+  setRecipeCookbooks,
+  assignRecipesToCookbook,
 };

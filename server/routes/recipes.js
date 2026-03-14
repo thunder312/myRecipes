@@ -21,11 +21,13 @@ router.get('/:id', (req, res) => {
 
 // POST /api/recipes - create recipe
 router.post('/', (req, res) => {
-  const recipe = req.body;
+  const recipe = { ...req.body };
   if (!recipe.title) {
     return res.status(400).json({ error: 'Titel fehlt' });
   }
-  const id = addRecipe(recipe);
+  const extraCookbookIds = Array.isArray(recipe._cookbookIds) ? recipe._cookbookIds : [];
+  delete recipe._cookbookIds;
+  const id = addRecipe(recipe, extraCookbookIds);
   res.status(201).json({ id: Number(id) });
 });
 

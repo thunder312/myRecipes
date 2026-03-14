@@ -6,7 +6,8 @@ const routes = {
   detail: () => import('./views/detail.js'),
   suggest: () => import('./views/suggest.js'),
   import: () => import('./views/import-view.js'),
-  settings: () => import('./views/settings.js')
+  settings: () => import('./views/settings.js'),
+  cookbooks: () => import('./views/cookbooks.js'),
 };
 
 let currentView = null;
