@@ -2583,6 +2583,15 @@ details[open] > .batch__log-heading::before,
   overflow-y: auto;
 }
 
+/* Cookbook selector in import form */
+.import__cookbook-selector {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-md);
+  background: var(--color-primary-light);
+  margin-bottom: var(--space-md);
+}
+
 /* Danger text btn */
 .btn--danger-text {
   color: var(--color-error);
