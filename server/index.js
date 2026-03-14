@@ -8,6 +8,7 @@ const settingsRouter = require('./routes/settings');
 const authRouter = require('./routes/auth');
 const backupRouter = require('./routes/backup');
 const cookbooksRouter = require('./routes/cookbooks');
+const usersRouter = require('./routes/users');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,7 +22,7 @@ app.use(express.json({ limit: '50mb' }));
 // --- Token-based auth ---
 // Simple in-memory token store. Tokens are generated on login and validated on each request.
 // For a single-user app this is perfectly fine.
-const activeTokens = new Map(); // token -> { createdAt }
+const activeTokens = new Map(); // token -> { createdAt, userId, username, role }
 const TOKEN_MAX_AGE = 15 * 60 * 1000; // 15 minutes
 
 function cleanExpiredTokens() {
@@ -33,24 +34,27 @@ function cleanExpiredTokens() {
   }
 }
 
-function createToken() {
+function createToken(userId, username, role) {
   cleanExpiredTokens();
   const token = crypto.randomBytes(32).toString('hex');
-  activeTokens.set(token, { createdAt: Date.now() });
+  activeTokens.set(token, { createdAt: Date.now(), userId, username, role });
   return token;
 }
 
-function validateToken(token) {
-  if (!token) return false;
+function validateTokenWithData(token) {
+  if (!token) return null;
   const data = activeTokens.get(token);
-  if (!data) return false;
+  if (!data) return null;
   if (Date.now() - data.createdAt > TOKEN_MAX_AGE) {
     activeTokens.delete(token);
-    return false;
+    return null;
   }
-  // Refresh on activity (sliding window)
   data.createdAt = Date.now();
-  return true;
+  return data;
+}
+
+function validateToken(token) {
+  return !!validateTokenWithData(token);
 }
 
 function invalidateToken(token) {
@@ -58,7 +62,7 @@ function invalidateToken(token) {
 }
 
 // Make token functions available to routes
-app.set('auth', { createToken, validateToken, invalidateToken });
+app.set('auth', { createToken, validateToken, validateTokenWithData, invalidateToken });
 
 // Auth middleware for protected routes
 function requireAuth(req, res, next) {
@@ -71,6 +75,16 @@ function requireAuth(req, res, next) {
     return next();
   }
   res.status(401).json({ error: 'Nicht authentifiziert' });
+}
+
+// Admin middleware
+function requireAdmin(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const data = validateTokenWithData(token);
+  if (!data) return res.status(401).json({ error: 'Nicht authentifiziert' });
+  if (data.role !== 'admin') return res.status(403).json({ error: 'Admin-Berechtigung erforderlich' });
+  next();
 }
 
 // API routes
@@ -87,6 +101,7 @@ app.use('/api/cookbooks', (req, res, next) => {
   if (req.method === 'GET') return next();
   requireAuth(req, res, next);
 }, cookbooksRouter);
+app.use('/api/users', requireAdmin, usersRouter);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

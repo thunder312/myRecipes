@@ -169,6 +169,39 @@ export async function setRecipeCookbooks(recipeId, cookbookIds) {
   });
 }
 
+// --- Users ---
+
+export async function getAllUsers() {
+  const res = await apiFetch('/users');
+  return res.json();
+}
+
+export async function createUser(username, password, role) {
+  const res = await apiFetch('/users', {
+    method: 'POST',
+    body: JSON.stringify({ username, password, role }),
+  });
+  return res.json();
+}
+
+export async function resetUserPassword(id, newPassword) {
+  await apiFetch(`/users/${id}/password`, {
+    method: 'PUT',
+    body: JSON.stringify({ newPassword }),
+  });
+}
+
+export async function changeUserRole(id, role) {
+  await apiFetch(`/users/${id}/role`, {
+    method: 'PUT',
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function deleteUser(id) {
+  await apiFetch(`/users/${id}`, { method: 'DELETE' });
+}
+
 // --- Settings ---
 
 export async function getSetting(key) {

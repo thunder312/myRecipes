@@ -2609,6 +2609,123 @@ details[open] > .batch__log-heading::before,
 }
 
 /* ==========================================================================
+   Auth Login Form
+   ========================================================================== */
+
+.auth {
+  max-width: 400px;
+  margin: var(--space-2xl) auto;
+  padding: var(--space-xl);
+}
+
+.auth__logo {
+  text-align: center;
+  margin-bottom: var(--space-lg);
+}
+
+.auth h1 {
+  text-align: center;
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  margin-bottom: var(--space-lg);
+}
+
+.auth__section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.auth__error {
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
+  background: var(--color-error-light);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.btn--full {
+  width: 100%;
+}
+
+/* ==========================================================================
+   User Management
+   ========================================================================== */
+
+.user-mgmt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.user-row {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.user-row__info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  justify-content: space-between;
+}
+
+.user-row__name {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
+.user-row__role {
+  font-size: var(--font-size-xs);
+  background: var(--color-border-light);
+  color: var(--color-text-secondary);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.user-row__role--admin {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.user-row__you {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.user-row__actions {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.user-row__reset {
+  margin-top: var(--space-sm);
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.user-add-form {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-md);
+  background: var(--color-bg);
+  margin-top: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* ==========================================================================
    Reduced Motion
    ========================================================================== */
 

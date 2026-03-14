@@ -2,14 +2,11 @@ import { $, showToast } from './helpers.js';
 import { isAuthenticated, setAuthenticated, getAuthToken } from './auth.js';
 
 export async function ensureAuthenticated(container, onSuccess) {
-  // If local session is valid (within 15-min timeout), trust it and proceed.
-  // The server will still validate the token on every API call.
   if (isAuthenticated()) {
     onSuccess();
     return;
   }
 
-  // No local session – check server for password state
   let authState;
   try {
     const headers = {};
@@ -22,109 +19,76 @@ export async function ensureAuthenticated(container, onSuccess) {
     return;
   }
 
-  // No password set yet → initial setup
-  if (!authState.hasPassword) {
-    renderSetPassword(container, onSuccess);
+  if (authState.authenticated) {
+    setAuthenticated(getAuthToken(), authState.username, authState.role);
+    onSuccess();
     return;
   }
 
-  // Not authenticated → show login
   renderLogin(container, onSuccess);
-}
-
-function renderSetPassword(container, onSuccess) {
-  container.innerHTML = `
-    <div class="auth">
-      <h1>Master-Passwort festlegen</h1>
-      <section class="auth__section">
-        <p class="auth__hint">Lege ein Master-Passwort fest, das die Einstellungen und den Import schützt.</p>
-        <div class="form-group">
-          <label for="newPw">Neues Passwort</label>
-          <input type="password" id="newPw" class="input" placeholder="Passwort" />
-        </div>
-        <div class="form-group">
-          <label for="confirmPw">Passwort bestätigen</label>
-          <input type="password" id="confirmPw" class="input" placeholder="Passwort bestätigen" />
-        </div>
-        <button class="btn btn--primary" id="btnSetPw">Passwort setzen</button>
-      </section>
-    </div>
-  `;
-
-  const doSet = async () => {
-    const pw = $('#newPw', container).value;
-    const conf = $('#confirmPw', container).value;
-    if (!pw || pw.length < 4) {
-      showToast('Passwort muss mindestens 4 Zeichen haben.', 'warning');
-      return;
-    }
-    if (pw !== conf) {
-      showToast('Passwörter stimmen nicht überein.', 'warning');
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/auth/setup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pw }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        showToast(err.error || 'Fehler beim Setzen des Passworts.', 'error');
-        return;
-      }
-      const data = await res.json();
-      setAuthenticated(data.token);
-      showToast('Master-Passwort gesetzt!', 'success');
-      onSuccess();
-    } catch (err) {
-      showToast(`Fehler: ${err.message}`, 'error');
-    }
-  };
-
-  $('#btnSetPw', container).addEventListener('click', doSet);
-  $('#confirmPw', container).addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') doSet();
-  });
 }
 
 function renderLogin(container, onSuccess) {
   container.innerHTML = `
     <div class="auth">
-      <h1>Geschützter Bereich</h1>
+      <div class="auth__logo">
+        <img src="icon.png" width="64" alt="myRecipes" />
+      </div>
+      <h1>Anmelden</h1>
       <section class="auth__section">
-        <p class="auth__hint">Bitte Master-Passwort eingeben, um fortzufahren.</p>
         <div class="form-group">
-          <input type="password" id="loginPw" class="input" placeholder="Master-Passwort" />
-          <button class="btn btn--primary" id="btnLogin">Entsperren</button>
+          <label for="loginUser">Benutzername</label>
+          <input type="text" id="loginUser" class="input" placeholder="Benutzername" autocomplete="username" />
         </div>
+        <div class="form-group">
+          <label for="loginPw">Passwort</label>
+          <input type="password" id="loginPw" class="input" placeholder="Passwort" autocomplete="current-password" />
+        </div>
+        <button class="btn btn--primary btn--full" id="btnLogin">Anmelden</button>
+        <div class="auth__error hidden" id="loginError"></div>
       </section>
     </div>
   `;
 
   const doLogin = async () => {
+    const username = $('#loginUser', container).value.trim();
     const pw = $('#loginPw', container).value;
+    const errEl = $('#loginError', container);
+    errEl.classList.add('hidden');
+
+    if (!username || !pw) {
+      errEl.textContent = 'Bitte Benutzername und Passwort eingeben.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    const btn = $('#btnLogin', container);
+    btn.disabled = true;
+    btn.textContent = 'Anmelden...';
 
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pw }),
+        body: JSON.stringify({ username, password: pw }),
       });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        showToast(err.error || 'Falsches Passwort.', 'error');
+        errEl.textContent = err.error || 'Anmeldung fehlgeschlagen.';
+        errEl.classList.remove('hidden');
         return;
       }
 
       const data = await res.json();
-      setAuthenticated(data.token);
-      showToast('Entsperrt.', 'success');
+      setAuthenticated(data.token, data.username, data.role);
       onSuccess();
     } catch (err) {
-      showToast(`Fehler: ${err.message}`, 'error');
+      errEl.textContent = `Fehler: ${err.message}`;
+      errEl.classList.remove('hidden');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Anmelden';
     }
   };
 
@@ -132,4 +96,10 @@ function renderLogin(container, onSuccess) {
   $('#loginPw', container).addEventListener('keydown', (e) => {
     if (e.key === 'Enter') doLogin();
   });
+  $('#loginUser', container).addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') $('#loginPw', container).focus();
+  });
+
+  // Focus username field
+  setTimeout(() => $('#loginUser', container)?.focus(), 50);
 }

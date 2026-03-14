@@ -1,96 +1,67 @@
 const { Router } = require('express');
-const { getSetting, setSetting, hashPassword, verifyPassword } = require('../db');
+const { getUserByUsername, updateUserPassword, getUser, verifyPassword } = require('../db');
 
 const router = Router();
 
-// Check if authenticated
+// GET /api/auth/check
 router.get('/check', (req, res) => {
-  const hasPassword = !!getSetting('passwordHash');
-  const { validateToken } = req.app.get('auth');
+  const { validateTokenWithData } = req.app.get('auth');
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
+  const data = validateTokenWithData(token);
   res.json({
-    authenticated: validateToken(token),
-    hasPassword,
+    authenticated: !!data,
+    username: data ? data.username : null,
+    role: data ? data.role : null,
   });
 });
 
-// Login with password
+// POST /api/auth/login
 router.post('/login', (req, res) => {
-  const { password } = req.body;
-  if (!password) {
-    return res.status(400).json({ error: 'Passwort fehlt' });
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Benutzername und Passwort erforderlich' });
   }
 
-  const storedHash = getSetting('passwordHash');
-  if (!storedHash) {
-    return res.status(400).json({ error: 'Kein Passwort gesetzt' });
-  }
+  const user = getUserByUsername(username.trim());
+  if (!user) return res.status(401).json({ error: 'Ungültige Anmeldedaten' });
 
-  const valid = verifyPassword(password, storedHash);
-  if (!valid) {
-    return res.status(401).json({ error: 'Falsches Passwort' });
+  if (!verifyPassword(password, user.passwordHash)) {
+    return res.status(401).json({ error: 'Ungültige Anmeldedaten' });
   }
 
   const { createToken } = req.app.get('auth');
-  const token = createToken();
-  res.json({ success: true, token });
+  const token = createToken(user.id, user.username, user.role);
+  res.json({ success: true, token, username: user.username, role: user.role });
 });
 
-// Set initial password (only when no password exists)
-router.post('/setup', (req, res) => {
-  const { password } = req.body;
-  if (!password || password.length < 4) {
-    return res.status(400).json({ error: 'Passwort muss mindestens 4 Zeichen haben' });
-  }
-
-  const existingHash = getSetting('passwordHash');
-  if (existingHash) {
-    return res.status(400).json({ error: 'Passwort ist bereits gesetzt' });
-  }
-
-  const hash = hashPassword(password);
-  setSetting('passwordHash', hash);
-
-  const { createToken } = req.app.get('auth');
-  const token = createToken();
-  res.json({ success: true, token });
-});
-
-// Change password (requires auth via token)
-router.post('/change-password', (req, res) => {
-  const { validateToken } = req.app.get('auth');
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-  if (!validateToken(token)) {
-    return res.status(401).json({ error: 'Nicht authentifiziert' });
-  }
-
-  const { currentPassword, newPassword } = req.body;
-  if (!currentPassword || !newPassword) {
-    return res.status(400).json({ error: 'Aktuelles und neues Passwort erforderlich' });
-  }
-  if (newPassword.length < 4) {
-    return res.status(400).json({ error: 'Neues Passwort muss mindestens 4 Zeichen haben' });
-  }
-
-  const storedHash = getSetting('passwordHash');
-  if (!verifyPassword(currentPassword, storedHash)) {
-    return res.status(401).json({ error: 'Aktuelles Passwort ist falsch' });
-  }
-
-  setSetting('passwordHash', hashPassword(newPassword));
-  res.json({ success: true });
-});
-
-// Logout
+// POST /api/auth/logout
 router.post('/logout', (req, res) => {
   const { invalidateToken } = req.app.get('auth');
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
   if (token) invalidateToken(token);
+  res.json({ success: true });
+});
+
+// POST /api/auth/change-password  (own password, any authenticated user)
+router.post('/change-password', (req, res) => {
+  const { validateTokenWithData } = req.app.get('auth');
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const tokenData = validateTokenWithData(token);
+  if (!tokenData) return res.status(401).json({ error: 'Nicht authentifiziert' });
+
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Aktuelles und neues Passwort erforderlich' });
+  if (newPassword.length < 4) return res.status(400).json({ error: 'Neues Passwort muss mindestens 4 Zeichen haben' });
+
+  const user = getUser(tokenData.userId);
+  if (!user || !verifyPassword(currentPassword, user.passwordHash)) {
+    return res.status(401).json({ error: 'Aktuelles Passwort ist falsch' });
+  }
+
+  updateUserPassword(tokenData.userId, newPassword);
   res.json({ success: true });
 });
 

@@ -3,6 +3,7 @@
 
 const TOKEN_KEY = 'myRecipes_token';
 const ACTIVITY_KEY = 'myRecipes_lastActivity';
+const USER_KEY = 'myRecipes_user'; // JSON: { username, role }
 const TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 let importRunning = false;
@@ -26,21 +27,33 @@ export function isAuthenticated() {
   return true;
 }
 
-export function setAuthenticated(token) {
+export function setAuthenticated(token, username, role) {
   if (token) {
     sessionStorage.setItem(TOKEN_KEY, token);
     sessionStorage.setItem(ACTIVITY_KEY, String(Date.now()));
+    sessionStorage.setItem(USER_KEY, JSON.stringify({ username: username || '', role: role || 'user' }));
   } else {
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(ACTIVITY_KEY);
+    sessionStorage.removeItem(USER_KEY);
   }
+}
+
+export function getAuthUser() {
+  try {
+    return JSON.parse(sessionStorage.getItem(USER_KEY) || '{}');
+  } catch { return {}; }
+}
+
+export function isAdmin() {
+  return getAuthUser().role === 'admin';
 }
 
 export function logout() {
   const token = getAuthToken();
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(ACTIVITY_KEY);
-  // Also invalidate server token (fire-and-forget)
+  sessionStorage.removeItem(USER_KEY);
   if (token) {
     fetch('/api/auth/logout', {
       method: 'POST',

@@ -75,6 +75,14 @@ function initSchema() {
       FOREIGN KEY (recipeId) REFERENCES recipes(id) ON DELETE CASCADE,
       FOREIGN KEY (cookbookId) REFERENCES cookbooks(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL UNIQUE,
+      passwordHash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user',
+      createdAt TEXT NOT NULL
+    );
   `);
 }
 
@@ -100,6 +108,20 @@ function migrateSchema() {
     SELECT id, 1 FROM recipes
     WHERE id NOT IN (SELECT recipeId FROM recipe_cookbooks)
   `);
+
+  // Migrate single master password → admin user
+  const userCount = getDB().prepare('SELECT COUNT(*) as count FROM users').get().count;
+  if (userCount === 0) {
+    const now = new Date().toISOString();
+    const existingHash = getSetting('passwordHash');
+    const adminHash = existingHash || hashPassword('admin');
+    getDB().prepare(
+      'INSERT INTO users (username, passwordHash, role, createdAt) VALUES (?, ?, ?, ?)'
+    ).run('admin', adminHash, 'admin', now);
+    if (existingHash) {
+      getDB().prepare("DELETE FROM settings WHERE key = 'passwordHash'").run();
+    }
+  }
 }
 
 // --- JSON array fields ---
@@ -392,6 +414,45 @@ function verifyPassword(password, storedHash) {
   return computed === hash;
 }
 
+// --- Users ---
+
+function getAllUsers() {
+  return getDB().prepare('SELECT id, username, role, createdAt FROM users ORDER BY createdAt ASC').all();
+}
+
+function getUser(id) {
+  return getDB().prepare('SELECT id, username, role, createdAt FROM users WHERE id = ?').get(id);
+}
+
+function getUserByUsername(username) {
+  return getDB().prepare('SELECT * FROM users WHERE username = ?').get(username);
+}
+
+function addUser(username, password, role = 'user') {
+  const result = getDB().prepare(
+    'INSERT INTO users (username, passwordHash, role, createdAt) VALUES (?, ?, ?, ?)'
+  ).run(username, hashPassword(password), role, new Date().toISOString());
+  return result.lastInsertRowid;
+}
+
+function updateUserPassword(id, newPassword) {
+  getDB().prepare('UPDATE users SET passwordHash = ? WHERE id = ?').run(hashPassword(newPassword), id);
+}
+
+function updateUserRole(id, role) {
+  getDB().prepare('UPDATE users SET role = ? WHERE id = ?').run(role, id);
+}
+
+function deleteUser(id) {
+  // Prevent deleting the last admin
+  const user = getUser(id);
+  if (user && user.role === 'admin') {
+    const adminCount = getDB().prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'").get().count;
+    if (adminCount <= 1) throw new Error('Der letzte Admin kann nicht gelöscht werden.');
+  }
+  getDB().prepare('DELETE FROM users WHERE id = ?').run(id);
+}
+
 module.exports = {
   getDB,
   getAllRecipes,
@@ -414,4 +475,11 @@ module.exports = {
   getRecipeCookbooks,
   setRecipeCookbooks,
   assignRecipesToCookbook,
+  getAllUsers,
+  getUser,
+  getUserByUsername,
+  addUser,
+  updateUserPassword,
+  updateUserRole,
+  deleteUser,
 };
