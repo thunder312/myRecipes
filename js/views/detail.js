@@ -1,5 +1,5 @@
 import { getRecipe, updateRecipe, deleteRecipe } from '../db.js';
-import { generateRecipePDF } from '../pdf-generator.js';
+import { generateRecipePDF, generateRecipeA5PDF } from '../pdf-generator.js';
 import { $, createElement, formatDate, todayISO, showToast, categoryChipClass } from '../utils/helpers.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
 import { isAuthenticated } from '../utils/auth.js';
@@ -82,8 +82,10 @@ function renderDetailView(container, recipe) {
       <div class="detail__pdf">
         <h3>Rezept-PDF</h3>
         <div class="pdf-actions">
-          <a id="pdfDownload" class="btn btn--secondary">PDF herunterladen</a>
-          <button id="pdfOpen" class="btn btn--primary">PDF öffnen</button>
+          <a id="pdfDownload" class="btn btn--secondary">A4 herunterladen</a>
+          <button id="pdfOpen" class="btn btn--primary">A4 öffnen</button>
+          <a id="pdfA5Download" class="btn btn--secondary">A5 herunterladen</a>
+          <button id="pdfA5Open" class="btn btn--primary">A5 öffnen</button>
         </div>
       </div>
 
@@ -150,7 +152,18 @@ function renderDetailView(container, recipe) {
     return pdfUrl;
   }
 
+  let pdfA5Url = null;
+  function getPdfA5Url() {
+    if (!pdfA5Url) {
+      const blob = generateRecipeA5PDF(recipe);
+      pdfA5Url = URL.createObjectURL(blob);
+    }
+    return pdfA5Url;
+  }
+
   const filename = `${recipe.title || 'rezept'}.pdf`;
+  const filenameA5 = `${recipe.title || 'rezept'}-A5.pdf`;
+
   $('#pdfDownload', container).addEventListener('click', (e) => {
     e.preventDefault();
     const a = document.createElement('a');
@@ -159,6 +172,15 @@ function renderDetailView(container, recipe) {
     a.click();
   });
   $('#pdfOpen', container).addEventListener('click', () => window.open(getPdfUrl(), '_blank'));
+
+  $('#pdfA5Download', container).addEventListener('click', (e) => {
+    e.preventDefault();
+    const a = document.createElement('a');
+    a.href = getPdfA5Url();
+    a.download = filenameA5;
+    a.click();
+  });
+  $('#pdfA5Open', container).addEventListener('click', () => window.open(getPdfA5Url(), '_blank'));
 
   // "Heute gekocht"
   $('#btnCooked', container).addEventListener('click', async () => {
