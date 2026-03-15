@@ -62,7 +62,10 @@
       "Bash(\"/C/Program Files/PuTTY/pscp.exe\" -batch \"D:/Dropbox/Entwicklung/HTML5/myReceipts/dist/index.html\" root@82.165.153.177:/var/www/myrecipes/dist/index.html 2>&1 && \"/C/Program Files/PuTTY/pscp.exe\" -batch \"D:/Dropbox/Entwicklung/HTML5/myReceipts/dist/css/style.css\" root@82.165.153.177:/var/www/myrecipes/dist/css/style.css 2>&1)",
       "Bash(\"/C/Program Files/PuTTY/plink.exe\" -batch root@82.165.153.177 \"rm -rf /var/www/myrecipes/dist/js && mkdir /var/www/myrecipes/dist/js\" 2>&1 && \"/C/Program Files/PuTTY/pscp.exe\" -batch -r \"D:/Dropbox/Entwicklung/HTML5/myReceipts/dist/js\" root@82.165.153.177:/var/www/myrecipes/dist/ 2>&1 | tail -5)",
       "Bash(\"/C/Program Files/PuTTY/plink.exe\" -batch root@82.165.153.177 \"find /var/www/myrecipes/dist/js -name '*.js' | wc -l && ls /var/www/myrecipes/dist/js/app*\" 2>&1)",
-      "Bash(\"/C/Program Files/PuTTY/plink.exe\" -batch root@82.165.153.177 \"systemctl restart myrecipes && sleep 2 && systemctl is-active myrecipes\" 2>&1)"
+      "Bash(\"/C/Program Files/PuTTY/plink.exe\" -batch root@82.165.153.177 \"systemctl restart myrecipes && sleep 2 && systemctl is-active myrecipes\" 2>&1)",
+      "Read(//mnt/c/Users/dertl/**)",
+      "Read(//mnt/c/Users/**)",
+      "Bash(find:*)"
     ]
   }
 }
