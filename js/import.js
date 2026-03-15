@@ -212,7 +212,7 @@ async function enhanceForHandwriting(base64, mediaType) {
       canvas.width = img.width;
       canvas.height = img.height;
       const ctx = canvas.getContext('2d');
-      ctx.filter = 'contrast(140%) brightness(108%) saturate(0%)';
+      ctx.filter = 'contrast(200%) brightness(115%) saturate(0%)';
       ctx.drawImage(img, 0, 0);
       resolve(canvas.toDataURL('image/jpeg', 0.92).split(',')[1]);
     };
