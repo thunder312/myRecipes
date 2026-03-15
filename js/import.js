@@ -52,7 +52,8 @@ export async function processPDF(file, { multiHint = false } = {}) {
 
     for (let i = 1; i <= pageCount; i++) {
       const page = await pdf.getPage(i);
-      const base64 = await renderPageToBase64(page);
+      const raw = await renderPageToBase64(page);
+      const base64 = await enhanceForHandwriting(raw, 'image/jpeg');
       images.push({ base64, mediaType: 'image/jpeg' });
     }
 
@@ -86,6 +87,9 @@ export async function processImage(file, { multiHint = false } = {}) {
     mediaType = 'image/jpeg';
   }
 
+  base64 = await enhanceForHandwriting(base64, mediaType);
+  mediaType = 'image/jpeg';
+
   const results = await analyzeRecipeImage(base64, mediaType, { multiHint });
   return applyFilter(tagResults(results, 'image', file.name));
 }
@@ -114,7 +118,8 @@ export async function processImages(files, { multiHint = false } = {}) {
       mediaType = 'image/jpeg';
     }
 
-    images.push({ base64, mediaType });
+    base64 = await enhanceForHandwriting(base64, mediaType);
+    images.push({ base64, mediaType: 'image/jpeg' });
   }
 
   const results = await analyzeRecipeImages(images, { multiHint: multiHint || files.length > 1 });
@@ -193,6 +198,26 @@ async function renderPageToBase64(page) {
   const ctx = canvas.getContext('2d');
   await page.render({ canvasContext: ctx, viewport }).promise;
   return canvas.toDataURL('image/jpeg', 0.4).split(',')[1];
+}
+
+/**
+ * Verbessert die Lesbarkeit von handgeschriebenem Text durch Kontrast- und
+ * Helligkeitsanpassung. Gibt base64-JPEG zurück.
+ */
+async function enhanceForHandwriting(base64, mediaType) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.filter = 'contrast(140%) brightness(108%) saturate(0%)';
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/jpeg', 0.92).split(',')[1]);
+    };
+    img.src = `data:${mediaType};base64,${base64}`;
+  });
 }
 
 function fileToBase64(file) {

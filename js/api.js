@@ -163,7 +163,7 @@ export async function analyzeRecipeImages(images, { multiHint = false } = {}) {
   }
   contentParts.push({
     type: 'text',
-    text: buildRecipeAnalysisPrompt({ multiHint }) + '\n\nAnalysiere die Rezepte in den Bildern.'
+    text: buildRecipeAnalysisPrompt({ multiHint }) + '\n\nAnalysiere die Rezepte in den Bildern. Die Bilder können handgeschriebenen Text enthalten – lies auch schwer leserliche Handschrift sorgfältig und vervollständige abgekürzte Wörter sinnvoll.'
   });
 
   let response;
