@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { getUserByUsername, updateUserPassword, getUser, verifyPassword } = require('../db');
+const { getUserByUsername, updateUserPassword, updateUsername, getUser, verifyPassword } = require('../db');
 
 const router = Router();
 
@@ -63,6 +63,35 @@ router.post('/change-password', (req, res) => {
 
   updateUserPassword(tokenData.userId, newPassword);
   res.json({ success: true });
+});
+
+// POST /api/auth/change-username  (own username, any authenticated user)
+router.post('/change-username', (req, res) => {
+  const { validateTokenWithData, createToken, invalidateToken } = req.app.get('auth');
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const tokenData = validateTokenWithData(token);
+  if (!tokenData) return res.status(401).json({ error: 'Nicht authentifiziert' });
+
+  const { newUsername, currentPassword } = req.body;
+  if (!newUsername || !newUsername.trim()) return res.status(400).json({ error: 'Neuer Benutzername erforderlich' });
+  if (!currentPassword) return res.status(400).json({ error: 'Aktuelles Passwort erforderlich' });
+
+  const user = getUser(tokenData.userId);
+  if (!user || !verifyPassword(currentPassword, user.passwordHash)) {
+    return res.status(401).json({ error: 'Aktuelles Passwort ist falsch' });
+  }
+
+  try {
+    updateUsername(tokenData.userId, newUsername.trim());
+  } catch (err) {
+    return res.status(409).json({ error: err.message });
+  }
+
+  // Invalidate old token and issue new one with updated username
+  invalidateToken(token);
+  const newToken = createToken(tokenData.userId, newUsername.trim(), tokenData.role);
+  res.json({ success: true, token: newToken, username: newUsername.trim() });
 });
 
 module.exports = router;

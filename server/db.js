@@ -443,6 +443,12 @@ function updateUserRole(id, role) {
   getDB().prepare('UPDATE users SET role = ? WHERE id = ?').run(role, id);
 }
 
+function updateUsername(id, newUsername) {
+  const existing = getUserByUsername(newUsername);
+  if (existing && existing.id !== id) throw new Error('Benutzername bereits vergeben.');
+  getDB().prepare('UPDATE users SET username = ? WHERE id = ?').run(newUsername, id);
+}
+
 function deleteUser(id) {
   // Prevent deleting the last admin
   const user = getUser(id);
@@ -481,5 +487,6 @@ module.exports = {
   addUser,
   updateUserPassword,
   updateUserRole,
+  updateUsername,
   deleteUser,
 };
