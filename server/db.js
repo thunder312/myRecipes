@@ -92,6 +92,12 @@ function migrateSchema() {
     db.exec('ALTER TABLE recipes ADD COLUMN sourceNote TEXT');
   }
 
+  // Ensure passwordHash column exists in users table (added in multi-user migration)
+  const userCols = db.pragma('table_info(users)').map(r => r.name);
+  if (!userCols.includes('passwordHash')) {
+    db.exec('ALTER TABLE users ADD COLUMN passwordHash TEXT NOT NULL DEFAULT \'\'');
+  }
+
   // Ensure Standard cookbook exists
   const standard = db.prepare('SELECT id FROM cookbooks WHERE id = 1').get();
   if (!standard) {
@@ -421,7 +427,7 @@ function getAllUsers() {
 }
 
 function getUser(id) {
-  return getDB().prepare('SELECT id, username, role, createdAt FROM users WHERE id = ?').get(id);
+  return getDB().prepare('SELECT * FROM users WHERE id = ?').get(id);
 }
 
 function getUserByUsername(username) {
