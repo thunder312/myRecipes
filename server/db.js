@@ -304,6 +304,10 @@ function getRecipeCookbooks(recipeId) {
   ).all(recipeId).map(r => r.cookbookId);
 }
 
+function getAllRecipeCookbooks() {
+  return getDB().prepare('SELECT recipeId, cookbookId FROM recipe_cookbooks').all();
+}
+
 function setRecipeCookbooks(recipeId, cookbookIds) {
   const d = getDB();
   const run = d.transaction(() => {
@@ -485,6 +489,7 @@ module.exports = {
   deleteCookbook,
   getCookbookRecipes,
   getRecipeCookbooks,
+  getAllRecipeCookbooks,
   setRecipeCookbooks,
   assignRecipesToCookbook,
   getAllUsers,

@@ -162,6 +162,11 @@ export async function getRecipeCookbooks(recipeId) {
   return res.json();
 }
 
+export async function getCookbookMemberships() {
+  const res = await apiFetch('/cookbooks/memberships');
+  return res.json(); // [{recipeId, cookbookId}, ...]
+}
+
 export async function setRecipeCookbooks(recipeId, cookbookIds) {
   await apiFetch(`/cookbooks/recipe/${recipeId}`, {
     method: 'PUT',

@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const {
   getAllCookbooks, getCookbook, addCookbook, updateCookbook, deleteCookbook,
-  getCookbookRecipes, getRecipeCookbooks, setRecipeCookbooks, assignRecipesToCookbook,
+  getCookbookRecipes, getRecipeCookbooks, getAllRecipeCookbooks, setRecipeCookbooks, assignRecipesToCookbook,
 } = require('../db');
 
 const router = Router();
@@ -9,6 +9,11 @@ const router = Router();
 // GET /api/cookbooks
 router.get('/', (req, res) => {
   res.json(getAllCookbooks());
+});
+
+// GET /api/cookbooks/memberships – all recipeId/cookbookId pairs (must be before /:id)
+router.get('/memberships', (req, res) => {
+  res.json(getAllRecipeCookbooks());
 });
 
 // GET /api/cookbooks/recipe/:recipeId – must be before /:id

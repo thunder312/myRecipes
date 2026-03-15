@@ -1,4 +1,4 @@
-import { getAllRecipes, deleteRecipe, getAllCookbooks, assignRecipesToCookbook } from '../db.js';
+import { getAllRecipes, deleteRecipe, getAllCookbooks, assignRecipesToCookbook, getCookbookMemberships } from '../db.js';
 import { $, createElement, formatDate, debounce, showToast, categoryChipClass } from '../utils/helpers.js';
 import { isAuthenticated } from '../utils/auth.js';
 
@@ -13,7 +13,18 @@ const SORT_OPTIONS = [
 export async function render(container) {
   let recipes = await getAllRecipes();
   const canEdit = isAuthenticated();
-  let cookbooks = canEdit ? await getAllCookbooks() : [];
+  let cookbooks = await getAllCookbooks();
+  // Build recipeId -> Set<cookbookId> map for filtering
+  let recipeCookbookMap = new Map();
+  async function refreshMemberships() {
+    const memberships = await getCookbookMemberships();
+    recipeCookbookMap = new Map();
+    for (const { recipeId, cookbookId } of memberships) {
+      if (!recipeCookbookMap.has(recipeId)) recipeCookbookMap.set(recipeId, new Set());
+      recipeCookbookMap.get(recipeId).add(cookbookId);
+    }
+  }
+  await refreshMemberships();
   let selectMode = false;
   const selected = new Set();
 
@@ -30,6 +41,10 @@ export async function render(container) {
         </select>
         <select id="originFilter" class="select">
           <option value="Alle">Alle Herkünfte</option>
+        </select>
+        <select id="cookbookFilter" class="select">
+          <option value="0">Alle Kochbücher</option>
+          ${cookbooks.map(cb => `<option value="${cb.id}">${esc(cb.name)}</option>`).join('')}
         </select>
         <select id="sortSelect" class="select">
           ${SORT_OPTIONS.map(s => `<option value="${s.value}">${s.label}</option>`).join('')}
@@ -174,11 +189,13 @@ export async function render(container) {
     const search = ($('#searchInput', container).value || '').toLowerCase();
     const category = $('#categoryFilter', container).value;
     const origin = $('#originFilter', container).value;
+    const cookbookId = parseInt($('#cookbookFilter', container).value, 10);
     const sort = $('#sortSelect', container).value;
 
     let filtered = recipes.filter(r => {
       if (category !== 'Alle' && r.category !== category) return false;
       if (origin !== 'Alle' && r.origin !== origin) return false;
+      if (cookbookId !== 0 && !recipeCookbookMap.get(r.id)?.has(cookbookId)) return false;
       if (search) {
         const haystack = [r.title, r.description, r.mainIngredient, ...(r.tags || []), ...(r.ingredients || [])].join(' ').toLowerCase();
         if (!haystack.includes(search)) return false;
@@ -207,6 +224,7 @@ export async function render(container) {
   $('#searchInput', container).addEventListener('input', debounce(applyFilters));
   $('#categoryFilter', container).addEventListener('change', applyFilters);
   $('#originFilter', container).addEventListener('change', applyFilters);
+  $('#cookbookFilter', container).addEventListener('change', applyFilters);
   $('#sortSelect', container).addEventListener('change', applyFilters);
 
   // Bulk-select event listeners
@@ -245,6 +263,7 @@ export async function render(container) {
       const recipeIds = Array.from(selected);
       try {
         await assignRecipesToCookbook(recipeIds, cookbookId);
+        await refreshMemberships();
         const cb = cookbooks.find(c => c.id === cookbookId);
         showToast(`${recipeIds.length} Rezept${recipeIds.length !== 1 ? 'e' : ''} dem Kochbuch „${cb?.name}" zugeordnet.`, 'success');
         $('#assignCookbookModal', container).classList.add('hidden');
