@@ -1,62 +1,94 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 
 <head>
   <meta charset="utf-8">
-  <title>Page Not Found</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seite nicht gefunden – myRecipes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * {
-      line-height: 1.2;
-      margin: 0;
-    }
-
-    html {
-      color: #888;
-      display: table;
-      font-family: sans-serif;
-      height: 100%;
-      text-align: center;
-      width: 100%;
-    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      display: table-cell;
-      vertical-align: middle;
-      margin: 2em auto;
+      font-family: 'Inter', sans-serif;
+      background: #fafafa;
+      color: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .icon {
+      font-size: 5rem;
+      line-height: 1;
+      margin-bottom: 1.5rem;
+      animation: wobble 2.5s ease-in-out infinite;
+    }
+
+    @keyframes wobble {
+      0%, 100% { transform: rotate(-5deg); }
+      50%       { transform: rotate(5deg); }
     }
 
     h1 {
-      color: #555;
-      font-size: 2em;
-      font-weight: 400;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .code {
+      font-size: 5rem;
+      font-weight: 800;
+      color: #e8590c;
+      line-height: 1;
+      margin-bottom: 1rem;
     }
 
     p {
-      margin: 0 auto;
-      width: 280px;
+      color: #666;
+      font-size: 1rem;
+      max-width: 340px;
+      line-height: 1.6;
+      margin-bottom: 2rem;
     }
 
-    @media only screen and (max-width: 280px) {
-
-      body,
-      p {
-        width: 95%;
-      }
-
-      h1 {
-        font-size: 1.5em;
-        margin: 0 0 0.3em;
-      }
-
+    a.btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #e8590c;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 0.65rem 1.4rem;
+      border-radius: 8px;
+      transition: background 0.15s;
     }
+
+    a.btn:hover { background: #c94d0a; }
   </style>
 </head>
 
 <body>
-  <h1>Page Not Found</h1>
-  <p>Sorry, but the page you were trying to view does not exist.</p>
+  <div class="icon">🍳</div>
+  <div class="code">404</div>
+  <h1>Seite nicht gefunden</h1>
+  <p>Das Rezept für diese Seite existiert leider nicht. Vielleicht wurde es umbenannt oder die Zutaten stimmen nicht.</p>
+  <a class="btn" href="/">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+      <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+    </svg>
+    Zur Rezeptübersicht
+  </a>
 </body>
 
 </html>
-<!-- IE needs 512+ bytes: https://docs.microsoft.com/archive/blogs/ieinternals/friendly-http-error-pages -->
