@@ -41,8 +41,7 @@ export async function processPDF(file, { multiHint = false } = {}) {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    const pageText = content.items.map(item => item.str).join(' ');
-    fullText += pageText + '\n';
+    fullText += extractTextWithLineBreaks(content.items) + '\n';
   }
 
   if (fullText.trim().length < 20) {
@@ -218,6 +217,29 @@ async function enhanceForHandwriting(base64, mediaType) {
     };
     img.src = `data:${mediaType};base64,${base64}`;
   });
+}
+
+/**
+ * Rekonstruiert Zeilenumbrüche aus pdfjs-Textelementen anhand der Y-Position.
+ * Elemente mit deutlich veränderter Y-Koordinate bekommen einen Zeilenumbruch vorangestellt.
+ */
+function extractTextWithLineBreaks(items) {
+  if (!items || items.length === 0) return '';
+  const LINE_THRESHOLD = 2; // mm – Y-Abstand gilt als neue Zeile
+  let result = '';
+  let lastY = null;
+  for (const item of items) {
+    if (!item.str) continue;
+    const y = item.transform ? item.transform[5] : null;
+    if (lastY !== null && y !== null && Math.abs(y - lastY) > LINE_THRESHOLD) {
+      result += '\n';
+    } else if (result && !result.endsWith('\n') && !result.endsWith(' ')) {
+      result += ' ';
+    }
+    result += item.str;
+    if (y !== null) lastY = y;
+  }
+  return result;
 }
 
 function fileToBase64(file) {

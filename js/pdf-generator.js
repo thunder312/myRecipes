@@ -1,5 +1,14 @@
 import { jsPDF } from 'jspdf';
 
+function splitIntoSteps(text) {
+  if (!text || !text.trim()) return [];
+  const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
+  if (lines.length > 1) return lines;
+  const parts = text.split(/;\s+|\.\s+(?=[A-ZÜÄÖ])/);
+  const result = parts.map(s => s.trim()).filter(Boolean);
+  return result.length > 1 ? result : lines;
+}
+
 export function generateCookbookPDF(cookbook, recipes) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -163,10 +172,19 @@ function addRecipeToDoc(doc, recipeData) {
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
-    const lines = doc.splitTextToSize(recipeData.recipeText, contentWidth);
-    for (const line of lines) {
+    const steps = splitIntoSteps(recipeData.recipeText);
+    const alreadyNumbered = steps.length > 1 && /^\d+[.)]\s/.test(steps[0]);
+    for (let idx = 0; idx < steps.length; idx++) {
+      const label = alreadyNumbered ? '' : `${idx + 1}. `;
+      const indent = alreadyNumbered ? 0 : doc.getTextWidth(label);
+      const stepLines = doc.splitTextToSize(label + steps[idx], contentWidth);
       y = checkPageBreak(doc, y, 7, margin);
-      doc.text(line, margin, y);
+      doc.text(stepLines[0], margin, y);
+      for (let i = 1; i < stepLines.length; i++) {
+        y += 5.5;
+        y = checkPageBreak(doc, y, 7, margin);
+        doc.text(stepLines[i], margin + indent, y);
+      }
       y += 5.5;
     }
     y += 4;
@@ -192,6 +210,7 @@ function addRecipeToDoc(doc, recipeData) {
 
 export function generateRecipePDF(recipeData) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  doc.setProperties({ title: recipeData.title || 'Rezept' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
   const contentWidth = pageWidth - 2 * margin;
@@ -303,92 +322,142 @@ function checkPageBreak(doc, y, neededSpace, margin) {
   return y;
 }
 
-// --- A5 "Zettelkasten" template ---
+// --- A5 "Zettelkasten" template – A4 landscape, overflow into right column if needed ---
 
 export function generateRecipeA5PDF(recipeData) {
-  const doc = new jsPDF({ unit: 'mm', format: 'a5' });
-  const pageWidth = doc.internal.pageSize.getWidth();   // 148 mm
-  const margin = 14;
-  const contentWidth = pageWidth - 2 * margin;
-  let y = margin + 4;
+  // A4 landscape: 297 × 210 mm
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+  doc.setProperties({ title: recipeData.title || 'Rezept' });
+  const pageWidth  = doc.internal.pageSize.getWidth();   // 297 mm
+  const pageHeight = doc.internal.pageSize.getHeight();  // 210 mm
+  const marginLeft = 25; // breit für Lochung
+  const marginOther = 14;
+  const colGap  = 10;
+  const colWidth = (pageWidth - marginLeft - marginOther - colGap) / 2; // ~124 mm
+  const leftX  = marginLeft;
+  const rightX = marginLeft + colWidth + colGap;
+  const maxY   = pageHeight - marginOther;
+
+  // Cursor state
+  let x = leftX;
+  let y = marginOther + 4;
+  let inRightCol = false;
+
+  // Switch to right column and draw separator line
+  function switchToRightCol() {
+    if (inRightCol) return;
+    inRightCol = true;
+    x = rightX;
+    y = marginOther + 4;
+    const sepX = marginLeft + colWidth + colGap / 2;
+    doc.setDrawColor(220);
+    doc.setLineWidth(0.3);
+    doc.line(sepX, marginOther, sepX, pageHeight - marginOther);
+  }
+
+  // Ensure enough vertical space; switch column if needed (overflow is clipped if right col full)
+  function ensureSpace(needed) {
+    if (y + needed > maxY) {
+      switchToRightCol();
+    }
+  }
 
   doc.setTextColor(0, 0, 0);
 
   // Title
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  const titleLines = doc.splitTextToSize(recipeData.title || 'Rezept', contentWidth);
-  doc.text(titleLines, margin, y);
-  y += titleLines.length * 6.5 + 4;
+  const titleLines = doc.splitTextToSize(recipeData.title || 'Rezept', colWidth);
+  doc.text(titleLines, x, y);
+  y += titleLines.length * 6.5 + 2;
 
-  // Ingredients header
-  if (recipeData.ingredients && recipeData.ingredients.length > 0) {
-    y = checkPageBreak(doc, y, 12, margin);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    const portionSuffix = recipeData.servings ? ` für ${recipeData.servings} ${recipeData.servings === 1 ? 'Person' : 'Personen'}` : '';
-    doc.text(`Zutaten${portionSuffix}:`, margin, y);
+  // Orange divider
+  doc.setDrawColor(249, 115, 22);
+  doc.setLineWidth(0.8);
+  doc.line(x, y, x + colWidth, y);
+  doc.setLineWidth(0.3);
+  doc.setDrawColor(200);
+  y += 5;
+
+  // Meta (category, prepTime, servings)
+  const metaParts = [];
+  if (recipeData.category) metaParts.push(recipeData.category);
+  if (recipeData.prepTime) metaParts.push(`${recipeData.prepTime} Min.`);
+  if (recipeData.servings) metaParts.push(`${recipeData.servings} Port.`);
+  if (metaParts.length > 0) {
+    ensureSpace(6);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text(metaParts.join('  ·  '), x, y);
     y += 6;
+    doc.setTextColor(0);
+  }
+
+  // Ingredients
+  if (recipeData.ingredients && recipeData.ingredients.length > 0) {
+    ensureSpace(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    const portionSuffix = recipeData.servings ? ` für ${recipeData.servings} ${recipeData.servings === 1 ? 'Person' : 'Personen'}` : '';
+    doc.text(`Zutaten${portionSuffix}:`, x, y);
+    y += 8;
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     for (const ing of recipeData.ingredients) {
-      y = checkPageBreak(doc, y, 5.5, margin);
-      const ingLines = doc.splitTextToSize(ing, contentWidth - 4);
-      doc.text(ingLines, margin + 4, y);
+      const ingLines = doc.splitTextToSize(ing, colWidth - 4);
+      ensureSpace(ingLines.length * 5 + 1);
+      if (y > maxY) break; // both columns full – clip
+      doc.text(ingLines, x + 4, y);
       y += ingLines.length * 5 + 1;
     }
     y += 3;
   }
 
-  // Preparation header
+  // Preparation
   if (recipeData.recipeText) {
-    y = checkPageBreak(doc, y, 12, margin);
+    ensureSpace(14);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.text('Zubereitung:', margin, y);
-    y += 6;
+    doc.setFontSize(14);
+    doc.setTextColor(0);
+    doc.text('Zubereitung:', x, y);
+    y += 8;
 
-    // Split into numbered steps: split on newlines, filter blank lines
-    const rawSteps = recipeData.recipeText.split('\n').map(s => s.trim()).filter(Boolean);
-    // If steps already start with numbers (e.g. "1. ..."), keep as-is; otherwise add numbering
+    const rawSteps = splitIntoSteps(recipeData.recipeText);
     const alreadyNumbered = rawSteps.length > 1 && /^\d+[.)]\s/.test(rawSteps[0]);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    rawSteps.forEach((step, idx) => {
-      const cleanStep = alreadyNumbered ? step : step;
+    for (let idx = 0; idx < rawSteps.length; idx++) {
+      const step = rawSteps[idx];
       const label = alreadyNumbered ? '' : `${idx + 1}. `;
-      const fullText = label + cleanStep;
+      const fullText = label + step;
       const indent = alreadyNumbered ? 0 : doc.getTextWidth(`${idx + 1}. `) + 1;
-      const lines = doc.splitTextToSize(fullText, contentWidth);
-      // For wrapped lines, indent continuation
-      y = checkPageBreak(doc, y, 5.5 * lines.length, margin);
-      if (lines.length === 1) {
-        doc.text(lines[0], margin, y);
-        y += 5.5;
-      } else {
-        doc.text(lines[0], margin, y);
-        for (let i = 1; i < lines.length; i++) {
-          y += 5;
-          doc.text(lines[i], margin + indent, y);
-        }
-        y += 5.5;
+      const lines = doc.splitTextToSize(fullText, colWidth);
+      ensureSpace(5.5 * lines.length);
+      if (y > maxY) break; // both columns full – clip
+      doc.text(lines[0], x, y);
+      for (let i = 1; i < lines.length; i++) {
+        y += 5;
+        doc.text(lines[i], x + indent, y);
       }
-    });
+      y += 5.5;
+    }
     y += 2;
   }
 
   // Footer: tags/sides in small grey text
   const footerParts = [];
-  if (recipeData.category) footerParts.push(recipeData.category);
-  if (recipeData.prepTime) footerParts.push(`${recipeData.prepTime} Min.`);
   if (recipeData.tags && recipeData.tags.length > 0) footerParts.push(...recipeData.tags);
+  if (recipeData.sides && recipeData.sides.length > 0) footerParts.push(...recipeData.sides);
   if (footerParts.length > 0) {
-    y = checkPageBreak(doc, y, 8, margin);
-    doc.setFontSize(8);
-    doc.setTextColor(140);
-    doc.text(footerParts.join('  ·  '), margin, y);
+    ensureSpace(8);
+    if (y <= maxY) {
+      doc.setFontSize(8);
+      doc.setTextColor(140);
+      doc.text(footerParts.join('  ·  '), x, y);
+    }
   }
 
   return doc.output('blob');

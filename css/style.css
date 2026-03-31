@@ -80,7 +80,7 @@
 
   /* Layout */
   --nav-width: 260px;
-  --nav-height-mobile: 68px;
+  --nav-height-mobile: 76px;
   --content-max-width: 1100px;
 }
 
@@ -956,6 +956,21 @@ button.nav__profile {
 .recipe-text {
   line-height: 1.75;
   white-space: pre-wrap;
+}
+
+.recipe-steps {
+  margin: 0;
+  padding-left: var(--space-xl);
+  line-height: 1.75;
+}
+
+.recipe-steps li {
+  margin-bottom: var(--space-sm);
+}
+
+.recipe-text--empty {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .detail__pdf {
@@ -2169,13 +2184,16 @@ details[open] > .batch__log-heading::before,
 
   .nav__link {
     flex-direction: column;
-    font-size: 0.65rem;
-    gap: 3px;
-    padding: var(--space-xs) var(--space-sm);
+    font-size: 0.6rem;
+    gap: 2px;
+    padding: var(--space-xs) 4px;
     border-radius: var(--radius-sm);
     text-align: center;
     min-width: 0;
     flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .nav__link::before {
@@ -2200,8 +2218,9 @@ details[open] > .batch__log-heading::before,
   }
 
   .nav__icon {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
   }
 
   .nav__link:hover .nav__icon {
@@ -2253,6 +2272,12 @@ details[open] > .batch__log-heading::before,
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-md);
+    width: 100%;
+  }
+
+  .detail__actions {
+    flex-wrap: wrap;
+    width: 100%;
   }
 
   .detail__title {
@@ -2275,7 +2300,9 @@ details[open] > .batch__log-heading::before,
   }
 
   .stat__value {
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-lg);
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
 
 

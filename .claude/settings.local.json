@@ -65,7 +65,9 @@
       "Bash(\"/C/Program Files/PuTTY/plink.exe\" -batch root@82.165.153.177 \"systemctl restart myrecipes && sleep 2 && systemctl is-active myrecipes\" 2>&1)",
       "Read(//mnt/c/Users/dertl/**)",
       "Read(//mnt/c/Users/**)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(df:*)",
+      "Bash(cd:*)"
     ]
   }
 }

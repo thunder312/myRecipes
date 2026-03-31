@@ -21,6 +21,16 @@ export async function render(container, recipeId) {
   renderDetailView(container, recipe);
 }
 
+function splitIntoSteps(text) {
+  if (!text || !text.trim()) return [];
+  const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
+  if (lines.length > 1) return lines;
+  // Kein Zeilenumbruch: am ". " vor Großbuchstaben oder am "; " trennen
+  const parts = text.split(/;\s+|\.\s+(?=[A-ZÜÄÖA-Z])/);
+  const result = parts.map(s => s.trim()).filter(Boolean);
+  return result.length > 1 ? result : lines;
+}
+
 function esc(str) {
   if (!str) return '';
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -72,12 +82,13 @@ function renderDetailView(container, recipe) {
         </div>
       ` : ''}
 
-      ${recipe.recipeText ? `
-        <div class="detail__recipe-text">
-          <h3>Zubereitung</h3>
-          <p class="recipe-text">${esc(recipe.recipeText).replace(/\n/g, '<br>')}</p>
-        </div>
-      ` : ''}
+      <div class="detail__recipe-text">
+        <h3>Zubereitung</h3>
+        ${recipe.recipeText
+          ? `<ol class="recipe-steps">${splitIntoSteps(recipe.recipeText).map(s => `<li>${esc(s)}</li>`).join('')}</ol>`
+          : `<p class="recipe-text recipe-text--empty">Keine Zubereitungsschritte vorhanden. Rezept bearbeiten um sie hinzuzufügen.</p>`
+        }
+      </div>
 
       <div class="detail__pdf">
         <h3>Rezept-PDF</h3>

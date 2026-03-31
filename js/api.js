@@ -95,10 +95,11 @@ Jedes Rezept-Objekt hat folgende Felder:
   "description": "Kurze Beschreibung des Gerichts in 1-2 Sätzen",
   "servings": Portionen als Zahl oder null,
   "difficulty": "Eine von: leicht, mittel, schwer",
-  "recipeText": "Nur die Zubereitungsschritte als reiner Text – KEIN Markdown, KEIN HTML, KEIN Titel, KEINE Zutatenliste (die steht bereits in 'ingredients'). Schritte durch Zeilenumbrüche trennen, z.B. '1. Schritt\\n2. Schritt'"
+  "recipeText": "Die vollständigen Zubereitungsschritte als reiner Text. Suche EXPLIZIT nach einem Abschnitt mit der Überschrift 'Zubereitung' oder 'Zubereitung:' – der gesamte Inhalt dieses Abschnitts gehört vollständig hierher. KEIN Markdown, KEIN HTML, KEIN Titel, KEINE Zutatenliste (die steht bereits in 'ingredients'). Schritte durch Zeilenumbrüche trennen, z.B. '1. Schritt\\n2. Schritt'"
 }
 
 Wichtige Regeln:
+- Das Feld 'recipeText' darf NIEMALS leer sein – extrahiere alle Schritte vollständig aus dem Abschnitt 'Zubereitung'
 - Wenn das Rezept kein Fleisch enthält, füge "Freitag-tauglich" zu den Tags hinzu
 - Wenn die Zubereitungszeit unter 30 Minuten ist, füge "schnell" zu den Tags hinzu
 - Schätze die Zubereitungszeit wenn möglich, auch wenn sie nicht explizit angegeben ist
@@ -163,7 +164,7 @@ export async function analyzeRecipeImages(images, { multiHint = false } = {}) {
   }
   contentParts.push({
     type: 'text',
-    text: buildRecipeAnalysisPrompt({ multiHint }) + '\n\nAnalysiere die Rezepte in den Bildern. Die Bilder können handgeschriebenen Text enthalten – auch Bleistift-Handschrift oder sehr kursive Schrift. Lies jeden Text sorgfältig, vervollständige abgekürzte Wörter sinnvoll und beachte: Ein Bild kann mehrere Rezepte enthalten, die durch Überschriften oder Trennlinien voneinander abgegrenzt sind.'
+    text: buildRecipeAnalysisPrompt({ multiHint }) + '\n\nAnalysiere die Rezepte in den Bildern. Die Bilder können handgeschriebenen Text enthalten – auch Bleistift-Handschrift oder sehr kursive Schrift. Lies jeden Text sorgfältig, vervollständige abgekürzte Wörter sinnvoll und beachte: Ein Bild kann mehrere Rezepte enthalten, die durch Überschriften oder Trennlinien voneinander abgegrenzt sind. Suche EXPLIZIT nach dem Abschnitt "Zubereitung" im Bild und übertrage dessen Inhalt vollständig in das Feld recipeText.'
   });
 
   let response;
