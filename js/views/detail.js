@@ -21,6 +21,18 @@ export async function render(container, recipeId) {
   renderDetailView(container, recipe);
 }
 
+function openPdfInTab(url, filename) {
+  const title = filename.replace(/\.pdf$/i, '');
+  const win = window.open('', '_blank');
+  if (!win) return;
+  win.document.write(
+    `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>` +
+    `<style>*{margin:0;padding:0}html,body,embed{width:100%;height:100%;border:0;display:block}</style></head>` +
+    `<body><embed src="${url}" type="application/pdf"></body></html>`
+  );
+  win.document.close();
+}
+
 function splitIntoSteps(text) {
   if (!text || !text.trim()) return [];
   const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
@@ -182,7 +194,7 @@ function renderDetailView(container, recipe) {
     a.download = filename;
     a.click();
   });
-  $('#pdfOpen', container).addEventListener('click', () => window.open(getPdfUrl(), '_blank'));
+  $('#pdfOpen', container).addEventListener('click', () => openPdfInTab(getPdfUrl(), filename));
 
   $('#pdfA5Download', container).addEventListener('click', (e) => {
     e.preventDefault();
@@ -191,7 +203,7 @@ function renderDetailView(container, recipe) {
     a.download = filenameA5;
     a.click();
   });
-  $('#pdfA5Open', container).addEventListener('click', () => window.open(getPdfA5Url(), '_blank'));
+  $('#pdfA5Open', container).addEventListener('click', () => openPdfInTab(getPdfA5Url(), filenameA5));
 
   // "Heute gekocht"
   $('#btnCooked', container).addEventListener('click', async () => {
