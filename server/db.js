@@ -504,8 +504,14 @@ function deleteUser(id) {
     if (adminCount <= 1) throw new Error('Der letzte Admin kann nicht gelöscht werden.');
   }
   const d = getDB();
-  // Delete personal cookbook (FK CASCADE on ALTER TABLE columns is not reliable in SQLite)
-  d.prepare('DELETE FROM cookbooks WHERE userId = ?').run(id);
+  // Before deleting personal cookbook: ensure all its recipes remain in the default cookbook
+  const personalCookbook = d.prepare('SELECT id FROM cookbooks WHERE userId = ?').get(id);
+  if (personalCookbook) {
+    d.prepare(
+      'INSERT OR IGNORE INTO recipe_cookbooks (recipeId, cookbookId) SELECT recipeId, 1 FROM recipe_cookbooks WHERE cookbookId = ?'
+    ).run(personalCookbook.id);
+    d.prepare('DELETE FROM cookbooks WHERE id = ?').run(personalCookbook.id);
+  }
   d.prepare('DELETE FROM users WHERE id = ?').run(id);
 }
 
