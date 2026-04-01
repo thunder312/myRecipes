@@ -86,6 +86,22 @@ function initSchema() {
   `);
 }
 
+function createUserCookbook(userId, username) {
+  const now = new Date().toISOString();
+  const result = getDB().prepare(
+    `INSERT INTO cookbooks (name, description, coverTitle, coverSubtitle, createdAt, userId)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    username,
+    '',
+    `${username}s Rezepte`,
+    '',
+    now,
+    userId
+  );
+  return result.lastInsertRowid;
+}
+
 function migrateSchema() {
   const cols = db.pragma('table_info(recipes)').map(r => r.name);
   if (!cols.includes('sourceNote')) {
@@ -96,6 +112,12 @@ function migrateSchema() {
   const userCols = db.pragma('table_info(users)').map(r => r.name);
   if (!userCols.includes('passwordHash')) {
     db.exec('ALTER TABLE users ADD COLUMN passwordHash TEXT NOT NULL DEFAULT \'\'');
+  }
+
+  // Add userId to cookbooks (links a cookbook to its owner)
+  const cbCols = db.pragma('table_info(cookbooks)').map(r => r.name);
+  if (!cbCols.includes('userId')) {
+    db.exec('ALTER TABLE cookbooks ADD COLUMN userId INTEGER REFERENCES users(id) ON DELETE CASCADE');
   }
 
   // Ensure Standard cookbook exists
@@ -127,6 +149,15 @@ function migrateSchema() {
     if (existingHash) {
       getDB().prepare("DELETE FROM settings WHERE key = 'passwordHash'").run();
     }
+  }
+
+  // Create personal cookbooks for all users who don't have one yet
+  const usersWithoutCookbook = getDB().prepare(`
+    SELECT u.id, u.username FROM users u
+    WHERE NOT EXISTS (SELECT 1 FROM cookbooks WHERE userId = u.id)
+  `).all();
+  for (const user of usersWithoutCookbook) {
+    createUserCookbook(user.id, user.username);
   }
 }
 
@@ -192,7 +223,7 @@ function getRecipe(id) {
   return deserializeRecipe(row);
 }
 
-function addRecipe(recipe, extraCookbookIds = []) {
+function addRecipe(recipe, extraCookbookIds = [], userId = null) {
   const now = new Date().toISOString();
   const data = serializeRecipe({
     ...recipe,
@@ -216,8 +247,12 @@ function addRecipe(recipe, extraCookbookIds = []) {
   const result = stmt.run(...values);
   const newId = result.lastInsertRowid;
 
-  // Always assign to Standard cookbook (id=1) plus any extras
-  const cookbookIds = [1, ...extraCookbookIds.filter(id => id !== 1)];
+  // Always assign to Standard (id=1), user's personal cookbook, plus any extras
+  const cookbookIds = new Set([1, ...extraCookbookIds]);
+  if (userId) {
+    const userCookbook = d.prepare('SELECT id FROM cookbooks WHERE userId = ?').get(userId);
+    if (userCookbook) cookbookIds.add(userCookbook.id);
+  }
   const cbStmt = d.prepare('INSERT OR IGNORE INTO recipe_cookbooks (recipeId, cookbookId) VALUES (?, ?)');
   for (const cbId of cookbookIds) {
     cbStmt.run(newId, cbId);
@@ -442,7 +477,9 @@ function addUser(username, password, role = 'user') {
   const result = getDB().prepare(
     'INSERT INTO users (username, passwordHash, role, createdAt) VALUES (?, ?, ?, ?)'
   ).run(username, hashPassword(password), role, new Date().toISOString());
-  return result.lastInsertRowid;
+  const userId = result.lastInsertRowid;
+  createUserCookbook(userId, username);
+  return userId;
 }
 
 function updateUserPassword(id, newPassword) {

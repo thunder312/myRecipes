@@ -71,7 +71,9 @@ function requireAuth(req, res, next) {
     ? authHeader.slice(7)
     : null;
 
-  if (validateToken(token)) {
+  const data = validateTokenWithData(token);
+  if (data) {
+    req.user = data;
     return next();
   }
   res.status(401).json({ error: 'Nicht authentifiziert' });
@@ -84,6 +86,7 @@ function requireAdmin(req, res, next) {
   const data = validateTokenWithData(token);
   if (!data) return res.status(401).json({ error: 'Nicht authentifiziert' });
   if (data.role !== 'admin') return res.status(403).json({ error: 'Admin-Berechtigung erforderlich' });
+  req.user = data;
   next();
 }
 

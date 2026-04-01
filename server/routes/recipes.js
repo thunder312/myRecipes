@@ -27,7 +27,8 @@ router.post('/', (req, res) => {
   }
   const extraCookbookIds = Array.isArray(recipe._cookbookIds) ? recipe._cookbookIds : [];
   delete recipe._cookbookIds;
-  const id = addRecipe(recipe, extraCookbookIds);
+  const userId = req.user ? req.user.userId : null;
+  const id = addRecipe(recipe, extraCookbookIds, userId);
   res.status(201).json({ id: Number(id) });
 });
 
