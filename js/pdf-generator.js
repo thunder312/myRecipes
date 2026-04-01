@@ -107,7 +107,7 @@ function addRecipeToDoc(doc, recipeData) {
   doc.setFontSize(22);
   const titleLines = doc.splitTextToSize(recipeData.title || 'Rezept', contentWidth);
   doc.text(titleLines, margin, y);
-  y += titleLines.length * 9 + 4;
+  y += titleLines.length * 9 + 2;
 
   // Divider
   doc.setDrawColor(80);
@@ -115,7 +115,7 @@ function addRecipeToDoc(doc, recipeData) {
   doc.line(margin, y, pageWidth - margin, y);
   doc.setLineWidth(0.5);
   doc.setDrawColor(200);
-  y += 8;
+  y += 10;
 
   // Meta info row
   doc.setFont('helvetica', 'normal');
@@ -221,7 +221,7 @@ export function generateRecipePDF(recipeData) {
   doc.setFontSize(22);
   const titleLines = doc.splitTextToSize(recipeData.title || 'Rezept', contentWidth);
   doc.text(titleLines, margin, y);
-  y += titleLines.length * 9 + 4;
+  y += titleLines.length * 9 + 2;
 
   // Divider
   doc.setDrawColor(80);
@@ -229,7 +229,7 @@ export function generateRecipePDF(recipeData) {
   doc.line(margin, y, pageWidth - margin, y);
   doc.setLineWidth(0.5);
   doc.setDrawColor(200);
-  y += 8;
+  y += 10;
 
   // Meta info row
   doc.setFont('helvetica', 'normal');
@@ -379,7 +379,7 @@ export function generateRecipeA5PDF(recipeData) {
   doc.setFontSize(fs.title);
   const titleLines = doc.splitTextToSize(recipeData.title || 'Rezept', colWidth);
   doc.text(titleLines, x, y);
-  y += titleLines.length * 7 + 2;
+  y += titleLines.length * 7 + 1;
 
   // Divider (same style as A4, grayscale)
   doc.setDrawColor(80);
@@ -387,7 +387,7 @@ export function generateRecipeA5PDF(recipeData) {
   doc.line(x, y, x + colWidth, y);
   doc.setLineWidth(0.3);
   doc.setDrawColor(200);
-  y += 5;
+  y += 6;
 
   // Meta
   const metaParts = [];
