@@ -97,7 +97,12 @@ function renderDetailView(container, recipe) {
       <div class="detail__recipe-text">
         <h3>Zubereitung</h3>
         ${recipe.recipeText
-          ? `<ol class="recipe-steps">${splitIntoSteps(recipe.recipeText).map(s => `<li>${esc(s)}</li>`).join('')}</ol>`
+          ? (() => {
+              const steps = splitIntoSteps(recipe.recipeText);
+              const alreadyNumbered = steps.length > 1 && /^\d+[.)]\s/.test(steps[0]);
+              const items = steps.map(s => `<li>${esc(alreadyNumbered ? s.replace(/^\d+[.)]\s*/, '') : s)}</li>`).join('');
+              return `<ol class="recipe-steps">${items}</ol>`;
+            })()
           : `<p class="recipe-text recipe-text--empty">Keine Zubereitungsschritte vorhanden. Rezept bearbeiten um sie hinzuzufügen.</p>`
         }
       </div>
@@ -187,21 +192,24 @@ function renderDetailView(container, recipe) {
   const filename = `${recipe.title || 'rezept'}.pdf`;
   const filenameA5 = `${recipe.title || 'rezept'}-A5.pdf`;
 
+  function triggerDownload(url, name) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
   $('#pdfDownload', container).addEventListener('click', (e) => {
     e.preventDefault();
-    const a = document.createElement('a');
-    a.href = getPdfUrl();
-    a.download = filename;
-    a.click();
+    triggerDownload(getPdfUrl(), filename);
   });
   $('#pdfOpen', container).addEventListener('click', () => openPdfInTab(getPdfUrl(), filename));
 
   $('#pdfA5Download', container).addEventListener('click', (e) => {
     e.preventDefault();
-    const a = document.createElement('a');
-    a.href = getPdfA5Url();
-    a.download = filenameA5;
-    a.click();
+    triggerDownload(getPdfA5Url(), filenameA5);
   });
   $('#pdfA5Open', container).addEventListener('click', () => openPdfInTab(getPdfA5Url(), filenameA5));
 
