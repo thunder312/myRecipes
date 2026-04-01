@@ -542,6 +542,8 @@ button.nav__profile {
   font-family: var(--font);
   padding: 0.4rem 0.85rem;
   font-size: var(--font-size-sm);
+  display: inline-flex;
+  align-items: center;
 }
 
 .chip--clickable:hover {
@@ -1211,6 +1213,30 @@ button.nav__profile {
 .suggest__filter-check input[type="checkbox"] {
   accent-color: var(--color-primary);
   cursor: pointer;
+}
+
+.suggest__filter-save {
+  margin-left: auto;
+  color: var(--color-primary);
+}
+
+.chip__delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.4rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.chip__delete:hover {
+  background: var(--color-danger-light, #fee2e2);
+  color: var(--color-danger);
 }
 
 .suggest__chips {

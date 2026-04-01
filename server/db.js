@@ -83,6 +83,12 @@ function initSchema() {
       role TEXT NOT NULL DEFAULT 'user',
       createdAt TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS saved_queries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      question TEXT NOT NULL,
+      createdAt TEXT NOT NULL
+    );
   `);
 }
 
@@ -152,6 +158,22 @@ function migrateSchema() {
     if (existingHash) {
       getDB().prepare("DELETE FROM settings WHERE key = 'passwordHash'").run();
     }
+  }
+
+  // Seed default saved queries if none exist
+  const queryCount = getDB().prepare('SELECT COUNT(*) as count FROM saved_queries').get().count;
+  if (queryCount === 0) {
+    const now = new Date().toISOString();
+    const defaults = [
+      'Was kann ich schnell kochen?',
+      'Heute ist Freitag, bitte kein Fleisch.',
+      'Etwas Leichtes, vielleicht einen Salat?',
+      'Was passt zu Knödeln?',
+      'Ich möchte etwas Neues ausprobieren.',
+      'Was habe ich lange nicht mehr gekocht?'
+    ];
+    const stmt = getDB().prepare('INSERT INTO saved_queries (question, createdAt) VALUES (?, ?)');
+    for (const q of defaults) stmt.run(q, now);
   }
 
   // Create personal cookbooks for all users who don't have one yet
@@ -536,6 +558,23 @@ function deleteUser(id) {
   d.prepare('DELETE FROM users WHERE id = ?').run(id);
 }
 
+// --- Saved Queries ---
+
+function getAllSavedQueries() {
+  return getDB().prepare('SELECT * FROM saved_queries ORDER BY createdAt ASC').all();
+}
+
+function addSavedQuery(question) {
+  const result = getDB().prepare(
+    'INSERT INTO saved_queries (question, createdAt) VALUES (?, ?)'
+  ).run(question.trim(), new Date().toISOString());
+  return result.lastInsertRowid;
+}
+
+function deleteSavedQuery(id) {
+  getDB().prepare('DELETE FROM saved_queries WHERE id = ?').run(id);
+}
+
 module.exports = {
   getDB,
   getAllRecipes,
@@ -567,4 +606,7 @@ module.exports = {
   updateUserRole,
   updateUsername,
   deleteUser,
+  getAllSavedQueries,
+  addSavedQuery,
+  deleteSavedQuery,
 };

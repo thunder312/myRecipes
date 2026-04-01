@@ -10,6 +10,7 @@ const backupRouter = require('./routes/backup');
 const cookbooksRouter = require('./routes/cookbooks');
 const usersRouter = require('./routes/users');
 const fetchUrlRouter = require('./routes/fetch-url');
+const suggestQueriesRouter = require('./routes/suggest-queries');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -107,6 +108,11 @@ app.use('/api/cookbooks', (req, res, next) => {
 }, cookbooksRouter);
 app.use('/api/users', requireAdmin, usersRouter);
 app.use('/api/fetch-url', fetchUrlRouter);
+// Suggest queries: GET public, write requires auth
+app.use('/api/suggest-queries', (req, res, next) => {
+  if (req.method === 'GET') return next();
+  requireAuth(req, res, next);
+}, suggestQueriesRouter);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

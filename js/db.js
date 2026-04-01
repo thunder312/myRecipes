@@ -233,6 +233,25 @@ export async function setSetting(key, value) {
   });
 }
 
+// --- Saved Queries ---
+
+export async function getSavedQueries() {
+  const res = await apiFetch('/suggest-queries');
+  return res.json();
+}
+
+export async function addSavedQuery(question) {
+  const res = await apiFetch('/suggest-queries', {
+    method: 'POST',
+    body: JSON.stringify({ question }),
+  });
+  return res.json();
+}
+
+export async function deleteSavedQuery(id) {
+  await apiFetch(`/suggest-queries/${id}`, { method: 'DELETE' });
+}
+
 // --- Backup ---
 
 export async function exportAll() {

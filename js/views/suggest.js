@@ -1,18 +1,12 @@
-import { getAllRecipes } from '../db.js';
+import { getAllRecipes, getSavedQueries, addSavedQuery, deleteSavedQuery } from '../db.js';
 import { getSetting } from '../db.js';
 import { suggestRecipes } from '../api.js';
 import { $, createElement, showToast, categoryChipClass } from '../utils/helpers.js';
-
-const QUICK_FILTERS = [
-  'Was kann ich schnell kochen?',
-  'Heute ist Freitag, bitte kein Fleisch.',
-  'Etwas Leichtes, vielleicht einen Salat?',
-  'Was passt zu Knödeln?',
-  'Ich möchte etwas Neues ausprobieren.',
-  'Was habe ich lange nicht mehr gekocht?'
-];
+import { isAuthenticated } from '../utils/auth.js';
 
 export async function render(container) {
+  const loggedIn = isAuthenticated();
+
   container.innerHTML = `
     <div class="suggest">
       <h1>Was koche ich heute?</h1>
@@ -23,13 +17,12 @@ export async function render(container) {
         <div class="suggest__filters">
           <label class="suggest__filter-check"><input type="checkbox" id="filterHauptgericht" checked /> Nur Hauptgerichte</label>
           <label class="suggest__filter-check"><input type="checkbox" id="filterSalat" checked /> Salate einschließen</label>
+          ${loggedIn ? '<label class="suggest__filter-check suggest__filter-save"><input type="checkbox" id="saveQuery" /> Frage speichern</label>' : ''}
         </div>
         <button class="btn btn--primary" id="btnAsk">Rezepte vorschlagen</button>
       </div>
 
-      <div class="suggest__chips">
-        ${QUICK_FILTERS.map(q => `<button class="chip chip--clickable" data-question="${q}">${q}</button>`).join('')}
-      </div>
+      <div class="suggest__chips" id="savedChips"></div>
 
       <div class="suggest__loading hidden" id="loading">
         <div class="spinner"></div>
@@ -44,14 +37,44 @@ export async function render(container) {
   const btnAsk = $('#btnAsk', container);
   const loading = $('#loading', container);
   const results = $('#results', container);
+  const savedChips = $('#savedChips', container);
 
-  // Quick filter chips
-  container.querySelectorAll('.chip--clickable').forEach(chip => {
-    chip.addEventListener('click', () => {
-      questionInput.value = chip.dataset.question;
-      performSearch();
+  async function renderChips() {
+    savedChips.innerHTML = '';
+    let queries = [];
+    try {
+      queries = await getSavedQueries();
+    } catch { /* ignore */ }
+
+    queries.forEach(q => {
+      const chip = createElement('button', {
+        className: 'chip chip--clickable',
+        textContent: q.question,
+      });
+      chip.addEventListener('click', () => {
+        questionInput.value = q.question;
+        performSearch();
+      });
+
+      if (loggedIn) {
+        const del = createElement('span', {
+          className: 'chip__delete',
+          title: 'Frage entfernen',
+          innerHTML: '&times;',
+        });
+        del.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await deleteSavedQuery(q.id);
+          renderChips();
+        });
+        chip.appendChild(del);
+      }
+
+      savedChips.appendChild(chip);
     });
-  });
+  }
+
+  await renderChips();
 
   btnAsk.addEventListener('click', performSearch);
   questionInput.addEventListener('keydown', (e) => {
@@ -101,6 +124,15 @@ export async function render(container) {
 
     try {
       const suggestions = await suggestRecipes(question, recipes);
+
+      // Save query if checkbox is checked
+      const saveCheckbox = $('#saveQuery', container);
+      if (saveCheckbox && saveCheckbox.checked) {
+        await addSavedQuery(question);
+        saveCheckbox.checked = false;
+        await renderChips();
+      }
+
       renderResults(suggestions, allRecipes);
     } catch (err) {
       showToast(`Fehler: ${err.message}`, 'error');
