@@ -469,16 +469,18 @@ async function renderImportForm(container) {
     if (!currentData) return;
 
     const form = $('#previewForm', container);
+    const formData = readRecipeForm(form);
     const recipe = {
-      ...readRecipeForm(form),
+      ...formData,
       sourceType: currentData.sourceType,
       sourceRef: currentData.sourceRef,
-      notes: currentData.importNotes
-        ? [{ date: new Date().toISOString(), text: currentData.importNotes }]
+      notes: formData.importNotes
+        ? [{ date: new Date().toISOString(), text: formData.importNotes }]
         : [],
       cookedDates: [],
       cookedCount: 0
     };
+    delete recipe.importNotes;
 
     recipe.thumbnailBlob = null;
     const extraCookbookIds = getSelectedImportCookbookIds(container);
