@@ -86,28 +86,33 @@ async function renderCookbooks(container) {
     const list = $('#cookbookList', container);
     list.innerHTML = cookbooks.map(cb => `
       <div class="cookbook-card" data-id="${cb.id}">
-        <div class="cookbook-card__icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <div class="cookbook-card__cover">
+          <svg class="cookbook-card__book-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          <div class="cookbook-card__name">${esc(cb.name)}</div>
+          <div class="cookbook-card__count">${cb.recipeCount ?? 0} Rezept${(cb.recipeCount ?? 0) !== 1 ? 'e' : ''}</div>
         </div>
         <div class="cookbook-card__body">
-          <div class="cookbook-card__name">${esc(cb.name)}</div>
-          ${cb.description ? `<div class="cookbook-card__desc">${esc(cb.description)}</div>` : ''}
-        </div>
-        <div class="cookbook-card__actions">
-          <button class="btn btn--ghost btn--sm" data-action="assign" data-id="${cb.id}" title="Rezepte zuordnen">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-            Rezepte zuordnen
-          </button>
-          <button class="btn btn--ghost btn--sm" data-action="export" data-id="${cb.id}" title="Als PDF exportieren">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            PDF
-          </button>
-          <button class="btn btn--ghost btn--sm" data-action="edit" data-id="${cb.id}" title="Bearbeiten">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
-          ${cb.id !== 1 ? `<button class="btn btn--ghost btn--sm btn--danger-text" data-action="delete" data-id="${cb.id}" title="Löschen">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
-          </button>` : ''}
+          ${cb.description ? `<p class="cookbook-card__desc">${esc(cb.description)}</p>` : ''}
+          <div class="cookbook-card__actions">
+            <div class="cookbook-card__actions-primary">
+              <button class="btn btn--ghost btn--sm" data-action="assign" data-id="${cb.id}" title="Rezepte zuordnen">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                Zuordnen
+              </button>
+              <button class="btn btn--ghost btn--sm" data-action="export" data-id="${cb.id}" title="Als PDF exportieren">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                PDF
+              </button>
+            </div>
+            <div class="cookbook-card__actions-secondary">
+              <button class="btn btn--ghost btn--sm" data-action="edit" data-id="${cb.id}" title="Bearbeiten">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              ${cb.id !== 1 ? `<button class="btn btn--ghost btn--sm btn--danger-text" data-action="delete" data-id="${cb.id}" title="Löschen">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+              </button>` : ''}
+            </div>
+          </div>
         </div>
       </div>
     `).join('');

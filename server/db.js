@@ -283,7 +283,13 @@ function deleteRecipe(id) {
 // --- Cookbooks ---
 
 function getAllCookbooks() {
-  return getDB().prepare('SELECT * FROM cookbooks ORDER BY id ASC').all();
+  return getDB().prepare(`
+    SELECT c.*, COUNT(rc.recipeId) AS recipeCount
+    FROM cookbooks c
+    LEFT JOIN recipe_cookbooks rc ON rc.cookbookId = c.id
+    GROUP BY c.id
+    ORDER BY c.id ASC
+  `).all();
 }
 
 function getCookbook(id) {
