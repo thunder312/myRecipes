@@ -503,7 +503,10 @@ function deleteUser(id) {
     const adminCount = getDB().prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'").get().count;
     if (adminCount <= 1) throw new Error('Der letzte Admin kann nicht gelöscht werden.');
   }
-  getDB().prepare('DELETE FROM users WHERE id = ?').run(id);
+  const d = getDB();
+  // Delete personal cookbook (FK CASCADE on ALTER TABLE columns is not reliable in SQLite)
+  d.prepare('DELETE FROM cookbooks WHERE userId = ?').run(id);
+  d.prepare('DELETE FROM users WHERE id = ?').run(id);
 }
 
 module.exports = {
