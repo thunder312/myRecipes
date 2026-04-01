@@ -9,86 +9,255 @@ function splitIntoSteps(text) {
   return result.length > 1 ? result : lines;
 }
 
+// Canonical display order for categories
+const CATEGORY_ORDER = [
+  'Vorspeise', 'Suppe', 'Salat', 'Hauptspeise', 'Beilage',
+  'Fingerfood', 'Snack', 'Nachspeise', 'Kuchen', 'Brot/Gebäck',
+  'Soße', 'Getränk', 'Gewürzmischungen', 'Sauerkonserven', 'Wurstrezept',
+];
+
+function groupByCategory(recipes) {
+  const map = new Map();
+  for (const r of recipes) {
+    const cat = r.category || 'Sonstiges';
+    if (!map.has(cat)) map.set(cat, []);
+    map.get(cat).push(r);
+  }
+  const sorted = new Map();
+  for (const cat of CATEGORY_ORDER) {
+    if (map.has(cat)) sorted.set(cat, map.get(cat));
+  }
+  for (const [cat, rs] of map) {
+    if (!sorted.has(cat)) sorted.set(cat, rs);
+  }
+  return sorted;
+}
+
+// Estimate how many pages the TOC will need
+function estimateTocPages(groups, pageHeight, margin) {
+  const headerH = 22; // "Inhaltsverzeichnis" heading block
+  const catH = 11;    // per category row
+  const recH = 7;     // per recipe row
+  const gapH = 4;     // gap after each category block
+  const avail = pageHeight - 2 * margin;
+  let used = headerH;
+  let pages = 1;
+  for (const [, rs] of groups) {
+    const block = catH + rs.length * recH + gapH;
+    if (used + block > avail) { pages++; used = block; }
+    else used += block;
+  }
+  return pages;
+}
+
+function addCookbookCover(doc, cookbook, recipeCount, pageWidth, pageHeight, margin) {
+  const contentWidth = pageWidth - 2 * margin;
+
+  // Light top bar with app branding
+  doc.setFillColor(238, 238, 238);
+  doc.rect(0, 0, pageWidth, 13, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(90);
+  doc.text('myRecipes', pageWidth - margin, 8.5, { align: 'right' });
+  // Simple book icon (two small rectangles) next to app name
+  const bx = pageWidth - margin - doc.getTextWidth('myRecipes') - 7;
+  const by = 3.5;
+  doc.setDrawColor(110);
+  doc.setLineWidth(0.5);
+  doc.rect(bx, by, 4.5, 5.5);
+  doc.rect(bx + 5, by, 4.5, 5.5);
+  doc.line(bx + 4.5, by, bx + 5, by + 5.5);
+
+  // Title
+  doc.setTextColor(20);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(30);
+  const title = cookbook.coverTitle || cookbook.name || 'Kochbuch';
+  const titleLines = doc.splitTextToSize(title, contentWidth);
+  const titleY = pageHeight * 0.40;
+  doc.text(titleLines, pageWidth / 2, titleY, { align: 'center' });
+
+  let y = titleY + titleLines.length * 13;
+
+  // Thin decorative line
+  doc.setDrawColor(180);
+  doc.setLineWidth(0.6);
+  doc.line(margin + 20, y + 5, pageWidth - margin - 20, y + 5);
+  y += 14;
+
+  // Subtitle
+  if (cookbook.coverSubtitle) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(16);
+    doc.setTextColor(70);
+    doc.text(cookbook.coverSubtitle, pageWidth / 2, y, { align: 'center' });
+    y += 12;
+  }
+
+  // Description
+  if (cookbook.description) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(12);
+    doc.setTextColor(100);
+    const descLines = doc.splitTextToSize(cookbook.description, contentWidth - 20);
+    doc.text(descLines, pageWidth / 2, y + 4, { align: 'center' });
+  }
+
+  // Recipe count
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(130);
+  doc.text(
+    `${recipeCount} Rezept${recipeCount !== 1 ? 'e' : ''}`,
+    pageWidth / 2,
+    pageHeight - 22,
+    { align: 'center' }
+  );
+
+  // Light bottom bar
+  doc.setFillColor(238, 238, 238);
+  doc.rect(0, pageHeight - 13, pageWidth, 13, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100);
+  doc.text('erstellt mit myRecipes', pageWidth / 2, pageHeight - 4.5, { align: 'center' });
+}
+
+function addChapterPage(doc, category, pageWidth, pageHeight, margin) {
+  // Light band in the middle third of the page
+  doc.setFillColor(245, 245, 245);
+  doc.rect(0, pageHeight * 0.37, pageWidth, pageHeight * 0.26, 'F');
+  doc.setDrawColor(180);
+  doc.setLineWidth(0.7);
+  doc.line(margin, pageHeight * 0.37, pageWidth - margin, pageHeight * 0.37);
+  doc.line(margin, pageHeight * 0.63, pageWidth - margin, pageHeight * 0.63);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(34);
+  doc.setTextColor(25);
+  doc.text(category, pageWidth / 2, pageHeight * 0.50 + 6, { align: 'center' });
+}
+
+function renderToc(doc, tocData, startPage, tocPageCount, pageWidth, pageHeight, margin, contentWidth) {
+  let curPage = startPage;
+  const lastPage = startPage + tocPageCount - 1;
+
+  doc.setPage(curPage);
+
+  // Heading
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.text('Inhaltsverzeichnis', margin, margin + 8);
+  doc.setDrawColor(190);
+  doc.setLineWidth(0.5);
+  doc.line(margin, margin + 12, pageWidth - margin, margin + 12);
+
+  let y = margin + 22;
+
+  function advance(needed) {
+    if (y + needed > pageHeight - margin) {
+      if (curPage >= lastPage) return false;
+      curPage++;
+      doc.setPage(curPage);
+      y = margin + 8;
+    }
+    return true;
+  }
+
+  for (const { category, page, recipes } of tocData) {
+    if (!advance(11)) break;
+
+    // Category header row
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(30);
+    doc.text(category, margin, y);
+    doc.setTextColor(100);
+    doc.text(String(page), pageWidth - margin, y, { align: 'right' });
+    y += 7;
+
+    // Recipe rows (indented)
+    for (const { title, page: rp } of recipes) {
+      if (!advance(7)) break;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+
+      const pageStr = String(rp);
+      const pageStrW = doc.getTextWidth(pageStr);
+      const maxW = contentWidth - pageStrW - 8;
+      let t = '  ' + (title || '');
+      if (doc.getTextWidth(t) > maxW) {
+        while (t.length > 4 && doc.getTextWidth(t + '\u2026') > maxW) t = t.slice(0, -1);
+        t += '\u2026';
+      }
+
+      doc.setTextColor(60);
+      doc.text(t, margin, y);
+      doc.setTextColor(120);
+      doc.text(pageStr, pageWidth - margin, y, { align: 'right' });
+      y += 7;
+    }
+
+    y += 4; // gap between categories
+  }
+}
+
 export function generateCookbookPDF(cookbook, recipes) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 20;
+  const contentWidth = pageWidth - 2 * margin;
 
-  // --- Cover page ---
-  doc.setFillColor(40); // dark grey
-  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  // Page 1: cover (no page number)
+  addCookbookCover(doc, cookbook, recipes.length, pageWidth, pageHeight, margin);
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(36);
-  const coverTitle = cookbook.coverTitle || cookbook.name || 'Kochbuch';
-  const titleLines = doc.splitTextToSize(coverTitle, pageWidth - 2 * margin);
-  const titleY = pageHeight / 2 - titleLines.length * 18 / 2;
-  doc.text(titleLines, pageWidth / 2, titleY, { align: 'center' });
-
-  if (cookbook.coverSubtitle) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(18);
-    doc.text(cookbook.coverSubtitle, pageWidth / 2, titleY + titleLines.length * 18 + 8, { align: 'center' });
+  if (recipes.length === 0) {
+    return doc.output('blob');
   }
 
-  // Recipe count
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(12);
-  doc.setTextColor(180);
-  doc.text(`${recipes.length} Rezept${recipes.length !== 1 ? 'e' : ''}`, pageWidth / 2, pageHeight - 30, { align: 'center' });
+  const groups = groupByCategory(recipes);
+  const tocPageCount = estimateTocPages(groups, pageHeight, margin);
 
-  // Description
-  if (cookbook.description) {
-    doc.setFontSize(13);
-    doc.setTextColor(255, 255, 255);
-    const descLines = doc.splitTextToSize(cookbook.description, pageWidth - 2 * margin);
-    doc.text(descLines, pageWidth / 2, pageHeight - 50, { align: 'center' });
-  }
-
-  // --- Table of contents ---
-  if (recipes.length > 0) {
+  // Reserve pages 2..1+tocPageCount for the TOC (filled in later)
+  for (let i = 0; i < tocPageCount; i++) {
     doc.addPage();
-    doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.text('Inhaltsverzeichnis', margin, margin + 5);
-
-    doc.setDrawColor(200);
-    doc.setLineWidth(0.5);
-    doc.line(margin, margin + 10, pageWidth - margin, margin + 10);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-    let tocY = margin + 20;
-
-    recipes.forEach((r, idx) => {
-      if (tocY > pageHeight - margin) {
-        doc.addPage();
-        tocY = margin + 10;
-      }
-      const num = String(idx + 1).padStart(2, ' ');
-      const title = r.title || 'Unbekanntes Rezept';
-      const meta = [r.category, r.prepTime ? `${r.prepTime} Min.` : null].filter(Boolean).join(' · ');
-      doc.setTextColor(80);
-      doc.text(`${num}.`, margin, tocY);
-      doc.setTextColor(0);
-      doc.text(title, margin + 10, tocY);
-      if (meta) {
-        doc.setTextColor(140);
-        doc.setFontSize(9);
-        doc.text(meta, margin + 10, tocY + 4);
-        doc.setFontSize(11);
-      }
-      tocY += meta ? 10 : 7;
-    });
   }
 
-  // --- Recipe pages ---
-  for (const recipe of recipes) {
+  // Chapter separator pages + recipe pages
+  const tocData = [];
+  for (const [category, catRecipes] of groups) {
+    // Chapter separator
     doc.addPage();
-    addRecipeToDoc(doc, recipe);
+    const chapterDisplayPage = doc.internal.getNumberOfPages() - 1;
+    addChapterPage(doc, category, pageWidth, pageHeight, margin);
+
+    const entry = { category, page: chapterDisplayPage, recipes: [] };
+
+    for (const recipe of catRecipes) {
+      doc.addPage();
+      const recipeDisplayPage = doc.internal.getNumberOfPages() - 1;
+      entry.recipes.push({ title: recipe.title || 'Unbekanntes Rezept', page: recipeDisplayPage });
+      addRecipeToDoc(doc, recipe);
+      // addRecipeToDoc may add overflow pages via checkPageBreak — those get numbers below
+    }
+
+    tocData.push(entry);
+  }
+
+  // Fill in TOC content on the reserved pages
+  renderToc(doc, tocData, 2, tocPageCount, pageWidth, pageHeight, margin, contentWidth);
+
+  // Page numbers on all pages except the cover (page 1)
+  const total = doc.internal.getNumberOfPages();
+  for (let p = 2; p <= total; p++) {
+    doc.setPage(p);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(160);
+    doc.text(String(p - 1), pageWidth / 2, pageHeight - 7, { align: 'center' });
   }
 
   return doc.output('blob');
