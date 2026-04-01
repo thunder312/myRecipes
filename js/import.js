@@ -6,16 +6,14 @@ const MAX_PDF_IMAGE_PAGES = 20;
 export async function processURL(url, { multiHint = false } = {}) {
   let html;
   try {
-    const resp = await fetch(url);
-    html = await resp.text();
-  } catch {
-    try {
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-      const resp = await fetch(proxyUrl);
-      html = await resp.text();
-    } catch {
-      throw new Error('URL konnte nicht geladen werden. Bitte kopiere den Rezepttext und füge ihn als Text ein.');
+    const resp = await fetch(`/api/fetch-url?url=${encodeURIComponent(url)}`);
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${resp.status}`);
     }
+    html = await resp.text();
+  } catch (err) {
+    throw new Error(`URL konnte nicht geladen werden: ${err.message}`);
   }
 
   const doc = new DOMParser().parseFromString(html, 'text/html');

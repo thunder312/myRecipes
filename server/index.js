@@ -9,6 +9,7 @@ const authRouter = require('./routes/auth');
 const backupRouter = require('./routes/backup');
 const cookbooksRouter = require('./routes/cookbooks');
 const usersRouter = require('./routes/users');
+const fetchUrlRouter = require('./routes/fetch-url');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -105,6 +106,7 @@ app.use('/api/cookbooks', (req, res, next) => {
   requireAuth(req, res, next);
 }, cookbooksRouter);
 app.use('/api/users', requireAdmin, usersRouter);
+app.use('/api/fetch-url', fetchUrlRouter);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
