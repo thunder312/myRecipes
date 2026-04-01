@@ -95,7 +95,8 @@ Jedes Rezept-Objekt hat folgende Felder:
   "description": "Kurze Beschreibung des Gerichts in 1-2 Sätzen",
   "servings": Portionen als Zahl oder null,
   "difficulty": "Eine von: leicht, mittel, schwer",
-  "recipeText": "Die vollständigen Zubereitungsschritte als reiner Text. Suche EXPLIZIT nach Abschnitten mit Überschriften wie 'Zubereitung', 'Anleitung', 'Instructions' o.ä. – der gesamte Inhalt dieser Abschnitte gehört vollständig hierher. KEIN Markdown, KEIN HTML, KEIN Titel, KEINE Zutatenliste (die steht bereits in 'ingredients'). Schritte durch Zeilenumbrüche trennen, z.B. '1. Schritt\\n2. Schritt'. Falls ein Abschnitt 'Notizen', 'Tipps', 'Hinweise' o.ä. vorhanden ist, hänge ihn am Ende an: '\\n\\nNotizen:\\n<Inhalt>'"
+  "recipeText": "Die vollständigen Zubereitungsschritte als reiner Text. Suche EXPLIZIT nach Abschnitten mit Überschriften wie 'Zubereitung', 'Anleitung', 'Instructions' o.ä. – der gesamte Inhalt dieser Abschnitte gehört vollständig hierher. KEIN Markdown, KEIN HTML, KEIN Titel, KEINE Zutatenliste (die steht bereits in 'ingredients'). Schritte durch Zeilenumbrüche trennen, z.B. '1. Schritt\\n2. Schritt'",
+  "importNotes": "Inhalt aus Abschnitten 'Notizen', 'Tipps', 'Hinweise', 'Notes' o.ä. als reiner Text. null wenn kein solcher Abschnitt vorhanden"
 }
 
 Wichtige Regeln:

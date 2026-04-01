@@ -473,7 +473,9 @@ async function renderImportForm(container) {
       ...readRecipeForm(form),
       sourceType: currentData.sourceType,
       sourceRef: currentData.sourceRef,
-      notes: [],
+      notes: currentData.importNotes
+        ? [{ date: new Date().toISOString(), text: currentData.importNotes }]
+        : [],
       cookedDates: [],
       cookedCount: 0
     };
@@ -635,7 +637,9 @@ async function renderImportForm(container) {
           sourceType: r.sourceType || 'text',
           sourceRef: r.sourceRef || '',
           sourceNote: r.sourceNote || '',
-          notes: [],
+          notes: r.importNotes
+            ? [{ date: new Date().toISOString(), text: r.importNotes }]
+            : [],
           cookedDates: [],
           cookedCount: 0
         };
@@ -814,7 +818,9 @@ async function renderImportForm(container) {
             sourceType: analysisResult.sourceType || 'file',
             sourceRef: analysisResult.sourceRef || filePath,
             sourceNote: batchJob.sourceNote || '',
-            notes: [],
+            notes: analysisResult.importNotes
+              ? [{ date: new Date().toISOString(), text: analysisResult.importNotes }]
+              : [],
             cookedDates: [],
             cookedCount: 0
           };

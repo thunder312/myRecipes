@@ -61,11 +61,37 @@ function extractJsonLdAsText(doc) {
         for (const candidate of candidates) {
           const types = Array.isArray(candidate['@type']) ? candidate['@type'] : [candidate['@type']];
           if (types.includes('Recipe')) {
-            return formatLdJsonAsText(candidate);
+            let text = formatLdJsonAsText(candidate);
+            // Notizen stehen oft nur im HTML (z.B. WPRM-Plugin), nicht im JSON-LD
+            const htmlNotes = extractHtmlNotes(doc);
+            if (htmlNotes) text += `\n\nNotizen:\n${htmlNotes}`;
+            return text;
           }
         }
       }
     } catch { /* ungültiges JSON-LD */ }
+  }
+  return null;
+}
+
+/**
+ * Extrahiert Notizen/Tipps aus bekannten Rezept-Plugin-HTML-Strukturen.
+ * Unterstützt: WP Recipe Maker (wprm), Tasty Recipes, Mediavine.
+ */
+function extractHtmlNotes(doc) {
+  const selectors = [
+    '.wprm-recipe-notes',
+    '.tasty-recipes-notes',
+    '.mv-recipe-notes',
+    '.recipe-card-notes',
+  ];
+  for (const sel of selectors) {
+    const el = doc.querySelector(sel);
+    if (el) {
+      const text = el.innerText || el.textContent || '';
+      const cleaned = text.trim().replace(/\s{3,}/g, '\n').trim();
+      if (cleaned.length > 5) return cleaned;
+    }
   }
   return null;
 }
