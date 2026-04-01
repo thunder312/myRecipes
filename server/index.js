@@ -108,9 +108,10 @@ app.use('/api/cookbooks', (req, res, next) => {
 }, cookbooksRouter);
 app.use('/api/users', requireAdmin, usersRouter);
 app.use('/api/fetch-url', fetchUrlRouter);
-// Suggest queries: GET public, write requires auth
+// Suggest queries: GET public, POST requires auth, DELETE requires admin
 app.use('/api/suggest-queries', (req, res, next) => {
   if (req.method === 'GET') return next();
+  if (req.method === 'DELETE') return requireAdmin(req, res, next);
   requireAuth(req, res, next);
 }, suggestQueriesRouter);
 

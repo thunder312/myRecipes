@@ -2,10 +2,11 @@ import { getAllRecipes, getSavedQueries, addSavedQuery, deleteSavedQuery } from 
 import { getSetting } from '../db.js';
 import { suggestRecipes } from '../api.js';
 import { $, createElement, showToast, categoryChipClass } from '../utils/helpers.js';
-import { isAuthenticated } from '../utils/auth.js';
+import { isAuthenticated, isAdmin } from '../utils/auth.js';
 
 export async function render(container) {
   const loggedIn = isAuthenticated();
+  const admin = isAdmin();
 
   container.innerHTML = `
     <div class="suggest">
@@ -56,8 +57,8 @@ export async function render(container) {
         performSearch();
       });
 
-      if (loggedIn) {
-        const del = createElement('span', {
+      if (admin) {
+        const del = createElement('button', {
           className: 'chip__delete',
           title: 'Frage entfernen',
           innerHTML: '&times;',
