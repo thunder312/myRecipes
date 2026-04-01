@@ -19,14 +19,119 @@ export async function processURL(url, { multiHint = false } = {}) {
   }
 
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const text = doc.body.innerText || doc.body.textContent || '';
 
+  // Try JSON-LD structured data first (schema.org/Recipe – used by most modern recipe sites)
+  if (!multiHint) {
+    const jsonLdText = extractJsonLdAsText(doc);
+    if (jsonLdText) {
+      const results = await analyzeRecipeText(jsonLdText, { multiHint: false });
+      return applyFilter(tagResults(results, 'url', url));
+    }
+  }
+
+  // Fallback: plain text from full page
+  const text = doc.body.innerText || doc.body.textContent || '';
   if (text.trim().length < 50) {
     throw new Error('Zu wenig Text auf der Seite gefunden. Bitte kopiere den Rezepttext manuell.');
   }
 
   const results = await analyzeRecipeText(text, { multiHint });
   return applyFilter(tagResults(results, 'url', url));
+}
+
+/** Parst eine ISO-8601-Dauer (PT1H30M) und gibt Minuten zurück. */
+function parseIsoDuration(iso) {
+  if (!iso) return 0;
+  const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+  if (!m) return 0;
+  return parseInt(m[1] || 0) * 60 + parseInt(m[2] || 0);
+}
+
+/**
+ * Sucht in allen JSON-LD-Blöcken nach einem schema.org/Recipe-Objekt und
+ * formatiert es als lesbaren Text für die KI-Analyse.
+ * Gibt null zurück, wenn kein Rezept gefunden wurde.
+ */
+function extractJsonLdAsText(doc) {
+  const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
+  for (const script of scripts) {
+    try {
+      const data = JSON.parse(script.textContent);
+      const items = Array.isArray(data) ? data : [data];
+      for (const item of items) {
+        const candidates = item['@graph'] ? [...item['@graph'], item] : [item];
+        for (const candidate of candidates) {
+          const types = Array.isArray(candidate['@type']) ? candidate['@type'] : [candidate['@type']];
+          if (types.includes('Recipe')) {
+            return formatLdJsonAsText(candidate);
+          }
+        }
+      }
+    } catch { /* ungültiges JSON-LD */ }
+  }
+  return null;
+}
+
+/** Wandelt ein schema.org/Recipe-Objekt in strukturierten Text um. */
+function formatLdJsonAsText(ld) {
+  const lines = [];
+
+  if (ld.name) lines.push(`Titel: ${ld.name}`);
+  if (ld.description) lines.push(`Beschreibung: ${ld.description}`);
+
+  // Zeiten einzeln ausgeben – die KI summiert sie laut Prompt
+  const prep = parseIsoDuration(ld.prepTime);
+  const cook = parseIsoDuration(ld.cookTime);
+  const total = parseIsoDuration(ld.totalTime);
+  if (prep)  lines.push(`Vorbereitungszeit: ${prep} Minuten`);
+  if (cook)  lines.push(`Zubereitungszeit: ${cook} Minuten`);
+  if (total) lines.push(`Gesamtzeit: ${total} Minuten`);
+
+  const yield_ = ld.recipeYield;
+  if (yield_) lines.push(`Portionen: ${Array.isArray(yield_) ? yield_[0] : yield_}`);
+  if (ld.recipeCuisine) lines.push(`Küche: ${Array.isArray(ld.recipeCuisine) ? ld.recipeCuisine[0] : ld.recipeCuisine}`);
+  if (ld.recipeCategory) lines.push(`Kategorie: ${Array.isArray(ld.recipeCategory) ? ld.recipeCategory[0] : ld.recipeCategory}`);
+
+  if (ld.recipeIngredient?.length > 0) {
+    lines.push('');
+    lines.push('Zutaten:');
+    ld.recipeIngredient.forEach(ing => lines.push(`- ${ing}`));
+  }
+
+  const instructions = ld.recipeInstructions;
+  if (instructions) {
+    lines.push('');
+    lines.push('Anleitung:');
+    const steps = Array.isArray(instructions) ? instructions : [instructions];
+    let stepIndex = 1;
+    for (const step of steps) {
+      if (typeof step === 'string') {
+        lines.push(`${stepIndex++}. ${step}`);
+      } else if (step['@type'] === 'HowToSection') {
+        if (step.name) lines.push(`\n${step.name}:`);
+        const sectionSteps = Array.isArray(step.itemListElement) ? step.itemListElement : [];
+        sectionSteps.forEach(s => {
+          const t = typeof s === 'string' ? s : (s.text || '');
+          lines.push(`${stepIndex++}. ${t}`);
+        });
+      } else {
+        lines.push(`${stepIndex++}. ${step.text || ''}`);
+      }
+    }
+  }
+
+  // Notizen – verschiedene Plugin-Felder prüfen (WPRM, Tasty, etc.)
+  const noteValue = ld.notes || ld.note || ld['wprm:notes'];
+  if (noteValue) {
+    lines.push('');
+    lines.push('Notizen:');
+    const noteText = Array.isArray(noteValue)
+      ? noteValue.map(n => typeof n === 'string' ? n : (n.text || '')).join('\n')
+      : String(noteValue);
+    lines.push(noteText);
+  }
+
+  return lines.join('\n');
 }
 
 export async function processPDF(file, { multiHint = false } = {}) {

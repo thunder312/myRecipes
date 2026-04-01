@@ -87,7 +87,7 @@ Jedes Rezept-Objekt hat folgende Felder:
   "title": "Name des Gerichts",
   "category": "Eine von: Vorspeise, Hauptspeise, Nachspeise, Fingerfood, Suppe, Salat, Beilage, Getränk, Snack, Brot/Gebäck, Gewürzmischungen, Kuchen, Soße, Sauerkonserven, Wurstrezept",
   "origin": "Länderküche z.B. Deutschland, Italien, USA, Ungarn, Frankreich, etc. oder 'International' wenn unklar",
-  "prepTime": Zubereitungszeit in Minuten als Zahl oder null wenn unbekannt,
+  "prepTime": Gesamtzeit in Minuten als Zahl (Summe aus Vorbereitungszeit + Zubereitungszeit + Ruhezeit/Wartezeit/Marinierzeit/Backzeit – addiere ALLE genannten Zeitangaben). null nur wenn wirklich keine Zeitangabe vorhanden,
   "mainIngredient": "Hauptzutat z.B. Rind, Huhn, Schwein, Fisch, Gemüse, Pasta, etc.",
   "sides": ["Passende Beilagen als Array, z.B. Reis, Kartoffeln, Knödel, Salat, Brot"],
   "tags": ["Relevante Tags als Array, z.B. vegetarisch, vegan, schnell, glutenfrei, laktosefrei, Freitag-tauglich, festlich, Comfort Food, low-carb"],
@@ -95,14 +95,14 @@ Jedes Rezept-Objekt hat folgende Felder:
   "description": "Kurze Beschreibung des Gerichts in 1-2 Sätzen",
   "servings": Portionen als Zahl oder null,
   "difficulty": "Eine von: leicht, mittel, schwer",
-  "recipeText": "Die vollständigen Zubereitungsschritte als reiner Text. Suche EXPLIZIT nach einem Abschnitt mit der Überschrift 'Zubereitung' oder 'Zubereitung:' – der gesamte Inhalt dieses Abschnitts gehört vollständig hierher. KEIN Markdown, KEIN HTML, KEIN Titel, KEINE Zutatenliste (die steht bereits in 'ingredients'). Schritte durch Zeilenumbrüche trennen, z.B. '1. Schritt\\n2. Schritt'"
+  "recipeText": "Die vollständigen Zubereitungsschritte als reiner Text. Suche EXPLIZIT nach Abschnitten mit Überschriften wie 'Zubereitung', 'Anleitung', 'Instructions' o.ä. – der gesamte Inhalt dieser Abschnitte gehört vollständig hierher. KEIN Markdown, KEIN HTML, KEIN Titel, KEINE Zutatenliste (die steht bereits in 'ingredients'). Schritte durch Zeilenumbrüche trennen, z.B. '1. Schritt\\n2. Schritt'. Falls ein Abschnitt 'Notizen', 'Tipps', 'Hinweise' o.ä. vorhanden ist, hänge ihn am Ende an: '\\n\\nNotizen:\\n<Inhalt>'"
 }
 
 Wichtige Regeln:
 - Das Feld 'recipeText' darf NIEMALS leer sein – extrahiere alle Schritte vollständig aus dem Abschnitt 'Zubereitung'
 - Wenn das Rezept kein Fleisch enthält, füge "Freitag-tauglich" zu den Tags hinzu
 - Wenn die Zubereitungszeit unter 30 Minuten ist, füge "schnell" zu den Tags hinzu
-- Schätze die Zubereitungszeit wenn möglich, auch wenn sie nicht explizit angegeben ist
+- Für 'prepTime': Summiere ALLE Zeitangaben (Vorbereitungszeit + Zubereitungszeit + Ruhezeit + Marinierzeit + Backzeit etc.). Wenn z.B. "Vorbereitungszeit: 20 Min, Zubereitungszeit: 15 Min, Ruhezeit: 30 Min" steht, ist prepTime = 65. Schätze die Gesamtzeit wenn keine expliziten Angaben vorhanden
 - Gewürzmischungen (z.B. Hähnchen-Gewürz, Gyros-Gewürz, Rubs, Marinaden-Mischungen) gehören in die Kategorie "Gewürzmischungen" – NICHT in "Beilage" oder "Snack". Bei Gewürzmischungen ist "sides" ein leeres Array.
 - Trenne die Rezepte sauber voneinander – jedes bekommt seinen eigenen recipeText nur mit den Zubereitungsschritten
 - Antworte NUR mit dem JSON, kein anderer Text`;
