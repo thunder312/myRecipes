@@ -1,8 +1,8 @@
-import { getRecipe, updateRecipe, deleteRecipe } from '../db.js';
+import { getRecipe, updateRecipe, patchRecipe, deleteRecipe } from '../db.js';
 import { generateRecipePDF, generateRecipeA5PDF } from '../pdf-generator.js';
-import { $, createElement, formatDate, todayISO, showToast, categoryChipClass } from '../utils/helpers.js';
+import { $, createElement, formatDate, formatDateTime, todayISO, showToast, categoryChipClass } from '../utils/helpers.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
-import { isAuthenticated } from '../utils/auth.js';
+import { isAuthenticated, getAuthUser } from '../utils/auth.js';
 
 export async function render(container, recipeId) {
   const id = parseInt(recipeId, 10);
@@ -49,7 +49,15 @@ function esc(str) {
 }
 
 function renderDetailView(container, recipe) {
-  const canEdit = isAuthenticated();
+  const user = getAuthUser();
+  const loggedIn = isAuthenticated();
+  // Edit/delete only allowed for the creator or admins
+  // Recipes without createdBy (old data) are editable by any authenticated user
+  const canEdit = loggedIn && (
+    user.role === 'admin' ||
+    !recipe.createdBy ||
+    user.username === recipe.createdByUsername
+  );
 
   container.innerHTML = `
     <div class="detail">
@@ -124,20 +132,27 @@ function renderDetailView(container, recipe) {
         <div class="notes-list" id="notesList">
           ${recipe.notes.length === 0
             ? '<p class="notes-list__empty">Noch keine Notizen vorhanden.</p>'
-            : recipe.notes.map((note, idx) => `
+            : recipe.notes.map((note, idx) => {
+                const canDeleteNote = loggedIn && (
+                  user.role === 'admin' ||
+                  !note.username ||
+                  note.username === user.username
+                );
+                return `
               <div class="note-card" data-index="${idx}">
                 <div class="note-card__header">
-                  <span class="note-card__date">${formatDate(note.date)}</span>
-                  ${canEdit ? `<button class="note-card__delete" data-delete-note="${idx}" title="Notiz löschen">&times;</button>` : ''}
+                  ${note.username ? `<span class="note-card__author">${esc(note.username)}</span>` : ''}
+                  <span class="note-card__date">${formatDateTime(note.date)}</span>
+                  ${canDeleteNote ? `<button class="note-card__delete" data-delete-note="${idx}" title="Notiz löschen">&times;</button>` : ''}
                 </div>
                 <div class="note-card__text">${esc(note.text)}</div>
-              </div>
-            `).join('')}
+              </div>`;
+              }).join('')}
         </div>
-        <div class="notes-add">
+        ${loggedIn ? `<div class="notes-add">
           <textarea id="newNoteText" class="input input--textarea" rows="3" placeholder="Neue Notiz schreiben..."></textarea>
           <button class="btn btn--secondary" id="btnAddNote">Notiz hinzufügen</button>
-        </div>
+        </div>` : ''}
       </div>
 
       <div class="detail__stats">
@@ -213,36 +228,38 @@ function renderDetailView(container, recipe) {
   });
   $('#pdfA5Open', container).addEventListener('click', () => openPdfInTab(getPdfA5Url(), filenameA5));
 
-  // "Heute gekocht"
+  // "Heute gekocht" – PATCH (no ownership required)
   $('#btnCooked', container).addEventListener('click', async () => {
     recipe.cookedDates = recipe.cookedDates || [];
     recipe.cookedDates.push(todayISO());
     recipe.cookedCount = (recipe.cookedCount || 0) + 1;
-    await updateRecipe(recipe);
+    await patchRecipe(recipe.id, { cookedDates: recipe.cookedDates, cookedCount: recipe.cookedCount });
     showToast(`"${recipe.title}" als gekocht markiert!`, 'success');
     renderDetailView(container, recipe);
   });
 
-  // Add note
-  $('#btnAddNote', container).addEventListener('click', async () => {
-    const text = $('#newNoteText', container).value.trim();
-    if (!text) {
-      showToast('Bitte Notiz eingeben.', 'warning');
-      return;
-    }
-    recipe.notes.push({ date: new Date().toISOString(), text });
-    await updateRecipe(recipe);
-    showToast('Notiz gespeichert.', 'success');
-    renderDetailView(container, recipe);
-  });
+  // Add note – PATCH (any authenticated user, username stored with note)
+  if (loggedIn) {
+    $('#btnAddNote', container).addEventListener('click', async () => {
+      const text = $('#newNoteText', container).value.trim();
+      if (!text) {
+        showToast('Bitte Notiz eingeben.', 'warning');
+        return;
+      }
+      recipe.notes.push({ date: new Date().toISOString(), text, username: user.username });
+      await patchRecipe(recipe.id, { notes: recipe.notes });
+      showToast('Notiz gespeichert.', 'success');
+      renderDetailView(container, recipe);
+    });
+  }
 
-  // Delete notes
+  // Delete note – PATCH (own notes or admin)
   container.querySelectorAll('[data-delete-note]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const idx = parseInt(btn.dataset.deleteNote, 10);
       if (!confirm('Notiz wirklich löschen?')) return;
       recipe.notes.splice(idx, 1);
-      await updateRecipe(recipe);
+      await patchRecipe(recipe.id, { notes: recipe.notes });
       showToast('Notiz gelöscht.', 'info');
       renderDetailView(container, recipe);
     });

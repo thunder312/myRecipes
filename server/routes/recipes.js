@@ -32,20 +32,48 @@ router.post('/', (req, res) => {
   res.status(201).json({ id: Number(id) });
 });
 
-// PUT /api/recipes/:id - update recipe
+// PUT /api/recipes/:id - full update (requires ownership)
 router.put('/:id', (req, res) => {
   const id = parseInt(req.params.id, 10);
   const existing = getRecipe(id);
   if (!existing) {
     return res.status(404).json({ error: 'Rezept nicht gefunden' });
   }
+  // Ownership check: only the creator or an admin may fully edit
+  if (req.user.role !== 'admin' && existing.createdBy && existing.createdBy !== req.user.userId) {
+    return res.status(403).json({ error: 'Keine Berechtigung – du kannst nur deine eigenen Rezepte bearbeiten.' });
+  }
   updateRecipe({ ...req.body, id });
   res.json({ success: true });
 });
 
-// DELETE /api/recipes/:id - delete recipe
+// PATCH /api/recipes/:id - partial update for notes and cooked tracking (any authenticated user)
+router.patch('/:id', (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const existing = getRecipe(id);
+  if (!existing) {
+    return res.status(404).json({ error: 'Rezept nicht gefunden' });
+  }
+  const { notes, cookedDates, cookedCount } = req.body;
+  const update = { ...existing };
+  if (notes !== undefined) update.notes = notes;
+  if (cookedDates !== undefined) update.cookedDates = cookedDates;
+  if (cookedCount !== undefined) update.cookedCount = cookedCount;
+  updateRecipe(update);
+  res.json({ success: true });
+});
+
+// DELETE /api/recipes/:id - delete recipe (requires ownership)
 router.delete('/:id', (req, res) => {
   const id = parseInt(req.params.id, 10);
+  const existing = getRecipe(id);
+  if (!existing) {
+    return res.status(404).json({ error: 'Rezept nicht gefunden' });
+  }
+  // Ownership check
+  if (req.user.role !== 'admin' && existing.createdBy && existing.createdBy !== req.user.userId) {
+    return res.status(403).json({ error: 'Keine Berechtigung – du kannst nur deine eigenen Rezepte löschen.' });
+  }
   deleteRecipe(id);
   res.json({ success: true });
 });

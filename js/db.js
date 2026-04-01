@@ -113,6 +113,13 @@ export async function updateRecipe(recipe) {
   });
 }
 
+export async function patchRecipe(id, data) {
+  await apiFetch(`/recipes/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
 export async function deleteRecipe(id) {
   await apiFetch(`/recipes/${id}`, { method: 'DELETE' });
 }

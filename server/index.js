@@ -96,7 +96,7 @@ app.use('/api/auth', authRouter);
 // Recipes: GET is public (overview/detail), write operations require auth
 app.use('/api/recipes', (req, res, next) => {
   if (req.method === 'GET') return next();
-  requireAuth(req, res, next);
+  requireAuth(req, res, next);  // all write methods require auth; ownership is checked per route
 }, recipesRouter);
 app.use('/api/settings', requireAuth, settingsRouter);
 app.use('/api/backup', requireAuth, backupRouter);

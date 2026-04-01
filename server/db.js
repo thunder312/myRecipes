@@ -107,6 +107,9 @@ function migrateSchema() {
   if (!cols.includes('sourceNote')) {
     db.exec('ALTER TABLE recipes ADD COLUMN sourceNote TEXT');
   }
+  if (!cols.includes('createdBy')) {
+    db.exec('ALTER TABLE recipes ADD COLUMN createdBy INTEGER REFERENCES users(id) ON DELETE SET NULL');
+  }
 
   // Ensure passwordHash column exists in users table (added in multi-user migration)
   const userCols = db.pragma('table_info(users)').map(r => r.name);
@@ -214,12 +217,20 @@ function deserializeRecipe(row) {
 // --- Recipes ---
 
 function getAllRecipes() {
-  const rows = getDB().prepare('SELECT * FROM recipes ORDER BY createdAt DESC').all();
+  const rows = getDB().prepare(`
+    SELECT r.*, u.username AS createdByUsername
+    FROM recipes r LEFT JOIN users u ON u.id = r.createdBy
+    ORDER BY r.createdAt DESC
+  `).all();
   return rows.map(deserializeRecipe);
 }
 
 function getRecipe(id) {
-  const row = getDB().prepare('SELECT * FROM recipes WHERE id = ?').get(id);
+  const row = getDB().prepare(`
+    SELECT r.*, u.username AS createdByUsername
+    FROM recipes r LEFT JOIN users u ON u.id = r.createdBy
+    WHERE r.id = ?
+  `).get(id);
   return deserializeRecipe(row);
 }
 
@@ -235,6 +246,9 @@ function addRecipe(recipe, extraCookbookIds = [], userId = null) {
   });
   // Remove id so AUTOINCREMENT assigns one
   delete data.id;
+  // Track creator
+  if (userId) data.createdBy = userId;
+  delete data.createdByUsername; // virtual JOIN field, not a column
 
   const columns = Object.keys(data);
   const placeholders = columns.map(() => '?').join(', ');
@@ -268,6 +282,7 @@ function updateRecipe(recipe) {
   });
   const id = data.id;
   delete data.id;
+  delete data.createdByUsername; // virtual JOIN field, not a column
 
   const columns = Object.keys(data);
   const setClause = columns.map(c => `${c} = ?`).join(', ');

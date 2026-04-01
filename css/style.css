@@ -1102,17 +1102,21 @@ button.nav__profile {
 
 .note-card__header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: var(--space-sm);
   margin-bottom: var(--space-sm);
+}
+
+.note-card__author {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--color-primary);
 }
 
 .note-card__date {
   font-size: var(--font-size-xs);
-  font-weight: 600;
   color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  flex: 1;
 }
 
 .note-card__delete {
