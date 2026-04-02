@@ -60,14 +60,6 @@ function addCookbookCover(doc, cookbook, recipeCount, pageWidth, pageHeight, mar
   doc.setFontSize(9);
   doc.setTextColor(90);
   doc.text('myRecipes', pageWidth - margin, 8.5, { align: 'right' });
-  // Simple book icon (two small rectangles) next to app name
-  const bx = pageWidth - margin - doc.getTextWidth('myRecipes') - 7;
-  const by = 3.5;
-  doc.setDrawColor(110);
-  doc.setLineWidth(0.5);
-  doc.rect(bx, by, 4.5, 5.5);
-  doc.rect(bx + 5, by, 4.5, 5.5);
-  doc.line(bx + 4.5, by, bx + 5, by + 5.5);
 
   // Title
   doc.setTextColor(20);

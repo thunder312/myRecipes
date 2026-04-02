@@ -68,7 +68,14 @@
       "Bash(find:*)",
       "Bash(df:*)",
       "Bash(cd:*)",
-      "Bash(\"/c/Program Files/PuTTY/plink.exe\" -i \"/c/Users/dertl/.ssh/id_rsa/StratoVServer.ppk\" -hostkey \"24:4a:18:0d:5f:44:3e:89:19:6a:fe:65:5a:17:58:ed\" root@82.165.153.177 \"echo connected && hostname && ls /var/www/ 2>/dev/null; ls /srv/ 2>/dev/null\" 2>&1)"
+      "Bash(\"/c/Program Files/PuTTY/plink.exe\" -i \"/c/Users/dertl/.ssh/id_rsa/StratoVServer.ppk\" -hostkey \"24:4a:18:0d:5f:44:3e:89:19:6a:fe:65:5a:17:58:ed\" root@82.165.153.177 \"echo connected && hostname && ls /var/www/ 2>/dev/null; ls /srv/ 2>/dev/null\" 2>&1)",
+      "Bash(cmd /c \"robocopy D:\\\\Dropbox\\\\Entwicklung\\\\HTML5\\\\myReceipts D:\\\\Dropbox\\\\Entwicklung\\\\HTML5\\\\myRecipes /E /XD node_modules .git /NFL /NDL /NJH /NJS\")",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(powershell:*)",
+      "Bash(cmd /c \"robocopy D:\\\\Dropbox\\\\Entwicklung\\\\HTML5\\\\myReceipts D:\\\\Dropbox\\\\Entwicklung\\\\HTML5\\\\myRecipes /E /XD node_modules /NFL /NDL /NJH /NJS\")",
+      "Bash(cmd /c \"robocopy C:\\\\Users\\\\dertl\\\\.claude\\\\projects\\\\D--Dropbox-Entwicklung-HTML5-myReceipts C:\\\\Users\\\\dertl\\\\.claude\\\\projects\\\\D--Dropbox-Entwicklung-HTML5-myRecipes /E /NFL /NDL /NJH /NJS\")",
+      "Bash(cmd /c \"cd D:\\\\Dropbox\\\\Entwicklung\\\\HTML5\\\\myRecipes && npm install --prefer-offline 2>&1\")",
+      "Bash(cmd /c \"D: && cd D:\\\\Dropbox\\\\Entwicklung\\\\HTML5\\\\myRecipes && npm install --prefer-offline 2>&1 | tail -5\")"
     ]
   }
 }
