@@ -2630,6 +2630,7 @@ details[open] > .batch__log-heading::before,
 
 .cookbook-card__actions-primary {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-xs);
 }
 

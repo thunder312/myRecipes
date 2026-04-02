@@ -5,7 +5,7 @@ import {
 import { $, showToast } from '../utils/helpers.js';
 import { isAuthenticated, isAdmin } from '../utils/auth.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
-import { generateCookbookPDF } from '../pdf-generator.js';
+import { generateCookbookPDF, generateCookbookA5PDF } from '../pdf-generator.js';
 
 export async function render(container) {
   await ensureAuthenticated(container, () => renderCookbooks(container));
@@ -99,9 +99,13 @@ async function renderCookbooks(container) {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
                 Zuordnen
               </button>
-              <button class="btn btn--ghost btn--sm" data-action="export" data-id="${cb.id}" title="Als PDF exportieren">
+              <button class="btn btn--ghost btn--sm" data-action="export" data-id="${cb.id}" title="Als A4-PDF exportieren">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 PDF
+              </button>
+              <button class="btn btn--ghost btn--sm" data-action="export-a5" data-id="${cb.id}" title="Als A5-PDF exportieren (doppelseitig drucken, dann schneiden)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                A5
               </button>
             </div>
             <div class="cookbook-card__actions-secondary">
@@ -196,23 +200,38 @@ async function renderCookbooks(container) {
   async function exportCookbookPDF(cookbookId) {
     const cb = cookbooks.find(c => c.id === cookbookId);
     if (!cb) return;
-
     try {
       showToast('PDF wird erstellt...', 'info');
       const recipes = await getCookbookRecipes(cookbookId);
-      if (recipes.length === 0) {
-        showToast('Dieses Kochbuch enthält noch keine Rezepte.', 'warning');
-        return;
-      }
+      if (recipes.length === 0) { showToast('Dieses Kochbuch enthält noch keine Rezepte.', 'warning'); return; }
       const blob = generateCookbookPDF(cb, recipes);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const safeName = (cb.name || 'kochbuch').replace(/[^a-z0-9äöü]/gi, '-').toLowerCase();
-      a.download = `${safeName}.pdf`;
+      a.download = `${(cb.name || 'kochbuch').replace(/[^a-z0-9äöü]/gi, '-').toLowerCase()}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       showToast(`PDF für „${cb.name}" heruntergeladen.`, 'success');
+    } catch (err) {
+      showToast(`PDF-Fehler: ${err.message}`, 'error');
+    }
+  }
+
+  async function exportCookbookA5PDF(cookbookId) {
+    const cb = cookbooks.find(c => c.id === cookbookId);
+    if (!cb) return;
+    try {
+      showToast('A5-PDF wird erstellt...', 'info');
+      const recipes = await getCookbookRecipes(cookbookId);
+      if (recipes.length === 0) { showToast('Dieses Kochbuch enthält noch keine Rezepte.', 'warning'); return; }
+      const blob = generateCookbookA5PDF(cb, recipes);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(cb.name || 'kochbuch').replace(/[^a-z0-9äöü]/gi, '-').toLowerCase()}-a5.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast(`A5-PDF für „${cb.name}" heruntergeladen.`, 'success');
     } catch (err) {
       showToast(`PDF-Fehler: ${err.message}`, 'error');
     }
@@ -310,6 +329,8 @@ async function renderCookbooks(container) {
       await openAssignModal(id);
     } else if (action === 'export') {
       await exportCookbookPDF(id);
+    } else if (action === 'export-a5') {
+      await exportCookbookA5PDF(id);
     }
   });
 

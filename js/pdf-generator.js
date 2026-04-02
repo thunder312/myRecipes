@@ -674,3 +674,359 @@ export function generateRecipeA5PDF(recipeData) {
 
   return doc.output('blob');
 }
+
+// ---------------------------------------------------------------------------
+// Cookbook A5 export – A4 landscape, duplex-optimised for cutting
+//
+// Duplex arrangement (long-edge flip): for every group of 4 logical pages
+//   [p0, p1, p2, p3] the PDF gets two A4 pages:
+//     A4 front : [p0 left col] [p2 right col]
+//     A4 back  : [p1 left col] [p3 right col]
+//
+// After printing double-sided and cutting down the centre:
+//   Left strip  of sheet : front=p0 / back=p1  →  sequential ✓
+//   Right strip of sheet : front=p2 / back=p3  →  sequential ✓
+//   Collating: sheet-1-left, sheet-1-right, sheet-2-left, sheet-2-right …
+// ---------------------------------------------------------------------------
+
+// Build an array of page-render-functions (doc, x) => void for one recipe.
+// Measurement (splitTextToSize) uses the live doc; fonts must be set before each call.
+function buildRecipeA5Pages(doc, recipe, colWidth, fs, topY, availH) {
+  const pages = [];
+  let blocks = [];   // pending render-fns for the current logical page
+  let usedH = 0;
+
+  function flush() {
+    if (!blocks.length) return;
+    const captured = [...blocks];
+    pages.push((doc, x) => {
+      let y = topY;
+      for (const b of captured) y = b(doc, x, y);
+    });
+    blocks = [];
+    usedH = 0;
+  }
+
+  function addBlock(h, fn) {
+    if (usedH + h > availH && blocks.length > 0) flush();
+    blocks.push(fn);
+    usedH += h;
+  }
+
+  // --- Title ---
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(fs.title);
+  const titleLines = doc.splitTextToSize(recipe.title || 'Rezept', colWidth);
+  const titleH = titleLines.length * 7 + 3;
+  addBlock(titleH, (doc, x, y) => {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(fs.title); doc.setTextColor(0);
+    doc.text(titleLines, x, y);
+    return y + titleH;
+  });
+
+  // --- Meta row ---
+  const metaParts = [];
+  if (recipe.category) metaParts.push(recipe.category);
+  if (recipe.origin) metaParts.push(recipe.origin);
+  if (recipe.prepTime) metaParts.push(`${recipe.prepTime} Min.`);
+  if (recipe.difficulty) metaParts.push(recipe.difficulty);
+  if (recipe.servings) metaParts.push(`${recipe.servings} Portionen`);
+  if (metaParts.length) {
+    const metaStr = metaParts.join('  |  ');
+    addBlock(7, (doc, x, y) => {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.meta); doc.setTextColor(100);
+      doc.text(metaStr, x, y);
+      return y + 5;
+    });
+  }
+
+  // --- Description ---
+  if (recipe.description) {
+    doc.setFont('helvetica', 'italic'); doc.setFontSize(fs.body);
+    const descLines = doc.splitTextToSize(recipe.description, colWidth);
+    const descH = descLines.length * 4.5 + 4;
+    addBlock(descH, (doc, x, y) => {
+      doc.setFont('helvetica', 'italic'); doc.setFontSize(fs.body); doc.setTextColor(80);
+      doc.text(descLines, x, y);
+      return y + descH;
+    });
+  }
+
+  // --- Ingredients ---
+  if (recipe.ingredients?.length) {
+    addBlock(8, (doc, x, y) => {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(fs.section); doc.setTextColor(0);
+      doc.text('Zutaten', x, y);
+      return y + 6;
+    });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body);
+    for (const ing of recipe.ingredients) {
+      const ingLines = doc.splitTextToSize(`•  ${ing}`, colWidth - 2);
+      const ingH = ingLines.length * 4.5 + 1;
+      addBlock(ingH, (doc, x, y) => {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body); doc.setTextColor(0);
+        doc.text(ingLines, x + 2, y);
+        return y + ingH;
+      });
+    }
+    addBlock(3, (doc, x, y) => y + 3);
+  }
+
+  // --- Recipe text ---
+  if (recipe.recipeText) {
+    addBlock(8, (doc, x, y) => {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(fs.section); doc.setTextColor(0);
+      doc.text('Zubereitung', x, y);
+      return y + 6;
+    });
+    const steps = splitIntoSteps(recipe.recipeText);
+    const alreadyNumbered = steps.length > 1 && /^\d+[.)]\s/.test(steps[0]);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body);
+    for (let idx = 0; idx < steps.length; idx++) {
+      const label = alreadyNumbered ? '' : `${idx + 1}. `;
+      const indent = alreadyNumbered ? 0 : doc.getTextWidth(label);
+      const stepLines = doc.splitTextToSize(label + steps[idx], colWidth);
+      const stepH = stepLines.length * 4.5 + 1;
+      const capturedLines = stepLines, capturedIndent = indent;
+      addBlock(stepH, (doc, x, y) => {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body); doc.setTextColor(0);
+        doc.text(capturedLines[0], x, y);
+        let curY = y;
+        for (let i = 1; i < capturedLines.length; i++) { curY += 4.5; doc.text(capturedLines[i], x + capturedIndent, curY); }
+        return curY + 5;
+      });
+    }
+    addBlock(3, (doc, x, y) => y + 3);
+  }
+
+  // --- Notes ---
+  const noteTexts = (recipe.notes || []).map(n => n.text).filter(Boolean);
+  if (noteTexts.length) {
+    addBlock(8, (doc, x, y) => {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(fs.section); doc.setTextColor(0);
+      doc.text('Notizen', x, y);
+      return y + 6;
+    });
+    for (const text of noteTexts) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body);
+      const noteLines = doc.splitTextToSize(text, colWidth);
+      const noteH = noteLines.length * 4.5 + 3;
+      addBlock(noteH, (doc, x, y) => {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body); doc.setTextColor(0);
+        doc.text(noteLines, x, y);
+        return y + noteH;
+      });
+    }
+  }
+
+  // --- Tags / Sides ---
+  if (recipe.tags?.length) {
+    addBlock(6, (doc, x, y) => {
+      doc.setFontSize(fs.small); doc.setTextColor(120);
+      doc.text('Tags: ' + recipe.tags.join(', '), x, y);
+      return y + 4;
+    });
+  }
+  if (recipe.sides?.length) {
+    addBlock(6, (doc, x, y) => {
+      doc.setFontSize(fs.small); doc.setTextColor(120);
+      doc.text('Beilagen: ' + recipe.sides.join(', '), x, y);
+      return y + 4;
+    });
+  }
+
+  flush();
+  return pages.length ? pages : [(doc, x) => {}]; // at least one page per recipe
+}
+
+// Build TOC page-render-functions.
+function buildTocA5Pages(doc, tocEntries, colWidth, fs, topY, availH) {
+  const pages = [];
+  let blocks = [];
+  let usedH = 0;
+
+  // TOC header (first page only)
+  blocks.push((doc, x, y) => {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(0);
+    doc.text('Inhaltsverzeichnis', x, y);
+    doc.setDrawColor(190); doc.setLineWidth(0.4);
+    doc.line(x, y + 3, x + colWidth, y + 3);
+    return y + 10;
+  });
+  usedH += 12;
+
+  function flush() {
+    const captured = [...blocks];
+    pages.push((doc, x) => { let y = topY; for (const b of captured) y = b(doc, x, y); });
+    blocks = []; usedH = 0;
+  }
+
+  function add(h, fn) {
+    if (usedH + h > availH && blocks.length > 0) flush();
+    blocks.push(fn);
+    usedH += h;
+  }
+
+  for (const entry of tocEntries) {
+    const catStr = entry.category, catPage = String(entry.pageNum);
+    add(8, (doc, x, y) => {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(30);
+      doc.text(catStr, x, y);
+      doc.setTextColor(100); doc.text(catPage, x + colWidth, y, { align: 'right' });
+      return y + 7;
+    });
+    for (const r of entry.recipes) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body);
+      const pageStr = String(r.pageNum);
+      const maxW = colWidth - doc.getTextWidth(pageStr) - 4;
+      let t = '  ' + (r.title || '');
+      if (doc.getTextWidth(t) > maxW) { while (t.length > 4 && doc.getTextWidth(t + '…') > maxW) t = t.slice(0, -1); t += '…'; }
+      const ct = t, cp = pageStr;
+      add(6, (doc, x, y) => {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body);
+        doc.setTextColor(60); doc.text(ct, x, y);
+        doc.setTextColor(120); doc.text(cp, x + colWidth, y, { align: 'right' });
+        return y + 5.5;
+      });
+    }
+    add(3, (doc, x, y) => y + 3);
+  }
+
+  if (blocks.length > 0) flush();
+  return pages;
+}
+
+export function generateCookbookA5PDF(cookbook, recipes) {
+  // Layout constants – same as generateRecipeA5PDF
+  const pageWidth  = 297, pageHeight = 210;
+  const marginLeft = 25, marginOther = 14;
+  const halfWidth  = pageWidth / 2;           // 148.5 mm – cut line
+  const colWidth   = halfWidth - marginLeft - marginOther; // ~109.5 mm
+  const leftX      = marginLeft;
+  const rightX     = halfWidth + marginLeft;
+  const topY       = marginOther + 4;
+  const maxY       = pageHeight - marginOther;
+  const availH     = maxY - topY;
+  const fs         = { title: 16, section: 10, body: 9, meta: 8, small: 7 };
+
+  // Create doc (used for text measurement AND final rendering)
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+  doc.setProperties({ title: cookbook.coverTitle || cookbook.name || 'Kochbuch' });
+
+  // --- Estimate TOC pages (needed to compute correct recipe page numbers) ---
+  const groups = groupByCategory(recipes);
+  // Each group: 12 (header) + recipes*5.5 + 3 (gap)
+  let tocH = 12;
+  for (const [, rs] of groups) tocH += 8 + rs.length * 6 + 3;
+  const tocPageCount = Math.max(1, Math.ceil(tocH / availH));
+
+  // --- Build content pages, tracking logical page numbers ---
+  // Offset: logical page 1 = cover, 2..tocPageCount+1 = TOC, tocPageCount+2 = first content
+  let nextLogicalPage = 1 + tocPageCount + 1;
+  const contentFns  = [];
+  const tocEntries  = [];
+
+  for (const [category, catRecipes] of groups) {
+    // Chapter separator
+    const chapterPageNum = nextLogicalPage++;
+    const catCaptured = category;
+    contentFns.push((doc, x) => {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(25);
+      const midY = topY + availH / 2;
+      doc.text(catCaptured, x + colWidth / 2, midY, { align: 'center' });
+      doc.setDrawColor(180); doc.setLineWidth(0.4);
+      doc.line(x + 5, midY - 8, x + colWidth - 5, midY - 8);
+      doc.line(x + 5, midY + 7, x + colWidth - 5, midY + 7);
+    });
+
+    const catEntry = { category, pageNum: chapterPageNum, recipes: [] };
+    tocEntries.push(catEntry);
+
+    for (const recipe of catRecipes) {
+      const recipePageNum = nextLogicalPage;
+      const recipeFns = buildRecipeA5Pages(doc, recipe, colWidth, fs, topY, availH);
+      nextLogicalPage += recipeFns.length;
+      contentFns.push(...recipeFns);
+      catEntry.recipes.push({ title: recipe.title, pageNum: recipePageNum });
+    }
+  }
+
+  // --- Cover page ---
+  const coverFn = (doc, x) => {
+    const title = cookbook.coverTitle || cookbook.name || 'Kochbuch';
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(20);
+    const titleLines = doc.splitTextToSize(title, colWidth);
+    const midY = topY + availH * 0.38;
+    doc.text(titleLines, x + colWidth / 2, midY, { align: 'center' });
+    let y = midY + titleLines.length * 9;
+    doc.setDrawColor(180); doc.setLineWidth(0.5);
+    doc.line(x + 8, y + 4, x + colWidth - 8, y + 4);
+    y += 13;
+    if (cookbook.coverSubtitle) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(12); doc.setTextColor(70);
+      doc.text(cookbook.coverSubtitle, x + colWidth / 2, y, { align: 'center' });
+    }
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.small); doc.setTextColor(130);
+    doc.text(`${recipes.length} Rezept${recipes.length !== 1 ? 'e' : ''}`, x + colWidth / 2, maxY - 5, { align: 'center' });
+  };
+
+  // --- TOC pages ---
+  const tocFns = buildTocA5Pages(doc, tocEntries, colWidth, fs, topY, availH);
+  const tocPageFns = Array.from({ length: tocPageCount }, (_, i) => tocFns[i] || ((doc, x) => {}));
+
+  // --- Assemble logical pages ---
+  const logicalPages = [coverFn, ...tocPageFns, ...contentFns];
+  const realPageCount = logicalPages.length; // track before blank padding
+
+  // Pad to multiple of 4
+  while (logicalPages.length % 4 !== 0) logicalPages.push((doc, x) => {});
+
+  // --- Pre-add all A4 pages ---
+  const totalA4 = logicalPages.length / 2;
+  for (let i = 1; i < totalA4; i++) doc.addPage();
+
+  // Draw cut-line separator on every A4 page
+  for (let p = 1; p <= totalA4; p++) {
+    doc.setPage(p);
+    doc.setDrawColor(200); doc.setLineWidth(0.3);
+    doc.line(halfWidth, marginOther, halfWidth, pageHeight - marginOther);
+  }
+
+  // --- Render in duplex order ---
+  // Group of 4 logical pages [i, i+1, i+2, i+3] → two A4 pages:
+  //   A4 front : logical[i]   left  |  logical[i+2] right
+  //   A4 back  : logical[i+1] left  |  logical[i+3] right
+  // After cutting: left strip = i/i+1 sequential, right strip = i+2/i+3 sequential ✓
+  for (let i = 0; i < logicalPages.length; i += 4) {
+    const frontPage = i / 2 + 1;
+    const backPage  = i / 2 + 2;
+
+    doc.setPage(frontPage);
+    logicalPages[i](doc, leftX);
+    if (logicalPages[i + 2]) logicalPages[i + 2](doc, rightX);
+
+    doc.setPage(backPage);
+    if (logicalPages[i + 1]) logicalPages[i + 1](doc, leftX);
+    if (logicalPages[i + 3]) logicalPages[i + 3](doc, rightX);
+  }
+
+  // --- Page numbers (footer) ---
+  // Logical page j (0-based): skip cover (j=0) and blank padding (j >= realPageCount)
+  // Duplex mapping: g = floor(j/4), pos = j%4
+  //   pos 0,2 → A4 front page (2g+1); pos 1,3 → A4 back page (2g+2)
+  //   pos 0,1 → left col (centred); pos 2,3 → right col (centred)
+  const footerY = pageHeight - marginOther / 2 - 1;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(160);
+  for (let j = 1; j < realPageCount; j++) {
+    const g   = Math.floor(j / 4);
+    const pos = j % 4;
+    const a4  = (pos === 0 || pos === 2) ? 2 * g + 1 : 2 * g + 2;
+    const cx  = (pos === 0 || pos === 1) ? leftX + colWidth / 2 : rightX + colWidth / 2;
+    doc.setPage(a4);
+    doc.text(String(j + 1), cx, footerY, { align: 'center' });
+  }
+
+  return doc.output('blob');
+}
