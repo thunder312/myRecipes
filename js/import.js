@@ -173,8 +173,13 @@ export async function processPDF(file, { multiHint = false } = {}) {
     fullText += extractTextWithLineBreaks(content.items) + '\n';
   }
 
-  if (fullText.trim().length < 20) {
-    // Image-based PDF: render all pages as images
+  // Use word count to detect image-based PDFs. Modern scan apps (Adobe Scan,
+  // Microsoft Lens etc.) often add a garbled OCR layer that exceeds the old
+  // 20-char threshold but is not real recipe text. Require at least 50 real
+  // words before trusting the text layer.
+  const wordCount = fullText.trim().split(/\s+/).filter(w => w.length > 1).length;
+  if (wordCount < 50) {
+    // Image-based PDF (or garbled OCR layer): render all pages as images
     const pageCount = Math.min(pdf.numPages, MAX_PDF_IMAGE_PAGES);
     const images = [];
 

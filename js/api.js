@@ -165,7 +165,16 @@ export async function analyzeRecipeImages(images, { multiHint = false } = {}) {
   }
   contentParts.push({
     type: 'text',
-    text: buildRecipeAnalysisPrompt({ multiHint }) + '\n\nAnalysiere die Rezepte in den Bildern. Die Bilder können handgeschriebenen Text enthalten – auch Bleistift-Handschrift oder sehr kursive Schrift. Lies jeden Text sorgfältig, vervollständige abgekürzte Wörter sinnvoll und beachte: Ein Bild kann mehrere Rezepte enthalten, die durch Überschriften oder Trennlinien voneinander abgegrenzt sind. Suche EXPLIZIT nach dem Abschnitt "Zubereitung" im Bild und übertrage dessen Inhalt vollständig in das Feld recipeText.'
+    text: buildRecipeAnalysisPrompt({ multiHint }) + `
+
+Analysiere die Rezepte in den Bildern. Wichtige Hinweise:
+- Die Bilder können HANDGESCHRIEBENE Rezepte enthalten – auch Bleistift, Kugelschreiber, kursive oder unordentliche Schrift.
+- Lies JEDEN erkennbaren Text – auch wenn er schwer leserlich ist. Vervollständige abgekürzte Wörter sinnvoll aus dem Koch-Kontext.
+- Gib NIE ein leeres Array [] zurück, nur weil die Schrift handgeschrieben ist. Versuche immer, das Rezept so gut wie möglich zu extrahieren.
+- Wenn einzelne Wörter unleserlich sind, schreibe "[unleserlich]" statt sie wegzulassen.
+- Ein Bild kann mehrere Rezepte enthalten, die durch Überschriften oder Trennlinien voneinander abgegrenzt sind.
+- Suche EXPLIZIT nach dem Abschnitt "Zubereitung" im Bild und übertrage dessen Inhalt vollständig in das Feld recipeText.
+- Suche nach Zutaten-Listen (oft nummeriert oder mit Mengenangaben wie "200g", "3 EL", "1 TL" usw.).`
   });
 
   let response;
