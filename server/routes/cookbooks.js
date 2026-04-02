@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const {
   getAllCookbooks, getCookbook, addCookbook, updateCookbook, deleteCookbook,
-  getCookbookRecipes, getRecipeCookbooks, getAllRecipeCookbooks, setRecipeCookbooks, assignRecipesToCookbook,
+  getCookbookRecipes, getRecipeCookbooks, getAllRecipeCookbooks, setRecipeCookbooks, assignRecipesToCookbook, clearCookbook,
 } = require('../db');
 
 const router = Router();
@@ -60,6 +60,18 @@ router.put('/:id', (req, res) => {
   if (!cb) return res.status(404).json({ error: 'Kochbuch nicht gefunden' });
   updateCookbook({ ...req.body, id });
   res.json({ success: true });
+});
+
+// DELETE /api/cookbooks/:id/recipes – clear all recipe assignments (admin only)
+router.delete('/:id/recipes', (req, res) => {
+  if (!req.user || req.user.role !== 'admin') return res.status(403).json({ error: 'Admin-Berechtigung erforderlich' });
+  const id = parseInt(req.params.id, 10);
+  try {
+    clearCookbook(id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // DELETE /api/cookbooks/:id

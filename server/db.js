@@ -366,6 +366,26 @@ function deleteCookbook(id) {
   getDB().prepare('DELETE FROM cookbooks WHERE id = ?').run(id);
 }
 
+function clearCookbook(cookbookId) {
+  const d = getDB();
+  d.transaction(() => {
+    if (cookbookId === 1) {
+      // Rezepte mit bekanntem Ersteller in deren persönliches Kochbuch verschieben
+      const recipes = d.prepare(`
+        SELECT r.id, r.createdBy FROM recipes r
+        JOIN recipe_cookbooks rc ON r.id = rc.recipeId
+        WHERE rc.cookbookId = 1 AND r.createdBy IS NOT NULL
+      `).all();
+      const insertStmt = d.prepare('INSERT OR IGNORE INTO recipe_cookbooks (recipeId, cookbookId) VALUES (?, ?)');
+      for (const recipe of recipes) {
+        const userCookbook = d.prepare('SELECT id FROM cookbooks WHERE userId = ?').get(recipe.createdBy);
+        if (userCookbook) insertStmt.run(recipe.id, userCookbook.id);
+      }
+    }
+    d.prepare('DELETE FROM recipe_cookbooks WHERE cookbookId = ?').run(cookbookId);
+  })();
+}
+
 function getCookbookRecipes(cookbookId) {
   const rows = getDB().prepare(
     `SELECT r.* FROM recipes r
@@ -598,6 +618,7 @@ module.exports = {
   getAllRecipeCookbooks,
   setRecipeCookbooks,
   assignRecipesToCookbook,
+  clearCookbook,
   getAllUsers,
   getUser,
   getUserByUsername,

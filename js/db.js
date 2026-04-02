@@ -174,6 +174,10 @@ export async function getCookbookMemberships() {
   return res.json(); // [{recipeId, cookbookId}, ...]
 }
 
+export async function clearCookbook(cookbookId) {
+  await apiFetch(`/cookbooks/${cookbookId}/recipes`, { method: 'DELETE' });
+}
+
 export async function setRecipeCookbooks(recipeId, cookbookIds) {
   await apiFetch(`/cookbooks/recipe/${recipeId}`, {
     method: 'PUT',
