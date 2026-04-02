@@ -81,6 +81,15 @@ function requireAuth(req, res, next) {
   res.status(401).json({ error: 'Nicht authentifiziert' });
 }
 
+// Optional auth – sets req.user if a valid token is present, never rejects
+function optionalAuth(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const data = validateTokenWithData(token);
+  if (data) req.user = data;
+  next();
+}
+
 // Admin middleware
 function requireAdmin(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -94,9 +103,9 @@ function requireAdmin(req, res, next) {
 
 // API routes
 app.use('/api/auth', authRouter);
-// Recipes: GET is public (overview/detail), write operations require auth
+// Recipes: GET is public but enriched with user stats when authenticated
 app.use('/api/recipes', (req, res, next) => {
-  if (req.method === 'GET') return next();
+  if (req.method === 'GET') return optionalAuth(req, res, next);
   requireAuth(req, res, next);  // all write methods require auth; ownership is checked per route
 }, recipesRouter);
 app.use('/api/settings', requireAuth, settingsRouter);

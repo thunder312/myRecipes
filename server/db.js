@@ -89,6 +89,14 @@ function initSchema() {
       question TEXT NOT NULL,
       createdAt TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS user_recipe_stats (
+      userId INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      recipeId INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+      cookedDates TEXT NOT NULL DEFAULT '[]',
+      cookedCount INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (userId, recipeId)
+    );
   `);
 }
 
@@ -187,6 +195,19 @@ function migrateSchema() {
     getDB().prepare('DELETE FROM cookbooks WHERE id = ?').run(cb.id);
   }
 
+  // Migrate legacy cookedDates/cookedCount from recipes table → user_recipe_stats for the creator
+  const recipesWithStats = getDB().prepare(`
+    SELECT id, createdBy, cookedDates, cookedCount FROM recipes
+    WHERE createdBy IS NOT NULL AND cookedCount > 0
+      AND NOT EXISTS (SELECT 1 FROM user_recipe_stats WHERE recipeId = recipes.id AND userId = recipes.createdBy)
+  `).all();
+  const statsInsert = getDB().prepare(
+    'INSERT OR IGNORE INTO user_recipe_stats (userId, recipeId, cookedDates, cookedCount) VALUES (?, ?, ?, ?)'
+  );
+  for (const r of recipesWithStats) {
+    statsInsert.run(r.createdBy, r.id, r.cookedDates || '[]', r.cookedCount || 0);
+  }
+
   // Create personal cookbooks for all users who don't have one yet
   const usersWithoutCookbook = getDB().prepare(`
     SELECT u.id, u.username FROM users u
@@ -249,22 +270,51 @@ function deserializeRecipe(row) {
 
 // --- Recipes ---
 
-function getAllRecipes() {
+function mergeUserStats(recipe, userId) {
+  if (!recipe || !userId) return recipe;
+  const stats = getDB().prepare(
+    'SELECT cookedDates, cookedCount FROM user_recipe_stats WHERE userId = ? AND recipeId = ?'
+  ).get(userId, recipe.id);
+  if (stats) {
+    recipe.cookedDates = JSON.parse(stats.cookedDates || '[]');
+    recipe.cookedCount = stats.cookedCount || 0;
+  } else {
+    recipe.cookedDates = [];
+    recipe.cookedCount = 0;
+  }
+  return recipe;
+}
+
+function getAllRecipes(userId = null) {
   const rows = getDB().prepare(`
     SELECT r.*, u.username AS createdByUsername
     FROM recipes r LEFT JOIN users u ON u.id = r.createdBy
     ORDER BY r.createdAt DESC
   `).all();
-  return rows.map(deserializeRecipe);
+  const recipes = rows.map(deserializeRecipe);
+  if (userId) recipes.forEach(r => mergeUserStats(r, userId));
+  return recipes;
 }
 
-function getRecipe(id) {
+function getRecipe(id, userId = null) {
   const row = getDB().prepare(`
     SELECT r.*, u.username AS createdByUsername
     FROM recipes r LEFT JOIN users u ON u.id = r.createdBy
     WHERE r.id = ?
   `).get(id);
-  return deserializeRecipe(row);
+  const recipe = deserializeRecipe(row);
+  if (userId) mergeUserStats(recipe, userId);
+  return recipe;
+}
+
+function upsertUserRecipeStats(userId, recipeId, cookedDates, cookedCount) {
+  getDB().prepare(`
+    INSERT INTO user_recipe_stats (userId, recipeId, cookedDates, cookedCount)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(userId, recipeId) DO UPDATE SET
+      cookedDates = excluded.cookedDates,
+      cookedCount = excluded.cookedCount
+  `).run(userId, recipeId, JSON.stringify(cookedDates), cookedCount);
 }
 
 function addRecipe(recipe, extraCookbookIds = [], userId = null) {
@@ -641,4 +691,5 @@ module.exports = {
   getAllSavedQueries,
   addSavedQuery,
   deleteSavedQuery,
+  upsertUserRecipeStats,
 };

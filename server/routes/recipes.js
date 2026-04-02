@@ -1,18 +1,19 @@
 const { Router } = require('express');
-const { getAllRecipes, getRecipe, addRecipe, updateRecipe, deleteRecipe } = require('../db');
+const { getAllRecipes, getRecipe, addRecipe, updateRecipe, deleteRecipe, upsertUserRecipeStats } = require('../db');
 
 const router = Router();
 
-// GET /api/recipes - all recipes
+// GET /api/recipes - all recipes (cooked stats user-specific if authenticated)
 router.get('/', (req, res) => {
-  const recipes = getAllRecipes();
-  res.json(recipes);
+  const userId = req.user?.userId || null;
+  res.json(getAllRecipes(userId));
 });
 
-// GET /api/recipes/:id - single recipe
+// GET /api/recipes/:id - single recipe (cooked stats user-specific if authenticated)
 router.get('/:id', (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const recipe = getRecipe(id);
+  const userId = req.user?.userId || null;
+  const recipe = getRecipe(id, userId);
   if (!recipe) {
     return res.status(404).json({ error: 'Rezept nicht gefunden' });
   }
@@ -55,11 +56,22 @@ router.patch('/:id', (req, res) => {
     return res.status(404).json({ error: 'Rezept nicht gefunden' });
   }
   const { notes, cookedDates, cookedCount } = req.body;
-  const update = { ...existing };
-  if (notes !== undefined) update.notes = notes;
-  if (cookedDates !== undefined) update.cookedDates = cookedDates;
-  if (cookedCount !== undefined) update.cookedCount = cookedCount;
-  updateRecipe(update);
+
+  // Cooked stats are per-user – stored in user_recipe_stats
+  if (cookedDates !== undefined || cookedCount !== undefined) {
+    upsertUserRecipeStats(
+      req.user.userId,
+      id,
+      cookedDates !== undefined ? cookedDates : [],
+      cookedCount !== undefined ? cookedCount : 0
+    );
+  }
+
+  // Notes are still stored on the recipe itself
+  if (notes !== undefined) {
+    updateRecipe({ ...existing, notes });
+  }
+
   res.json({ success: true });
 });
 
