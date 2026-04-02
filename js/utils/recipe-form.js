@@ -62,7 +62,7 @@ export function renderRecipeForm(targetEl, data) {
     <div class="form-group">
       <label>Notizen / Tipps</label>
       <textarea class="input input--textarea" data-field="importNotes" rows="3"
-                placeholder="Tipps, Hinweise, Variationen...">${esc(data.importNotes || '')}</textarea>
+                placeholder="Tipps, Hinweise, Variationen...">${esc(data.importNotes || (Array.isArray(data.notes) ? data.notes.map(n => n.text).join('\n') : ''))}</textarea>
     </div>
     <div class="form-group">
       <label>Von wem / Woher</label>

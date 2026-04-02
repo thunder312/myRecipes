@@ -310,8 +310,19 @@ function renderEditView(container, recipe) {
   $('#btnSaveEdit', container).addEventListener('click', async () => {
     const formData = readRecipeForm(formEl);
 
+    // Convert importNotes textarea → notes array (replaces existing notes)
+    const { importNotes, ...rest } = formData;
+    if (importNotes && importNotes.trim()) {
+      rest.notes = importNotes.trim().split('\n').filter(Boolean)
+        .map(text => ({ date: new Date().toISOString(), text }));
+    } else if (!importNotes) {
+      rest.notes = recipe.notes; // unchanged
+    } else {
+      rest.notes = []; // user cleared the field
+    }
+
     // Merge edited fields into existing recipe
-    Object.assign(recipe, formData);
+    Object.assign(recipe, rest);
 
     await updateRecipe(recipe);
     showToast(`"${recipe.title}" aktualisiert!`, 'success');

@@ -501,12 +501,12 @@ export function generateRecipeA5PDF(recipeData) {
   doc.setProperties({ title: recipeData.title || 'Rezept' });
   const pageWidth  = doc.internal.pageSize.getWidth();   // 297 mm
   const pageHeight = doc.internal.pageSize.getHeight();  // 210 mm
-  const marginLeft = 25; // wider for hole punch
+  const marginLeft = 25; // wider for hole punch (both sides – left col left edge, right col left edge)
   const marginOther = 14;
-  const colGap  = 10;
-  const colWidth = (pageWidth - marginLeft - marginOther - colGap) / 2; // ~124 mm
+  const halfWidth = pageWidth / 2; // 148.5 mm – physical center / cut line
+  const colWidth = halfWidth - marginLeft - marginOther; // ~109.5 mm per column
   const leftX  = marginLeft;
-  const rightX = marginLeft + colWidth + colGap;
+  const rightX = halfWidth + marginLeft; // right col starts 25 mm right of center
   const maxY   = pageHeight - marginOther;
 
   // A5 font sizes – proportionally smaller than A4 (A5 is ~73% of A4 width)
@@ -516,19 +516,31 @@ export function generateRecipeA5PDF(recipeData) {
   let y = marginOther + 4;
   let inRightCol = false;
 
+  function drawSeparator() {
+    doc.setDrawColor(200);
+    doc.setLineWidth(0.3);
+    doc.line(halfWidth, marginOther, halfWidth, pageHeight - marginOther);
+  }
+
   function switchToRightCol() {
-    if (inRightCol) return;
     inRightCol = true;
     x = rightX;
     y = marginOther + 4;
-    const sepX = marginLeft + colWidth + colGap / 2;
-    doc.setDrawColor(200);
-    doc.setLineWidth(0.3);
-    doc.line(sepX, marginOther, sepX, pageHeight - marginOther);
+    drawSeparator();
+  }
+
+  function switchToNextPage() {
+    doc.addPage();
+    inRightCol = false;
+    x = leftX;
+    y = marginOther + 4;
   }
 
   function ensureSpace(needed) {
-    if (y + needed > maxY) switchToRightCol();
+    if (y + needed > maxY) {
+      if (!inRightCol) switchToRightCol();
+      else switchToNextPage();
+    }
   }
 
   doc.setTextColor(0, 0, 0);
@@ -585,7 +597,6 @@ export function generateRecipeA5PDF(recipeData) {
     for (const ing of recipeData.ingredients) {
       const ingLines = doc.splitTextToSize(`•  ${ing}`, colWidth - 2);
       ensureSpace(ingLines.length * 4.5 + 1);
-      if (y > maxY) break;
       doc.text(ingLines, x + 2, y);
       y += ingLines.length * 4.5 + 1;
     }
@@ -611,10 +622,10 @@ export function generateRecipeA5PDF(recipeData) {
       const indent = alreadyNumbered ? 0 : doc.getTextWidth(label);
       const lines = doc.splitTextToSize(label + steps[idx], colWidth);
       ensureSpace(4.5 * lines.length);
-      if (y > maxY) break;
       doc.text(lines[0], x, y);
       for (let i = 1; i < lines.length; i++) {
         y += 4.5;
+        ensureSpace(4.5);
         doc.text(lines[i], x + indent, y);
       }
       y += 5;
@@ -637,7 +648,6 @@ export function generateRecipeA5PDF(recipeData) {
       const lines = doc.splitTextToSize(text, colWidth);
       for (const line of lines) {
         ensureSpace(4.5);
-        if (y > maxY) break;
         doc.text(line, x, y);
         y += 4.5;
       }
@@ -648,22 +658,18 @@ export function generateRecipeA5PDF(recipeData) {
   // Tags
   if (recipeData.tags && recipeData.tags.length > 0) {
     ensureSpace(6);
-    if (y <= maxY) {
-      doc.setFontSize(fs.small);
-      doc.setTextColor(120);
-      doc.text('Tags: ' + recipeData.tags.join(', '), x, y);
-      y += 4;
-    }
+    doc.setFontSize(fs.small);
+    doc.setTextColor(120);
+    doc.text('Tags: ' + recipeData.tags.join(', '), x, y);
+    y += 4;
   }
 
   // Sides
   if (recipeData.sides && recipeData.sides.length > 0) {
     ensureSpace(6);
-    if (y <= maxY) {
-      doc.setFontSize(fs.small);
-      doc.setTextColor(120);
-      doc.text('Passende Beilagen: ' + recipeData.sides.join(', '), x, y);
-    }
+    doc.setFontSize(fs.small);
+    doc.setTextColor(120);
+    doc.text('Passende Beilagen: ' + recipeData.sides.join(', '), x, y);
   }
 
   return doc.output('blob');

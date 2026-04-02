@@ -176,10 +176,21 @@ function migrateSchema() {
     for (const q of defaults) stmt.run(q, now);
   }
 
+  // Remove personal cookbooks from admin users (admins don't need personal cookbooks)
+  const adminCookbooks = getDB().prepare(`
+    SELECT c.id FROM cookbooks c
+    JOIN users u ON c.userId = u.id
+    WHERE u.role = 'admin'
+  `).all();
+  for (const cb of adminCookbooks) {
+    getDB().prepare('INSERT OR IGNORE INTO recipe_cookbooks (recipeId, cookbookId) SELECT recipeId, 1 FROM recipe_cookbooks WHERE cookbookId = ?').run(cb.id);
+    getDB().prepare('DELETE FROM cookbooks WHERE id = ?').run(cb.id);
+  }
+
   // Create personal cookbooks for all users who don't have one yet
   const usersWithoutCookbook = getDB().prepare(`
     SELECT u.id, u.username FROM users u
-    WHERE NOT EXISTS (SELECT 1 FROM cookbooks WHERE userId = u.id)
+    WHERE u.role != 'admin' AND NOT EXISTS (SELECT 1 FROM cookbooks WHERE userId = u.id)
   `).all();
   for (const user of usersWithoutCookbook) {
     createUserCookbook(user.id, user.username);
@@ -541,7 +552,7 @@ function addUser(username, password, role = 'user') {
     'INSERT INTO users (username, passwordHash, role, createdAt) VALUES (?, ?, ?, ?)'
   ).run(username, hashPassword(password), role, new Date().toISOString());
   const userId = result.lastInsertRowid;
-  createUserCookbook(userId, username);
+  if (role !== 'admin') createUserCookbook(userId, username);
   return userId;
 }
 
