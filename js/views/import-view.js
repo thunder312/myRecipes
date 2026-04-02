@@ -286,6 +286,11 @@ async function renderImportForm(container) {
         <div class="batch__summary" id="batchSummary"></div>
         <div class="dup-section hidden" id="dupSection"></div>
         <div class="batch__log" id="batchLog"></div>
+        <div class="batch__retry hidden" id="batchRetry">
+          <h3>Fehlgeschlagene Dateien erneut importieren</h3>
+          <div class="batch__retry-list" id="batchRetryList"></div>
+          <button class="btn btn--secondary" id="btnBatchRetry">Ausgewählte erneut importieren</button>
+        </div>
         <button class="btn btn--primary" id="btnBatchDone">Zur Übersicht</button>
       </div>
     </div>
@@ -732,7 +737,6 @@ async function renderImportForm(container) {
     }
 
     const delay = Math.max(0, parseInt($('#batchDelay', container).value) || 2) * 1000;
-
     files.sort((a, b) => (a.webkitRelativePath || a.name).localeCompare(b.webkitRelativePath || b.name));
 
     batchJob = {
@@ -746,6 +750,7 @@ async function renderImportForm(container) {
       duplicates: [],
       sourceNote: $('#batchSourceNote', container).value.trim(),
       extraCookbookIds: getSelectedImportCookbookIds(container),
+      delay,
     };
 
     $('#panel-batch', container).classList.add('hidden');
@@ -753,108 +758,7 @@ async function renderImportForm(container) {
     $('#batchResults', container).classList.add('hidden');
     setImportRunning(true);
 
-    const total = files.length;
-
-    for (let i = 0; i < files.length; i++) {
-      if (batchJob.cancelled) {
-        for (let j = i; j < files.length; j++) {
-          batchJob.results.skipped.push({ file: files[j].webkitRelativePath || files[j].name, reason: 'Abgebrochen' });
-        }
-        break;
-      }
-
-      const file = files[i];
-      const filePath = file.webkitRelativePath || file.name;
-
-      batchJob.current = i + 1;
-      batchJob.currentFileName = filePath;
-      updateBatchProgressDOM();
-
-      console.log(`[Batch] ${i + 1}/${total} Starte: ${filePath}`);
-      appendLiveLog('pending', `${i + 1}/${total}: ${filePath}`);
-
-      try {
-        let analysisResults;
-
-        if (isPdfFile(file)) {
-          analysisResults = await processPDF(file);
-        } else if (isImageFile(file)) {
-          analysisResults = await processImage(file);
-        } else if (isTextFile(file)) {
-          const text = await file.text();
-          if (text.trim().length < 20) {
-            batchJob.results.skipped.push({ file: filePath, reason: 'Zu wenig Text' });
-            appendLiveLog('skipped', `${i + 1}/${total}: ${filePath} – Zu wenig Text`);
-            continue;
-          }
-          analysisResults = await processText(text);
-          for (const r of analysisResults) r.sourceRef = file.name;
-        } else {
-          batchJob.results.skipped.push({ file: filePath, reason: 'Nicht unterstütztes Format' });
-          appendLiveLog('skipped', `${i + 1}/${total}: ${filePath} – Nicht unterstützt`);
-          continue;
-        }
-
-        if (analysisResults.length === 0) {
-          const filtered = analysisResults._filtered || 0;
-          const skipReason = filtered > 0 ? `${filtered} ungültige Einträge gefiltert` : 'Kein Rezept erkannt';
-          batchJob.results.skipped.push({ file: filePath, reason: skipReason });
-          appendLiveLog('skipped', `${i + 1}/${total}: ${filePath} – ${skipReason}`);
-          continue;
-        }
-
-        for (const analysisResult of analysisResults) {
-          const recipe = {
-            title: analysisResult.title || file.name,
-            category: analysisResult.category || '',
-            origin: analysisResult.origin || '',
-            prepTime: analysisResult.prepTime || null,
-            mainIngredient: analysisResult.mainIngredient || '',
-            sides: analysisResult.sides || [],
-            tags: analysisResult.tags || [],
-            ingredients: analysisResult.ingredients || [],
-            description: analysisResult.description || '',
-            recipeText: analysisResult.recipeText || '',
-            servings: analysisResult.servings || null,
-            difficulty: analysisResult.difficulty || '',
-            sourceType: analysisResult.sourceType || 'file',
-            sourceRef: analysisResult.sourceRef || filePath,
-            sourceNote: batchJob.sourceNote || '',
-            notes: analysisResult.importNotes
-              ? [{ date: new Date().toISOString(), text: analysisResult.importNotes }]
-              : [],
-            cookedDates: [],
-            cookedCount: 0
-          };
-
-          recipe.thumbnailBlob = null;
-
-          const newId = await addRecipe(recipe, batchJob.extraCookbookIds || []);
-          batchJob.results.success.push({ file: filePath, title: recipe.title, id: newId });
-          batchJob.importedIds.push(newId);
-          appendLiveLog('success', `${i + 1}/${total}: ${recipe.title} (${filePath})`);
-        }
-      } catch (err) {
-        const isRateLimit = err.isRateLimit === true || err.status === 429 || err.status === 529;
-        const reason = err.message?.replace(/<[^>]+>/g, '') || 'Unbekannter Fehler';
-        console.error(`[Batch] ${i + 1}/${total} Fehler (HTTP ${err.status ?? '–'}):`, filePath, reason);
-        batchJob.results.failed.push({ file: filePath, reason });
-        appendLiveLog('failed', `${i + 1}/${total}: ${filePath} – ${reason}`);
-
-        if (isRateLimit) {
-          console.warn('[Batch] Rate-Limit erkannt – warte 60 Sekunden vor dem nächsten Versuch...');
-          appendLiveLog('ratelimit', 'Rate-Limit – 60s Pause vor dem nächsten Versuch...');
-          batchJob.currentFileName = `⏸ Rate-Limit – 60s Pause... (${filePath})`;
-          updateBatchProgressDOM();
-          await new Promise(resolve => setTimeout(resolve, 60_000));
-          batchJob.currentFileName = filePath;
-        }
-      }
-
-      if (i < files.length - 1 && !batchJob.cancelled && delay > 0) {
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
+    await processBatchFiles(files, delay);
 
     batchJob.status = batchJob.cancelled ? 'cancelled' : 'completed';
     setImportRunning(false);
@@ -864,9 +768,8 @@ async function renderImportForm(container) {
       batchJob.duplicates = findDuplicates(allRecipes, batchJob.importedIds);
     } catch { batchJob.duplicates = []; }
 
-    // Show results only if the import view is currently displayed
     if ($('#batchProgress', batchActiveContainer)) {
-      showBatchResults(batchActiveContainer, batchJob.results, total);
+      showBatchResults(batchActiveContainer, batchJob.results, batchJob.total);
     }
   });
 
@@ -893,6 +796,113 @@ async function renderImportForm(container) {
       updateBatchProgressDOM();
     } else {
       showBatchResults(container, batchJob.results, batchJob.total);
+    }
+  }
+}
+
+async function processBatchFiles(files, delay) {
+  const total = files.length;
+  batchJob.total = total;
+  batchJob.current = 0;
+
+  for (let i = 0; i < files.length; i++) {
+    if (batchJob.cancelled) {
+      for (let j = i; j < files.length; j++) {
+        batchJob.results.skipped.push({ file: files[j].webkitRelativePath || files[j].name, reason: 'Abgebrochen' });
+      }
+      break;
+    }
+
+    const file = files[i];
+    const filePath = file.webkitRelativePath || file.name;
+
+    batchJob.current = i + 1;
+    batchJob.currentFileName = filePath;
+    updateBatchProgressDOM();
+
+    console.log(`[Batch] ${i + 1}/${total} Starte: ${filePath}`);
+    appendLiveLog('pending', `${i + 1}/${total}: ${filePath}`);
+
+    try {
+      let analysisResults;
+
+      if (isPdfFile(file)) {
+        analysisResults = await processPDF(file);
+      } else if (isImageFile(file)) {
+        analysisResults = await processImage(file);
+      } else if (isTextFile(file)) {
+        const text = await file.text();
+        if (text.trim().length < 20) {
+          batchJob.results.skipped.push({ file: filePath, reason: 'Zu wenig Text' });
+          appendLiveLog('skipped', `${i + 1}/${total}: ${filePath} – Zu wenig Text`);
+          continue;
+        }
+        analysisResults = await processText(text);
+        for (const r of analysisResults) r.sourceRef = file.name;
+      } else {
+        batchJob.results.skipped.push({ file: filePath, reason: 'Nicht unterstütztes Format' });
+        appendLiveLog('skipped', `${i + 1}/${total}: ${filePath} – Nicht unterstützt`);
+        continue;
+      }
+
+      if (analysisResults.length === 0) {
+        const filtered = analysisResults._filtered || 0;
+        const skipReason = filtered > 0 ? `${filtered} ungültige Einträge gefiltert` : 'Kein Rezept erkannt';
+        const skippedEntry = { file: filePath, reason: skipReason };
+        if (skipReason === 'Kein Rezept erkannt') skippedEntry.fileObj = file;
+        batchJob.results.skipped.push(skippedEntry);
+        appendLiveLog('skipped', `${i + 1}/${total}: ${filePath} – ${skipReason}`);
+        continue;
+      }
+
+      for (const analysisResult of analysisResults) {
+        const recipe = {
+          title: analysisResult.title || file.name,
+          category: analysisResult.category || '',
+          origin: analysisResult.origin || '',
+          prepTime: analysisResult.prepTime || null,
+          mainIngredient: analysisResult.mainIngredient || '',
+          sides: analysisResult.sides || [],
+          tags: analysisResult.tags || [],
+          ingredients: analysisResult.ingredients || [],
+          description: analysisResult.description || '',
+          recipeText: analysisResult.recipeText || '',
+          servings: analysisResult.servings || null,
+          difficulty: analysisResult.difficulty || '',
+          sourceType: analysisResult.sourceType || 'file',
+          sourceRef: analysisResult.sourceRef || filePath,
+          sourceNote: batchJob.sourceNote || '',
+          notes: analysisResult.importNotes
+            ? [{ date: new Date().toISOString(), text: analysisResult.importNotes }]
+            : [],
+          cookedDates: [],
+          cookedCount: 0
+        };
+        recipe.thumbnailBlob = null;
+        const newId = await addRecipe(recipe, batchJob.extraCookbookIds || []);
+        batchJob.results.success.push({ file: filePath, title: recipe.title, id: newId });
+        batchJob.importedIds.push(newId);
+        appendLiveLog('success', `${i + 1}/${total}: ${recipe.title} (${filePath})`);
+      }
+    } catch (err) {
+      const isRateLimit = err.isRateLimit === true || err.status === 429 || err.status === 529;
+      const reason = err.message?.replace(/<[^>]+>/g, '') || 'Unbekannter Fehler';
+      console.error(`[Batch] ${i + 1}/${total} Fehler (HTTP ${err.status ?? '–'}):`, filePath, reason);
+      batchJob.results.failed.push({ file: filePath, fileObj: file, reason });
+      appendLiveLog('failed', `${i + 1}/${total}: ${filePath} – ${reason}`);
+
+      if (isRateLimit) {
+        console.warn('[Batch] Rate-Limit erkannt – warte 60 Sekunden vor dem nächsten Versuch...');
+        appendLiveLog('ratelimit', 'Rate-Limit – 60s Pause vor dem nächsten Versuch...');
+        batchJob.currentFileName = `⏸ Rate-Limit – 60s Pause... (${filePath})`;
+        updateBatchProgressDOM();
+        await new Promise(resolve => setTimeout(resolve, 60_000));
+        batchJob.currentFileName = filePath;
+      }
+    }
+
+    if (i < files.length - 1 && !batchJob.cancelled && delay > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
 }
@@ -955,6 +965,88 @@ function showBatchResults(container, results, total) {
 
   if (batchJob?.duplicates?.length > 0) {
     showDuplicates(container);
+  }
+
+  // --- Retry section ---
+  const failedRetryable = results.failed.filter(r => r.fileObj);
+  const noRecipeRetryable = results.skipped.filter(r => r.fileObj && r.reason === 'Kein Rezept erkannt');
+
+  if (failedRetryable.length > 0 || noRecipeRetryable.length > 0) {
+    const retrySection = $('#batchRetry', container);
+    const retryList = $('#batchRetryList', container);
+    retrySection.classList.remove('hidden');
+
+    let listHtml = '';
+
+    if (failedRetryable.length > 0) {
+      listHtml += `<p class="batch__retry-group-label">Fehlgeschlagen (${failedRetryable.length})</p>`;
+      failedRetryable.forEach((r, idx) => {
+        listHtml += `<label class="batch__retry-item">
+          <input type="checkbox" data-retry-idx="f${idx}" checked />
+          <span class="batch__retry-file">${esc(r.file)}</span>
+          <span class="batch__retry-reason">${esc(r.reason)}</span>
+        </label>`;
+      });
+    }
+
+    if (noRecipeRetryable.length > 0) {
+      listHtml += `<p class="batch__retry-group-label">Kein Rezept erkannt (${noRecipeRetryable.length}) – optional</p>`;
+      noRecipeRetryable.forEach((r, idx) => {
+        listHtml += `<label class="batch__retry-item">
+          <input type="checkbox" data-retry-idx="s${idx}" />
+          <span class="batch__retry-file">${esc(r.file)}</span>
+        </label>`;
+      });
+    }
+
+    retryList.innerHTML = listHtml;
+
+    $('#btnBatchRetry', container).addEventListener('click', async () => {
+      const selectedFiles = [];
+      retryList.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+        const idx = cb.dataset.retryIdx;
+        if (idx.startsWith('f')) selectedFiles.push(failedRetryable[parseInt(idx.slice(1))].fileObj);
+        else selectedFiles.push(noRecipeRetryable[parseInt(idx.slice(1))].fileObj);
+      });
+
+      if (selectedFiles.length === 0) {
+        showToast('Keine Dateien ausgewählt.', 'warning');
+        return;
+      }
+
+      const delay = batchJob.delay ?? 2000;
+      batchJob = {
+        ...batchJob,
+        total: selectedFiles.length,
+        current: 0,
+        currentFileName: '',
+        results: { success: [], failed: [], skipped: [] },
+        cancelled: false,
+        status: 'running',
+        importedIds: [],
+        duplicates: [],
+      };
+
+      $('#batchResults', container).classList.add('hidden');
+      const liveLog = $('#batchLiveLog', container);
+      if (liveLog) liveLog.innerHTML = '';
+      $('#batchProgress', container).classList.remove('hidden');
+      setImportRunning(true);
+
+      await processBatchFiles(selectedFiles, delay);
+
+      batchJob.status = batchJob.cancelled ? 'cancelled' : 'completed';
+      setImportRunning(false);
+
+      try {
+        const allRecipes = await getAllRecipes();
+        batchJob.duplicates = findDuplicates(allRecipes, batchJob.importedIds);
+      } catch { batchJob.duplicates = []; }
+
+      if ($('#batchProgress', batchActiveContainer)) {
+        showBatchResults(batchActiveContainer, batchJob.results, selectedFiles.length);
+      }
+    });
   }
 }
 
