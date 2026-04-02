@@ -20,6 +20,8 @@ async function navigate() {
   const container = $('#app-content');
   if (!container) return;
 
+  updateNavForUser();
+
   // Update active nav
   document.querySelectorAll('.nav__link').forEach(link => {
     link.classList.toggle('nav__link--active', link.getAttribute('href') === `#${viewName}`);
@@ -57,6 +59,9 @@ async function navigate() {
 function updateNavForUser() {
   const loggedIn = isAuthenticated();
   const admin = isAdmin();
+
+  const nav = document.querySelector('.nav');
+  if (nav) nav.classList.toggle('hidden', !loggedIn);
 
   const logoutBtn = $('#btnLogout');
   if (logoutBtn) {
