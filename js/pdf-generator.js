@@ -53,14 +53,6 @@ function estimateTocPages(groups, pageHeight, margin) {
 function addCookbookCover(doc, cookbook, recipeCount, pageWidth, pageHeight, margin) {
   const contentWidth = pageWidth - 2 * margin;
 
-  // Light top bar with app branding
-  doc.setFillColor(238, 238, 238);
-  doc.rect(0, 0, pageWidth, 13, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(90);
-  doc.text('myRecipes', pageWidth - margin, 8.5, { align: 'right' });
-
   // Title
   doc.setTextColor(20);
   doc.setFont('helvetica', 'bold');
@@ -113,7 +105,7 @@ function addCookbookCover(doc, cookbook, recipeCount, pageWidth, pageHeight, mar
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(100);
-  doc.text('erstellt mit myRecipes', pageWidth / 2, pageHeight - 4.5, { align: 'center' });
+  doc.text('erstellt mit myRecipes  \u2022  KI-Unterst\u00fctzung durch Claude (Anthropic)', pageWidth / 2, pageHeight - 4.5, { align: 'center' });
 }
 
 function addChapterPage(doc, category, pageWidth, pageHeight, margin) {
