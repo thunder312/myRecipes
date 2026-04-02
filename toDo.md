@@ -8,5 +8,5 @@
 
 ## Handschrift trainieren:
 - ~~Rezepte/Asia/20211110_Doro_AsiaHühnerNudelTopf.pdf~~
-- Rezepte/Kuchen/Rhabarberkuchen.pdf
-- Rezepte/Sauerkonserven/20211020_SenfGurkenRobertsMutter.pdf
+- ~~Rezepte/Kuchen/Rhabarberkuchen.pdf~~
+- ~~Rezepte/Sauerkonserven/20211020_SenfGurkenRobertsMutter.pdf~~
