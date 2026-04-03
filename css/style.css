@@ -970,6 +970,15 @@ button.nav__profile {
   margin-bottom: var(--space-sm);
 }
 
+.recipe-steps__heading {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: var(--space-md) 0 var(--space-xs);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .recipe-text--empty {
   color: var(--text-muted);
   font-style: italic;

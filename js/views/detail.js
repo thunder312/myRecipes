@@ -59,6 +59,32 @@ function splitIntoSteps(text) {
   return result.length > 1 ? result : lines;
 }
 
+// Erkennt Unter-Überschriften: kurze Zeile ohne Satzzeichen, endet mit ":"
+function isStepHeading(s) {
+  return /^[^.!?]{1,60}:\s*$/.test(s);
+}
+
+function renderRecipeSteps(text) {
+  const steps = splitIntoSteps(text);
+  const alreadyNumbered = steps.length > 1 && /^\d+[.)]\s/.test(steps[0]);
+
+  let html = '';
+  let inList = false;
+
+  for (const s of steps) {
+    if (isStepHeading(s)) {
+      if (inList) { html += '</ol>'; inList = false; }
+      html += `<h4 class="recipe-steps__heading">${esc(s.replace(/:\s*$/, '').trimEnd())}</h4>`;
+    } else {
+      if (!inList) { html += '<ol class="recipe-steps">'; inList = true; }
+      const text = alreadyNumbered ? s.replace(/^\d+[.)]\s*/, '') : s;
+      html += `<li>${esc(text)}</li>`;
+    }
+  }
+  if (inList) html += '</ol>';
+  return html;
+}
+
 function esc(str) {
   if (!str) return '';
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -121,12 +147,7 @@ function renderDetailView(container, recipe) {
       <div class="detail__recipe-text">
         <h3>Zubereitung</h3>
         ${recipe.recipeText
-          ? (() => {
-              const steps = splitIntoSteps(recipe.recipeText);
-              const alreadyNumbered = steps.length > 1 && /^\d+[.)]\s/.test(steps[0]);
-              const items = steps.map(s => `<li>${esc(alreadyNumbered ? s.replace(/^\d+[.)]\s*/, '') : s)}</li>`).join('');
-              return `<ol class="recipe-steps">${items}</ol>`;
-            })()
+          ? renderRecipeSteps(recipe.recipeText)
           : `<p class="recipe-text recipe-text--empty">Keine Zubereitungsschritte vorhanden. Rezept bearbeiten um sie hinzuzufügen.</p>`
         }
       </div>
