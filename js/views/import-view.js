@@ -5,6 +5,7 @@ import { setImportRunning } from '../utils/auth.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { ApiError } from '../api.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
+import { t } from '../i18n.js';
 
 const SUPPORTED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.txt', '.text', '.md'];
 
@@ -104,41 +105,41 @@ async function renderImportForm(container) {
 
   container.innerHTML = `
     <div class="import">
-      <h1>Rezept importieren</h1>
+      <h1>${t('import.title')}</h1>
 
       <div class="import__tabs">
-        <button class="tab tab--active" data-tab="url">URL</button>
-        <button class="tab" data-tab="file">PDF / Bild</button>
-        <button class="tab" data-tab="text">Text</button>
-        <button class="tab" data-tab="batch">Massen-Import</button>
+        <button class="tab tab--active" data-tab="url">${t('import.tabUrl')}</button>
+        <button class="tab" data-tab="file">${t('import.tabFile')}</button>
+        <button class="tab" data-tab="text">${t('import.tabText')}</button>
+        <button class="tab" data-tab="batch">${t('import.tabBatch')}</button>
       </div>
 
       <div class="form-group import__cookbook-selector" id="cookbookSelectorGlobal">
-        <label>Zusätzliche Kochbücher (optional)</label>
+        <label>${t('import.additionalCookbooks')}</label>
         <div class="cookbook-checkboxes" id="cookbookCheckboxes"></div>
-        <p class="settings__hint">Alle importierten Rezepte werden immer dem Standard-Kochbuch zugeordnet.</p>
+        <p class="settings__hint">${t('import.cookbookHint')}</p>
       </div>
 
       <div class="import__panel" id="panel-url">
         <div class="form-group">
-          <label for="recipeUrl">Rezept-URL</label>
-          <input type="url" id="recipeUrl" class="input" placeholder="https://www.chefkoch.de/rezepte/..." />
+          <label for="recipeUrl">${t('import.urlLabel')}</label>
+          <input type="url" id="recipeUrl" class="input" placeholder="${t('import.urlPlaceholder')}" />
         </div>
         <div class="form-group">
-          <label for="sourceNoteUrl">Von wem / Woher (optional)</label>
+          <label for="sourceNoteUrl">${t('import.sourceNoteLabel')}</label>
           <input type="text" id="sourceNoteUrl" class="input"
-                 placeholder="z. B. Von Oma, Aus dem Koch-Kurs..." />
+                 placeholder="${t('import.sourceNotePlaceholder')}" />
         </div>
         <label class="import__multi-hint">
           <input type="checkbox" id="multiHintUrl" />
-          Enthält mehrere Rezepte
+          ${t('import.multiHint')}
         </label>
-        <button class="btn btn--primary" id="btnImportUrl">URL importieren</button>
+        <button class="btn btn--primary" id="btnImportUrl">${t('import.btnUrl')}</button>
       </div>
 
       <div class="import__panel hidden" id="panel-file">
         <div class="form-group">
-          <label for="recipeFile">PDF oder Bild hochladen</label>
+          <label for="recipeFile">${t('import.fileLabel')}</label>
           <input type="file" id="recipeFile" class="input" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp" />
         </div>
         <div class="import__camera-group" id="cameraGroup">
@@ -147,12 +148,12 @@ async function renderImportForm(container) {
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
               <circle cx="12" cy="13" r="4"/>
             </svg>
-            Rezept fotografieren
+            ${t('import.btnCamera')}
           </button>
           <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" />
         </div>
         <div class="camera-collector hidden" id="cameraCollector">
-          <p class="camera-collector__label">Aufgenommene Seiten:</p>
+          <p class="camera-collector__label">${t('import.cameraPages')}:</p>
           <div class="camera-collector__photos" id="cameraPhotos"></div>
           <div class="camera-collector__actions">
             <button class="btn btn--secondary btn--sm" id="btnAddPhoto" type="button">
@@ -160,45 +161,45 @@ async function renderImportForm(container) {
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                 <circle cx="12" cy="13" r="4"/>
               </svg>
-              Weitere Seite
+              ${t('import.addPageBtn')}
             </button>
-            <button class="btn btn--primary" id="btnAnalyzePhotos" type="button">Rezept analysieren</button>
-            <button class="btn btn--ghost btn--sm" id="btnClearPhotos" type="button">Abbrechen</button>
+            <button class="btn btn--primary" id="btnAnalyzePhotos" type="button">${t('import.btnAnalyze')}</button>
+            <button class="btn btn--ghost btn--sm" id="btnClearPhotos" type="button">${t('import.cancelBtn')}</button>
           </div>
         </div>
         <div class="form-group">
-          <label for="sourceNoteFile">Von wem / Woher (optional)</label>
+          <label for="sourceNoteFile">${t('import.sourceNoteLabel')}</label>
           <input type="text" id="sourceNoteFile" class="input"
-                 placeholder="z. B. Von Oma, Aus dem Koch-Kurs..." />
+                 placeholder="${t('import.sourceNotePlaceholder')}" />
         </div>
         <label class="import__multi-hint">
           <input type="checkbox" id="multiHintFile" />
-          Enthält mehrere Rezepte
+          ${t('import.multiHint')}
         </label>
-        <button class="btn btn--primary" id="btnImportFile">Datei importieren</button>
+        <button class="btn btn--primary" id="btnImportFile">${t('import.btnFile')}</button>
       </div>
 
       <div class="import__panel hidden" id="panel-text">
         <div class="form-group">
-          <label for="recipeText">Rezepttext einfügen</label>
-          <textarea id="recipeText" class="input input--textarea" rows="10" placeholder="Rezepttext hier einfügen..."></textarea>
+          <label for="recipeText">${t('import.tabText')}</label>
+          <textarea id="recipeText" class="input input--textarea" rows="10" placeholder="${t('import.textPlaceholder')}"></textarea>
         </div>
         <div class="form-group">
-          <label for="sourceNoteText">Von wem / Woher (optional)</label>
+          <label for="sourceNoteText">${t('import.sourceNoteLabel')}</label>
           <input type="text" id="sourceNoteText" class="input"
-                 placeholder="z. B. Von Oma, Aus dem Koch-Kurs..." />
+                 placeholder="${t('import.sourceNotePlaceholder')}" />
         </div>
         <label class="import__multi-hint">
           <input type="checkbox" id="multiHintText" />
-          Enthält mehrere Rezepte
+          ${t('import.multiHint')}
         </label>
-        <button class="btn btn--primary" id="btnImportText">Text importieren</button>
+        <button class="btn btn--primary" id="btnImportText">${t('import.btnText')}</button>
       </div>
 
       <div class="import__panel hidden" id="panel-batch">
-        <p class="batch__desc">Wähle einen Ordner aus – alle unterstützten Dateien (PDF, Bilder, Textdateien) werden rekursiv importiert und automatisch kategorisiert.</p>
+        <p class="batch__desc">${t('import.batchDesc')}</p>
         <div class="form-group">
-          <label for="batchFolder">Ordner auswählen</label>
+          <label for="batchFolder">${t('import.folderLabel')}</label>
           <input type="file" id="batchFolder" class="input" webkitdirectory directory multiple />
         </div>
         <div class="batch__file-info hidden" id="batchFileInfo">
@@ -206,54 +207,54 @@ async function renderImportForm(container) {
         </div>
         <div class="batch__options">
           <div class="form-group">
-            <label for="batchSourceNote">Von wem / Woher (optional, für alle Rezepte)</label>
+            <label for="batchSourceNote">${t('import.sourceNoteLabel')}</label>
             <input type="text" id="batchSourceNote" class="input"
-                   placeholder="z. B. Von Oma, Aus dem Koch-Kurs..." />
+                   placeholder="${t('import.sourceNotePlaceholder')}" />
           </div>
           <div class="form-group">
-            <label for="batchDelay">Pause zwischen Dateien (Sekunden)</label>
+            <label for="batchDelay">${t('import.batchDelay')}</label>
             <input type="number" id="batchDelay" class="input" value="2" min="0" max="30" style="max-width:120px" />
           </div>
         </div>
-        <button class="btn btn--primary" id="btnStartBatch">Massen-Import starten</button>
+        <button class="btn btn--primary" id="btnStartBatch">${t('import.batchStart')}</button>
       </div>
 
       <!-- Single import loading -->
       <div class="import__loading hidden" id="importLoading">
         <div class="spinner"></div>
-        <p id="loadingText">Rezept wird analysiert...</p>
+        <p id="loadingText">${t('import.loadingText')}</p>
       </div>
 
       <!-- Multi-recipe review -->
       <div class="multi-review hidden" id="multiReview">
         <div class="multi-review__header">
-          <h2 id="multiReviewTitle">Mehrere Rezepte erkannt</h2>
+          <h2 id="multiReviewTitle">${t('import.multiReviewTitle')}</h2>
           <p class="multi-review__desc" id="multiReviewDesc"></p>
         </div>
         <div class="multi-review__toolbar">
-          <button class="btn btn--ghost btn--sm" id="btnSelectAll">Alle auswählen</button>
-          <button class="btn btn--ghost btn--sm" id="btnSelectNone">Keine auswählen</button>
+          <button class="btn btn--ghost btn--sm" id="btnSelectAll">${t('import.batchSelectAll')}</button>
+          <button class="btn btn--ghost btn--sm" id="btnSelectNone">${t('import.batchSelectNone')}</button>
         </div>
         <div class="multi-review__list" id="multiList"></div>
         <div class="multi-review__actions">
-          <button class="btn btn--primary" id="btnMultiImport">Ausgewählte importieren</button>
-          <button class="btn btn--ghost" id="btnMultiCancel">Abbrechen</button>
+          <button class="btn btn--primary" id="btnMultiImport">${t('import.multiImportBtn')}</button>
+          <button class="btn btn--ghost" id="btnMultiCancel">${t('import.cancelBtn')}</button>
         </div>
       </div>
 
       <!-- Single recipe preview -->
       <div class="import__preview hidden" id="importPreview">
-        <h2>Vorschau & Bearbeitung</h2>
+        <h2>${t('import.preview')}</h2>
         <div class="preview-form" id="previewForm"></div>
         <div class="import__preview-actions">
-          <button class="btn btn--primary" id="btnSave">Rezept speichern</button>
-          <button class="btn btn--ghost" id="btnCancel">Abbrechen</button>
+          <button class="btn btn--primary" id="btnSave">${t('import.saveBtn')}</button>
+          <button class="btn btn--ghost" id="btnCancel">${t('import.cancelBtn')}</button>
         </div>
       </div>
 
       <!-- Multi-recipe import progress -->
       <div class="multi-progress hidden" id="multiProgress">
-        <h2>Rezepte werden importiert...</h2>
+        <h2>${t('import.multiRunning')}</h2>
         <div class="batch__progress-bar-wrapper">
           <div class="batch__progress-bar" id="multiBar" style="width:0%"></div>
         </div>
@@ -263,35 +264,35 @@ async function renderImportForm(container) {
 
       <!-- Multi-recipe import results -->
       <div class="multi-results hidden" id="multiResults">
-        <h2>Import abgeschlossen</h2>
+        <h2>${t('import.batchResultsTitle')}</h2>
         <div class="multi-results__summary" id="multiSummary"></div>
-        <button class="btn btn--primary" id="btnMultiDone">Zur Übersicht</button>
+        <button class="btn btn--primary" id="btnMultiDone">${t('import.batchToOverview')}</button>
       </div>
 
       <!-- Batch progress -->
       <div class="batch__progress hidden" id="batchProgress">
-        <h2>Massen-Import läuft...</h2>
+        <h2>${t('import.batchRunning')}</h2>
         <div class="batch__progress-bar-wrapper">
           <div class="batch__progress-bar" id="batchBar" style="width:0%"></div>
         </div>
         <p class="batch__progress-text" id="batchProgressText">0 / 0</p>
         <p class="batch__progress-current" id="batchCurrentFile"></p>
         <div class="batch__live-log" id="batchLiveLog"></div>
-        <button class="btn btn--danger" id="btnCancelBatch">Abbrechen</button>
+        <button class="btn btn--danger" id="btnCancelBatch">${t('import.cancelBtn')}</button>
       </div>
 
       <!-- Batch results -->
       <div class="batch__results hidden" id="batchResults">
-        <h2>Import abgeschlossen</h2>
+        <h2>${t('import.batchResultsTitle')}</h2>
         <div class="batch__summary" id="batchSummary"></div>
         <div class="dup-section hidden" id="dupSection"></div>
         <div class="batch__log" id="batchLog"></div>
         <div class="batch__retry hidden" id="batchRetry">
-          <h3>Fehlgeschlagene Dateien erneut importieren</h3>
+          <h3>${t('import.failedRetryTitle')}</h3>
           <div class="batch__retry-list" id="batchRetryList"></div>
-          <button class="btn btn--secondary" id="btnBatchRetry">Ausgewählte erneut importieren</button>
+          <button class="btn btn--secondary" id="btnBatchRetry">${t('import.batchRetry')}</button>
         </div>
-        <button class="btn btn--primary" id="btnBatchDone">Zur Übersicht</button>
+        <button class="btn btn--primary" id="btnBatchDone">${t('import.batchToOverview')}</button>
       </div>
     </div>
   `;
@@ -318,7 +319,7 @@ async function renderImportForm(container) {
 
   $('#btnImportUrl', container).addEventListener('click', async () => {
     const url = $('#recipeUrl', container).value.trim();
-    if (!url) { showToast('Bitte URL eingeben.', 'warning'); return; }
+    if (!url) { showToast(t('import.noUrlError'), 'warning'); return; }
     const multiHint = $('#multiHintUrl', container).checked;
     const sourceNote = $('#sourceNoteUrl', container).value.trim();
     await doImport(() => processURL(url, { multiHint }), sourceNote);
@@ -326,7 +327,7 @@ async function renderImportForm(container) {
 
   $('#btnImportFile', container).addEventListener('click', async () => {
     const file = $('#recipeFile', container).files[0];
-    if (!file) { showToast('Bitte Datei auswählen.', 'warning'); return; }
+    if (!file) { showToast(t('import.noFileError'), 'warning'); return; }
     const multiHint = $('#multiHintFile', container).checked;
     const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf');
     const sourceNote = $('#sourceNoteFile', container).value.trim();
@@ -409,7 +410,7 @@ async function renderImportForm(container) {
 
   $('#btnImportText', container).addEventListener('click', async () => {
     const text = $('#recipeText', container).value.trim();
-    if (!text) { showToast('Bitte Text eingeben.', 'warning'); return; }
+    if (!text) { showToast(t('import.noTextError'), 'warning'); return; }
     const multiHint = $('#multiHintText', container).checked;
     const sourceNote = $('#sourceNoteText', container).value.trim();
     await doImport(() => processText(text, { multiHint }), sourceNote);
@@ -418,7 +419,7 @@ async function renderImportForm(container) {
   async function doImport(processFn, sourceNote = '') {
     const apiKey = await getSetting('apiKey');
     if (!apiKey) {
-      showToast('Bitte zuerst den API-Key in den Einstellungen hinterlegen.', 'warning');
+      showToast(t('import.noApiKey'), 'warning');
       return;
     }
 
@@ -439,8 +440,8 @@ async function renderImportForm(container) {
 
       if (results.length === 0) {
         const msg = filteredCount > 0
-          ? `Keine brauchbaren Rezepte erkannt (${filteredCount} ungültige Einträge gefiltert).`
-          : 'Keine Rezepte erkannt. Bitte versuche es mit einer anderen Quelle.';
+          ? t('import.filtered', filteredCount)
+          : t('import.noRecognized');
         showToast(msg, 'warning', { duration: 5000 });
         return;
       }
@@ -497,11 +498,11 @@ async function renderImportForm(container) {
 
     try {
       await addRecipe(recipe, extraCookbookIds);
-      showToast(`"${recipe.title}" erfolgreich importiert!`, 'success');
+      showToast(t('import.importSuccess', recipe.title), 'success');
       currentData = null;
       window.location.hash = '#overview';
     } catch (err) {
-      showToast(`Fehler beim Speichern: ${err.message}`, 'error');
+      showToast(t('import.saveError', err.message), 'error');
     }
   });
 
@@ -517,12 +518,12 @@ async function renderImportForm(container) {
     reviewEl.classList.remove('hidden');
 
     const titleEl = $('#multiReviewTitle', container);
-    titleEl.textContent = `${recipes.length} Rezept${recipes.length !== 1 ? 'e' : ''} erkannt`;
+    titleEl.textContent = t('import.multiRecipesFound', recipes.length);
 
     const descEl = $('#multiReviewDesc', container);
-    let desc = 'Prüfe die erkannten Rezepte, bearbeite sie bei Bedarf und wähle aus, welche importiert werden sollen.';
+    let desc = t('import.multiReviewDesc');
     if (filteredCount > 0) {
-      desc += ` (${filteredCount} ungültige Eintr${filteredCount !== 1 ? 'äge' : 'ag'} wurden automatisch gefiltert)`;
+      desc += t('import.filteredNote', filteredCount);
     }
     descEl.textContent = desc;
 
@@ -534,7 +535,7 @@ async function renderImportForm(container) {
             <input type="checkbox" checked data-multi-idx="${idx}" />
           </label>
           <div class="review-card__summary" data-toggle-idx="${idx}">
-            <strong class="review-card__title">${esc(r.title || 'Unbekanntes Rezept')}</strong>
+            <strong class="review-card__title">${esc(r.title || t('pdf.unknownRecipe'))}</strong>
             <span class="review-card__meta">
               ${r.category ? `<span class="chip ${categoryChipClass(r.category)} chip--sm">${esc(r.category)}</span>` : ''}
               ${r.origin ? `<span class="chip chip--origin chip--sm">${esc(r.origin)}</span>` : ''}
@@ -607,7 +608,7 @@ async function renderImportForm(container) {
     });
 
     if (selectedRecipes.length === 0) {
-      showToast('Bitte mindestens ein Rezept auswählen.', 'warning');
+      showToast(t('import.noRecipeSelected'), 'warning');
       return;
     }
 
@@ -634,7 +635,7 @@ async function renderImportForm(container) {
 
       try {
         const recipe = {
-          title: r.title || 'Unbekanntes Rezept',
+          title: r.title || t('pdf.unknownRecipe'),
           category: r.category || '',
           origin: r.origin || '',
           prepTime: r.prepTime || null,
@@ -676,19 +677,19 @@ async function renderImportForm(container) {
     let html = `<div class="batch__summary-grid">
       <div class="batch__summary-item batch__summary-item--success">
         <span class="batch__summary-value">${success}</span>
-        <span class="batch__summary-label">Erfolgreich</span>
+        <span class="batch__summary-label">${t('import.batchSuccessLabel')}</span>
       </div>
       <div class="batch__summary-item batch__summary-item--failed">
         <span class="batch__summary-value">${failed}</span>
-        <span class="batch__summary-label">Fehlgeschlagen</span>
+        <span class="batch__summary-label">${t('import.batchFailedLabel')}</span>
       </div>
     </div>`;
 
     if (imported.length > 0) {
-      html += `<div class="multi-results__list"><h4>Importierte Rezepte:</h4><ul>${imported.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`;
+      html += `<div class="multi-results__list"><h4>${t('import.importedRecipes')}</h4><ul>${imported.map(title => `<li>${esc(title)}</li>`).join('')}</ul></div>`;
     }
     if (errors.length > 0) {
-      html += `<div class="multi-results__list multi-results__list--errors"><h4>Fehler:</h4><ul>${errors.map(e => `<li><strong>${esc(e.title)}</strong>: ${esc(e.reason)}</li>`).join('')}</ul></div>`;
+      html += `<div class="multi-results__list multi-results__list--errors"><h4>${t('import.errors')}</h4><ul>${errors.map(e => `<li><strong>${esc(e.title)}</strong>: ${esc(e.reason)}</li>`).join('')}</ul></div>`;
     }
 
     summaryEl.innerHTML = html;
@@ -705,12 +706,11 @@ async function renderImportForm(container) {
   $('#batchFolder', container).addEventListener('change', () => {
     const files = getFilteredBatchFiles();
     const info = $('#batchFileInfo', container);
+    info.classList.remove('hidden');
     if (files.length > 0) {
-      info.classList.remove('hidden');
-      $('#batchFileCount', container).textContent = `${files.length} unterstützte Datei${files.length !== 1 ? 'en' : ''} gefunden (${SUPPORTED_EXTENSIONS.join(', ')})`;
+      $('#batchFileCount', container).textContent = t('import.filesFound', files.length, SUPPORTED_EXTENSIONS.join(', '));
     } else {
-      info.classList.remove('hidden');
-      $('#batchFileCount', container).textContent = 'Keine unterstützten Dateien im gewählten Ordner gefunden.';
+      $('#batchFileCount', container).textContent = t('import.noFilesInFolder');
     }
   });
 
@@ -725,19 +725,19 @@ async function renderImportForm(container) {
 
   $('#btnStartBatch', container).addEventListener('click', async () => {
     if (batchJob && batchJob.status === 'running') {
-      showToast('Ein Import läuft bereits im Hintergrund.', 'warning');
+      showToast(t('import.runningInBackground'), 'warning');
       return;
     }
 
     const apiKey = await getSetting('apiKey');
     if (!apiKey) {
-      showToast('Bitte zuerst den API-Key in den Einstellungen hinterlegen.', 'warning');
+      showToast(t('import.noApiKey'), 'warning');
       return;
     }
 
     const files = getFilteredBatchFiles();
     if (files.length === 0) {
-      showToast('Keine unterstützten Dateien gefunden.', 'warning');
+      showToast(t('import.noFilesFound'), 'warning');
       return;
     }
 
@@ -781,7 +781,7 @@ async function renderImportForm(container) {
   $('#btnCancelBatch', container).addEventListener('click', () => {
     if (batchJob) batchJob.cancelled = true;
     $('#btnCancelBatch', container).disabled = true;
-    $('#btnCancelBatch', container).textContent = 'Wird abgebrochen...';
+    $('#btnCancelBatch', container).textContent = t('import.batchCancelling');
   });
 
   $('#btnBatchDone', container).addEventListener('click', () => {
@@ -922,19 +922,19 @@ function showBatchResults(container, results, total) {
     <div class="batch__summary-grid">
       <div class="batch__summary-item batch__summary-item--success">
         <span class="batch__summary-value">${results.success.length}</span>
-        <span class="batch__summary-label">Erfolgreich</span>
+        <span class="batch__summary-label">${t('import.batchSuccessLabel')}</span>
       </div>
       <div class="batch__summary-item batch__summary-item--failed">
         <span class="batch__summary-value">${results.failed.length}</span>
-        <span class="batch__summary-label">Fehlgeschlagen</span>
+        <span class="batch__summary-label">${t('import.batchFailedLabel')}</span>
       </div>
       <div class="batch__summary-item batch__summary-item--skipped">
         <span class="batch__summary-value">${results.skipped.length}</span>
-        <span class="batch__summary-label">Übersprungen</span>
+        <span class="batch__summary-label">${t('import.batchSkippedLabel')}</span>
       </div>
       <div class="batch__summary-item">
         <span class="batch__summary-value">${total}</span>
-        <span class="batch__summary-label">Dateien</span>
+        <span class="batch__summary-label">${t('import.batchTotalLabel')}</span>
       </div>
     </div>
   `;
@@ -943,7 +943,7 @@ function showBatchResults(container, results, total) {
   let logHtml = '';
 
   if (results.success.length > 0) {
-    logHtml += '<details open><summary class="batch__log-heading batch__log-heading--success">Erfolgreich importiert</summary><ul class="batch__log-list">';
+    logHtml += `<details open><summary class="batch__log-heading batch__log-heading--success">${t('import.batchSuccessLabel')}</summary><ul class="batch__log-list">`;
     results.success.forEach(r => {
       logHtml += `<li class="batch__log-item batch__log-item--success"><strong>${esc(r.title)}</strong><br><small>${esc(r.file)}</small></li>`;
     });
@@ -951,7 +951,7 @@ function showBatchResults(container, results, total) {
   }
 
   if (results.failed.length > 0) {
-    logHtml += '<details open><summary class="batch__log-heading batch__log-heading--failed">Fehlgeschlagen</summary><ul class="batch__log-list">';
+    logHtml += `<details open><summary class="batch__log-heading batch__log-heading--failed">${t('import.batchFailedLabel')}</summary><ul class="batch__log-list">`;
     results.failed.forEach(r => {
       logHtml += `<li class="batch__log-item batch__log-item--failed"><strong>${esc(r.file)}</strong><br><small>${esc(r.reason)}</small></li>`;
     });
@@ -959,7 +959,7 @@ function showBatchResults(container, results, total) {
   }
 
   if (results.skipped.length > 0) {
-    logHtml += '<details><summary class="batch__log-heading batch__log-heading--skipped">Übersprungen</summary><ul class="batch__log-list">';
+    logHtml += `<details><summary class="batch__log-heading batch__log-heading--skipped">${t('import.batchSkippedLabel')}</summary><ul class="batch__log-list">`;
     results.skipped.forEach(r => {
       logHtml += `<li class="batch__log-item batch__log-item--skipped"><strong>${esc(r.file)}</strong><br><small>${esc(r.reason)}</small></li>`;
     });
@@ -984,7 +984,7 @@ function showBatchResults(container, results, total) {
     let listHtml = '';
 
     if (failedRetryable.length > 0) {
-      listHtml += `<p class="batch__retry-group-label">Fehlgeschlagen (${failedRetryable.length})</p>`;
+      listHtml += `<p class="batch__retry-group-label">${t('import.retryGroupFailed', failedRetryable.length)}</p>`;
       failedRetryable.forEach((r, idx) => {
         listHtml += `<label class="batch__retry-item">
           <input type="checkbox" data-retry-idx="f${idx}" checked />
@@ -995,7 +995,7 @@ function showBatchResults(container, results, total) {
     }
 
     if (noRecipeRetryable.length > 0) {
-      listHtml += `<p class="batch__retry-group-label">Kein Rezept erkannt (${noRecipeRetryable.length}) – optional</p>`;
+      listHtml += `<p class="batch__retry-group-label">${t('import.retryGroupNoRecipe', noRecipeRetryable.length)}</p>`;
       noRecipeRetryable.forEach((r, idx) => {
         listHtml += `<label class="batch__retry-item">
           <input type="checkbox" data-retry-idx="s${idx}" />
@@ -1015,7 +1015,7 @@ function showBatchResults(container, results, total) {
       });
 
       if (selectedFiles.length === 0) {
-        showToast('Keine Dateien ausgewählt.', 'warning');
+        showToast(t('import.noFileSelected'), 'warning');
         return;
       }
 
@@ -1096,38 +1096,38 @@ function showDuplicates(container) {
   section.classList.remove('hidden');
 
   const count = batchJob.duplicates.length;
-  let html = `<div class="dup-section__heading">⚠ ${count} mögliche${count !== 1 ? '' : 's'} Duplikat${count !== 1 ? 'e' : ''} gefunden</div>`;
+  let html = `<div class="dup-section__heading">${t('import.dupFound', count)}</div>`;
 
   batchJob.duplicates.forEach(({ newRecipe: newR, existingRecipe: existR, overlap: ov }, idx) => {
     html += `
     <div class="dup-card" data-dup-id="${idx}">
       <div class="dup-card__header">
         <span class="dup-card__title">„${esc(newR.title)}"</span>
-        <span class="dup-card__overlap">${Math.round(ov * 100)} % Zutaten-Übereinstimmung</span>
+        <span class="dup-card__overlap">${t('import.dupOverlap', Math.round(ov * 100))}</span>
       </div>
       <div class="dup-card__cols">
         <div class="dup-card__col">
-          <div class="dup-card__col-label">Neu importiert</div>
+          <div class="dup-card__col-label">${t('import.dupNewLabel')}</div>
           <div class="dup-card__col-title">${esc(newR.title)}</div>
           <div class="dup-card__col-meta">${esc(newR.category || '')} · ${esc(newR.origin || '')}</div>
           <div class="dup-card__col-ing">${esc((newR.ingredients || []).slice(0, 4).join(', '))}${(newR.ingredients || []).length > 4 ? ' …' : ''}</div>
         </div>
         <div class="dup-card__col">
-          <div class="dup-card__col-label">Bereits vorhanden</div>
+          <div class="dup-card__col-label">${t('import.dupExistingLabel')}</div>
           <div class="dup-card__col-title">${esc(existR.title)}</div>
           <div class="dup-card__col-meta">${esc(existR.category || '')} · ${esc(existR.origin || '')}</div>
           <div class="dup-card__col-ing">${esc((existR.ingredients || []).slice(0, 4).join(', '))}${(existR.ingredients || []).length > 4 ? ' …' : ''}</div>
         </div>
       </div>
       <div class="dup-card__actions">
-        <button class="btn btn--sm btn--secondary" data-dup-rename="${idx}">Namen ändern</button>
-        <button class="btn btn--sm btn--danger"    data-dup-del-old="${idx}">Altes löschen</button>
-        <button class="btn btn--sm btn--ghost"     data-dup-del-new="${idx}">Neues löschen</button>
+        <button class="btn btn--sm btn--secondary" data-dup-rename="${idx}">${t('import.dupRenameBtn')}</button>
+        <button class="btn btn--sm btn--danger"    data-dup-del-old="${idx}">${t('import.dupDeleteOld')}</button>
+        <button class="btn btn--sm btn--ghost"     data-dup-del-new="${idx}">${t('import.dupDeleteNew')}</button>
       </div>
       <div class="dup-card__rename hidden" id="dupRenameForm-${idx}">
         <input type="text" class="input" value="${esc(newR.title)}" id="dupRenameInput-${idx}" />
-        <button class="btn btn--sm btn--primary" data-dup-rename-save="${idx}">Speichern</button>
-        <button class="btn btn--sm btn--ghost"   data-dup-rename-cancel="${idx}">Abbrechen</button>
+        <button class="btn btn--sm btn--primary" data-dup-rename-save="${idx}">${t('import.saveBtn')}</button>
+        <button class="btn btn--sm btn--ghost"   data-dup-rename-cancel="${idx}">${t('import.cancelBtn')}</button>
       </div>
     </div>`;
   });
@@ -1155,7 +1155,7 @@ function showDuplicates(container) {
       const dup = batchJob.duplicates[idx];
       const input = section.querySelector(`#dupRenameInput-${idx}`);
       const newTitle = input?.value.trim();
-      if (!newTitle) { showToast('Bitte einen Namen eingeben.', 'warning'); return; }
+      if (!newTitle) { showToast(t('import.dupNameRequired'), 'warning'); return; }
       try {
         await updateRecipe({ ...dup.newRecipe, title: newTitle });
         removeDupCard(section, idx);
@@ -1195,7 +1195,7 @@ function removeDupCard(section, idx) {
   const card = section.querySelector(`[data-dup-id="${idx}"]`);
   if (card) card.remove();
   if (!section.querySelector('.dup-card')) {
-    section.innerHTML += `<p class="dup-section__done">✓ Alle Duplikate geprüft</p>`;
+    section.innerHTML += `<p class="dup-section__done">${t('import.dupAllResolved')}</p>`;
   }
 }
 

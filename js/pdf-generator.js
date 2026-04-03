@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { t, translateCategory, translateDifficulty } from './i18n.js';
 
 function splitIntoSteps(text) {
   if (!text || !text.trim()) return [];
@@ -23,7 +24,7 @@ const CATEGORY_ORDER = [
 function groupByCategory(recipes) {
   const map = new Map();
   for (const r of recipes) {
-    const cat = r.category || 'Sonstiges';
+    const cat = r.category ? translateCategory(r.category) : t('pdf.sonstiges');
     if (!map.has(cat)) map.set(cat, []);
     map.get(cat).push(r);
   }
@@ -61,7 +62,7 @@ function addCookbookCover(doc, cookbook, recipeCount, pageWidth, pageHeight, mar
   doc.setTextColor(20);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(30);
-  const title = cookbook.coverTitle || cookbook.name || 'Kochbuch';
+  const title = cookbook.coverTitle || cookbook.name || t('pdf.cookbook');
   const titleLines = doc.splitTextToSize(title, contentWidth);
   const titleY = pageHeight * 0.40;
   doc.text(titleLines, pageWidth / 2, titleY, { align: 'center' });
@@ -97,7 +98,7 @@ function addCookbookCover(doc, cookbook, recipeCount, pageWidth, pageHeight, mar
   doc.setFontSize(11);
   doc.setTextColor(130);
   doc.text(
-    `${recipeCount} Rezept${recipeCount !== 1 ? 'e' : ''}`,
+    t('pdf.recipeCount', recipeCount),
     pageWidth / 2,
     pageHeight - 22,
     { align: 'center' }
@@ -109,7 +110,7 @@ function addCookbookCover(doc, cookbook, recipeCount, pageWidth, pageHeight, mar
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(100);
-  doc.text('erstellt mit myRecipes  \u2022  KI-Unterst\u00fctzung durch Claude (Anthropic)', pageWidth / 2, pageHeight - 4.5, { align: 'center' });
+  doc.text(t('pdf.footer'), pageWidth / 2, pageHeight - 4.5, { align: 'center' });
 }
 
 function addChapterPage(doc, category, pageWidth, pageHeight, margin) {
@@ -137,7 +138,7 @@ function renderToc(doc, tocData, startPage, tocPageCount, pageWidth, pageHeight,
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
-  doc.text('Inhaltsverzeichnis', margin, margin + 8);
+  doc.text(t('pdf.tocTitle'), margin, margin + 8);
   doc.setDrawColor(190);
   doc.setLineWidth(0.5);
   doc.line(margin, margin + 12, pageWidth - margin, margin + 12);
@@ -227,7 +228,7 @@ export function generateCookbookPDF(cookbook, recipes) {
     for (const recipe of catRecipes) {
       doc.addPage();
       const recipeDisplayPage = doc.internal.getNumberOfPages() - 1;
-      entry.recipes.push({ title: recipe.title || 'Unbekanntes Rezept', page: recipeDisplayPage });
+      entry.recipes.push({ title: recipe.title || t('pdf.unknownRecipe'), page: recipeDisplayPage });
       addRecipeToDoc(doc, recipe);
       // addRecipeToDoc may add overflow pages via checkPageBreak — those get numbers below
     }
@@ -262,7 +263,7 @@ function addRecipeToDoc(doc, recipeData) {
   // Title
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(22);
-  const titleLines = doc.splitTextToSize(recipeData.title || 'Rezept', contentWidth);
+  const titleLines = doc.splitTextToSize(recipeData.title || t('pdf.recipe'), contentWidth);
   doc.text(titleLines, margin, y);
   y += titleLines.length * 9 + 4;
 
@@ -271,11 +272,11 @@ function addRecipeToDoc(doc, recipeData) {
   doc.setFontSize(10);
   doc.setTextColor(100);
   const metaParts = [];
-  if (recipeData.category) metaParts.push(recipeData.category);
+  if (recipeData.category) metaParts.push(translateCategory(recipeData.category));
   if (recipeData.origin) metaParts.push(recipeData.origin);
-  if (recipeData.prepTime) metaParts.push(`${recipeData.prepTime} Min.`);
-  if (recipeData.difficulty) metaParts.push(recipeData.difficulty);
-  if (recipeData.servings) metaParts.push(`${recipeData.servings} Portionen`);
+  if (recipeData.prepTime) metaParts.push(t('detail.minutes', recipeData.prepTime));
+  if (recipeData.difficulty) metaParts.push(translateDifficulty(recipeData.difficulty));
+  if (recipeData.servings) metaParts.push(t('pdf.servings') + ': ' + recipeData.servings);
   if (metaParts.length) {
     doc.text(metaParts.join('  |  '), margin, y);
     y += 8;
@@ -298,7 +299,7 @@ function addRecipeToDoc(doc, recipeData) {
     y = checkPageBreak(doc, y, 20, margin);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.text('Zutaten', margin, y);
+    doc.text(t('pdf.ingredients'), margin, y);
     y += 8;
 
     doc.setFont('helvetica', 'normal');
@@ -316,9 +317,11 @@ function addRecipeToDoc(doc, recipeData) {
     y = checkPageBreak(doc, y, 20, margin);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.text('Zubereitung', margin, y);
+    doc.text(t('pdf.preparation'), margin, y);
     y += 8;
 
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
     const steps = splitIntoSteps(recipeData.recipeText);
     const alreadyNumbered = steps.length > 1 && /^\d+[.)]\s/.test(steps[0]);
     let stepNum = 0;
@@ -364,13 +367,13 @@ function addRecipeToDoc(doc, recipeData) {
     y = checkPageBreak(doc, y, 10, margin);
     doc.setFontSize(9);
     doc.setTextColor(120);
-    doc.text('Passende Beilagen: ' + recipeData.sides.join(', '), margin, y);
+    doc.text(t('pdf.sides') + ': ' + recipeData.sides.join(', '), margin, y);
   }
 }
 
 export function generateRecipePDF(recipeData) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  doc.setProperties({ title: recipeData.title || 'Rezept' });
+  doc.setProperties({ title: recipeData.title || t('pdf.recipe') });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
   const contentWidth = pageWidth - 2 * margin;
@@ -379,7 +382,7 @@ export function generateRecipePDF(recipeData) {
   // Title
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(22);
-  const titleLines = doc.splitTextToSize(recipeData.title || 'Rezept', contentWidth);
+  const titleLines = doc.splitTextToSize(recipeData.title || t('pdf.recipe'), contentWidth);
   doc.text(titleLines, margin, y);
   y += titleLines.length * 9 + 4;
 
@@ -388,11 +391,11 @@ export function generateRecipePDF(recipeData) {
   doc.setFontSize(10);
   doc.setTextColor(100);
   const metaParts = [];
-  if (recipeData.category) metaParts.push(recipeData.category);
+  if (recipeData.category) metaParts.push(translateCategory(recipeData.category));
   if (recipeData.origin) metaParts.push(recipeData.origin);
-  if (recipeData.prepTime) metaParts.push(`${recipeData.prepTime} Min.`);
-  if (recipeData.difficulty) metaParts.push(recipeData.difficulty);
-  if (recipeData.servings) metaParts.push(`${recipeData.servings} Portionen`);
+  if (recipeData.prepTime) metaParts.push(t('detail.minutes', recipeData.prepTime));
+  if (recipeData.difficulty) metaParts.push(translateDifficulty(recipeData.difficulty));
+  if (recipeData.servings) metaParts.push(t('pdf.servings') + ': ' + recipeData.servings);
   if (metaParts.length) {
     doc.text(metaParts.join('  |  '), margin, y);
     y += 8;
@@ -415,7 +418,7 @@ export function generateRecipePDF(recipeData) {
     y = checkPageBreak(doc, y, 20, margin);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.text('Zutaten', margin, y);
+    doc.text(t('pdf.ingredients'), margin, y);
     y += 8;
 
     doc.setFont('helvetica', 'normal');
@@ -433,7 +436,7 @@ export function generateRecipePDF(recipeData) {
     y = checkPageBreak(doc, y, 20, margin);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.text('Zubereitung', margin, y);
+    doc.text(t('pdf.preparation'), margin, y);
     y += 8;
 
     doc.setFont('helvetica', 'normal');
@@ -476,7 +479,7 @@ export function generateRecipePDF(recipeData) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.setTextColor(0);
-    doc.text('Notizen', margin, y);
+    doc.text(t('pdf.notes'), margin, y);
     y += 8;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
@@ -505,7 +508,7 @@ export function generateRecipePDF(recipeData) {
     y = checkPageBreak(doc, y, 10, margin);
     doc.setFontSize(9);
     doc.setTextColor(120);
-    doc.text('Passende Beilagen: ' + recipeData.sides.join(', '), margin, y);
+    doc.text(t('pdf.sides') + ': ' + recipeData.sides.join(', '), margin, y);
   }
 
   return doc.output('blob');
@@ -526,7 +529,7 @@ function checkPageBreak(doc, y, neededSpace, margin) {
 export function generateRecipeA5PDF(recipeData) {
   // A4 landscape: 297 × 210 mm (two A5 halves side by side)
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
-  doc.setProperties({ title: recipeData.title || 'Rezept' });
+  doc.setProperties({ title: recipeData.title || t('pdf.recipe') });
   const pageWidth  = doc.internal.pageSize.getWidth();   // 297 mm
   const pageHeight = doc.internal.pageSize.getHeight();  // 210 mm
   const marginLeft = 25; // wider for hole punch (both sides – left col left edge, right col left edge)
@@ -576,17 +579,17 @@ export function generateRecipeA5PDF(recipeData) {
   // Title
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(fs.title);
-  const titleLines = doc.splitTextToSize(recipeData.title || 'Rezept', colWidth);
+  const titleLines = doc.splitTextToSize(recipeData.title || t('pdf.recipe'), colWidth);
   doc.text(titleLines, x, y);
   y += titleLines.length * 7 + 3;
 
   // Meta
   const metaParts = [];
-  if (recipeData.category) metaParts.push(recipeData.category);
+  if (recipeData.category) metaParts.push(translateCategory(recipeData.category));
   if (recipeData.origin) metaParts.push(recipeData.origin);
-  if (recipeData.prepTime) metaParts.push(`${recipeData.prepTime} Min.`);
-  if (recipeData.difficulty) metaParts.push(recipeData.difficulty);
-  if (recipeData.servings) metaParts.push(`${recipeData.servings} Portionen`);
+  if (recipeData.prepTime) metaParts.push(t('detail.minutes', recipeData.prepTime));
+  if (recipeData.difficulty) metaParts.push(translateDifficulty(recipeData.difficulty));
+  if (recipeData.servings) metaParts.push(t('pdf.servings') + ': ' + recipeData.servings);
   if (metaParts.length > 0) {
     ensureSpace(7);
     doc.setFont('helvetica', 'normal');
@@ -617,7 +620,7 @@ export function generateRecipeA5PDF(recipeData) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(fs.section);
     doc.setTextColor(0);
-    doc.text('Zutaten', x, y);
+    doc.text(t('pdf.ingredients'), x, y);
     y += 6;
 
     doc.setFont('helvetica', 'normal');
@@ -637,7 +640,7 @@ export function generateRecipeA5PDF(recipeData) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(fs.section);
     doc.setTextColor(0);
-    doc.text('Zubereitung', x, y);
+    doc.text(t('pdf.preparation'), x, y);
     y += 6;
 
     const steps = splitIntoSteps(recipeData.recipeText);
@@ -681,7 +684,7 @@ export function generateRecipeA5PDF(recipeData) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(fs.section);
     doc.setTextColor(0);
-    doc.text('Notizen', x, y);
+    doc.text(t('pdf.notes'), x, y);
     y += 6;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(fs.body);
@@ -710,7 +713,7 @@ export function generateRecipeA5PDF(recipeData) {
     ensureSpace(6);
     doc.setFontSize(fs.small);
     doc.setTextColor(120);
-    doc.text('Passende Beilagen: ' + recipeData.sides.join(', '), x, y);
+    doc.text(t('pdf.sides') + ': ' + recipeData.sides.join(', '), x, y);
   }
 
   return doc.output('blob');
@@ -757,7 +760,7 @@ function buildRecipeA5Pages(doc, recipe, colWidth, fs, topY, availH) {
   // --- Title ---
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(fs.title);
-  const titleLines = doc.splitTextToSize(recipe.title || 'Rezept', colWidth);
+  const titleLines = doc.splitTextToSize(recipe.title || t('pdf.recipe'), colWidth);
   const titleH = titleLines.length * 7 + 3;
   addBlock(titleH, (doc, x, y) => {
     doc.setFont('helvetica', 'bold'); doc.setFontSize(fs.title); doc.setTextColor(0);
@@ -767,11 +770,11 @@ function buildRecipeA5Pages(doc, recipe, colWidth, fs, topY, availH) {
 
   // --- Meta row ---
   const metaParts = [];
-  if (recipe.category) metaParts.push(recipe.category);
+  if (recipe.category) metaParts.push(translateCategory(recipe.category));
   if (recipe.origin) metaParts.push(recipe.origin);
-  if (recipe.prepTime) metaParts.push(`${recipe.prepTime} Min.`);
-  if (recipe.difficulty) metaParts.push(recipe.difficulty);
-  if (recipe.servings) metaParts.push(`${recipe.servings} Portionen`);
+  if (recipe.prepTime) metaParts.push(t('detail.minutes', recipe.prepTime));
+  if (recipe.difficulty) metaParts.push(translateDifficulty(recipe.difficulty));
+  if (recipe.servings) metaParts.push(t('pdf.servings') + ': ' + recipe.servings);
   if (metaParts.length) {
     const metaStr = metaParts.join('  |  ');
     addBlock(7, (doc, x, y) => {
@@ -797,7 +800,7 @@ function buildRecipeA5Pages(doc, recipe, colWidth, fs, topY, availH) {
   if (recipe.ingredients?.length) {
     addBlock(8, (doc, x, y) => {
       doc.setFont('helvetica', 'bold'); doc.setFontSize(fs.section); doc.setTextColor(0);
-      doc.text('Zutaten', x, y);
+      doc.text(t('pdf.ingredients'), x, y);
       return y + 6;
     });
     doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body);
@@ -817,7 +820,7 @@ function buildRecipeA5Pages(doc, recipe, colWidth, fs, topY, availH) {
   if (recipe.recipeText) {
     addBlock(8, (doc, x, y) => {
       doc.setFont('helvetica', 'bold'); doc.setFontSize(fs.section); doc.setTextColor(0);
-      doc.text('Zubereitung', x, y);
+      doc.text(t('pdf.preparation'), x, y);
       return y + 6;
     });
     const steps = splitIntoSteps(recipe.recipeText);
@@ -857,7 +860,7 @@ function buildRecipeA5Pages(doc, recipe, colWidth, fs, topY, availH) {
   if (noteTexts.length) {
     addBlock(8, (doc, x, y) => {
       doc.setFont('helvetica', 'bold'); doc.setFontSize(fs.section); doc.setTextColor(0);
-      doc.text('Notizen', x, y);
+      doc.text(t('pdf.notes'), x, y);
       return y + 6;
     });
     for (const text of noteTexts) {
@@ -901,7 +904,7 @@ function buildTocA5Pages(doc, tocEntries, colWidth, fs, topY, availH) {
   // TOC header (first page only)
   blocks.push((doc, x, y) => {
     doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(0);
-    doc.text('Inhaltsverzeichnis', x, y);
+    doc.text(t('pdf.tocTitle'), x, y);
     doc.setDrawColor(190); doc.setLineWidth(0.4);
     doc.line(x, y + 3, x + colWidth, y + 3);
     return y + 10;
@@ -964,7 +967,7 @@ export function generateCookbookA5PDF(cookbook, recipes) {
 
   // Create doc (used for text measurement AND final rendering)
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
-  doc.setProperties({ title: cookbook.coverTitle || cookbook.name || 'Kochbuch' });
+  doc.setProperties({ title: cookbook.coverTitle || cookbook.name || t('pdf.cookbook') });
 
   // --- Estimate TOC pages (needed to compute correct recipe page numbers) ---
   const groups = groupByCategory(recipes);
@@ -1006,7 +1009,7 @@ export function generateCookbookA5PDF(cookbook, recipes) {
 
   // --- Cover page ---
   const coverFn = (doc, x) => {
-    const title = cookbook.coverTitle || cookbook.name || 'Kochbuch';
+    const title = cookbook.coverTitle || cookbook.name || t('pdf.cookbook');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(20);
     const titleLines = doc.splitTextToSize(title, colWidth);
     const midY = topY + availH * 0.38;
@@ -1020,7 +1023,7 @@ export function generateCookbookA5PDF(cookbook, recipes) {
       doc.text(cookbook.coverSubtitle, x + colWidth / 2, y, { align: 'center' });
     }
     doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.small); doc.setTextColor(130);
-    doc.text(`${recipes.length} Rezept${recipes.length !== 1 ? 'e' : ''}`, x + colWidth / 2, maxY - 5, { align: 'center' });
+    doc.text(t('pdf.recipeCount', recipes.length), x + colWidth / 2, maxY - 5, { align: 'center' });
   };
 
   // --- TOC pages ---

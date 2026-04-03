@@ -2918,6 +2918,46 @@ details[open] > .batch__log-heading::before,
   padding: var(--space-sm) var(--space-md);
 }
 
+.auth__lang-toggle {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-lg);
+}
+
+.lang-segment {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.lang-segment__btn {
+  padding: 5px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: background 0.15s, color 0.15s;
+  letter-spacing: 0.04em;
+}
+
+.lang-segment__btn + .lang-segment__btn {
+  border-left: 1px solid var(--color-border);
+}
+
+.lang-segment__btn--active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.lang-segment__btn:not(.lang-segment__btn--active):hover {
+  background: var(--color-border-light);
+  color: var(--color-text);
+}
+
 .btn--full {
   width: 100%;
 }

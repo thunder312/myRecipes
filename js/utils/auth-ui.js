@@ -1,5 +1,6 @@
 import { $, showToast } from './helpers.js';
 import { isAuthenticated, setAuthenticated, getAuthToken } from './auth.js';
+import { t, setLanguage, getLanguage } from '../i18n.js';
 
 export async function ensureAuthenticated(container, onSuccess) {
   if (isAuthenticated()) {
@@ -15,7 +16,7 @@ export async function ensureAuthenticated(container, onSuccess) {
     const res = await fetch('/api/auth/check', { headers });
     authState = await res.json();
   } catch {
-    showToast('Server nicht erreichbar.', 'error');
+    showToast(t('auth.serverUnreachable'), 'error');
     return;
   }
 
@@ -29,77 +30,113 @@ export async function ensureAuthenticated(container, onSuccess) {
 }
 
 function renderLogin(container, onSuccess) {
-  container.innerHTML = `
-    <div class="auth">
-      <div class="auth__logo">
-        <img src="icon.png" width="64" alt="myRecipes" />
+  let langChangedByUser = false;
+
+  const render = () => {
+    const lang = getLanguage();
+    container.innerHTML = `
+      <div class="auth">
+        <div class="auth__logo">
+          <img src="icon.png" width="64" alt="myRecipes" />
+        </div>
+        <div class="auth__lang-toggle">
+          <div class="lang-segment">
+            <button class="lang-segment__btn${lang === 'de' ? ' lang-segment__btn--active' : ''}" data-lang="de">DE</button>
+            <button class="lang-segment__btn${lang === 'en' ? ' lang-segment__btn--active' : ''}" data-lang="en">EN</button>
+          </div>
+        </div>
+        <h1>${t('auth.title')}</h1>
+        <section class="auth__section">
+          <div class="form-group">
+            <label for="loginUser">${t('auth.username')}</label>
+            <input type="text" id="loginUser" class="input" placeholder="${t('auth.username')}" autocomplete="username" />
+          </div>
+          <div class="form-group">
+            <label for="loginPw">${t('auth.password')}</label>
+            <input type="password" id="loginPw" class="input" placeholder="${t('auth.password')}" autocomplete="current-password" />
+          </div>
+          <button class="btn btn--primary btn--full" id="btnLogin">${t('auth.loginBtn')}</button>
+          <div class="auth__error hidden" id="loginError"></div>
+        </section>
       </div>
-      <h1>Anmelden</h1>
-      <section class="auth__section">
-        <div class="form-group">
-          <label for="loginUser">Benutzername</label>
-          <input type="text" id="loginUser" class="input" placeholder="Benutzername" autocomplete="username" />
-        </div>
-        <div class="form-group">
-          <label for="loginPw">Passwort</label>
-          <input type="password" id="loginPw" class="input" placeholder="Passwort" autocomplete="current-password" />
-        </div>
-        <button class="btn btn--primary btn--full" id="btnLogin">Anmelden</button>
-        <div class="auth__error hidden" id="loginError"></div>
-      </section>
-    </div>
-  `;
+    `;
 
-  const doLogin = async () => {
-    const username = $('#loginUser', container).value.trim();
-    const pw = $('#loginPw', container).value;
-    const errEl = $('#loginError', container);
-    errEl.classList.add('hidden');
+    container.querySelector('.lang-segment').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-lang]');
+      if (!btn || btn.dataset.lang === getLanguage()) return;
+      langChangedByUser = true;
+      setLanguage(btn.dataset.lang, { save: true, notify: false });
+      render();
+    });
 
-    if (!username || !pw) {
-      errEl.textContent = 'Bitte Benutzername und Passwort eingeben.';
-      errEl.classList.remove('hidden');
-      return;
-    }
+    const doLogin = async () => {
+      const username = $('#loginUser', container).value.trim();
+      const pw = $('#loginPw', container).value;
+      const errEl = $('#loginError', container);
+      errEl.classList.add('hidden');
 
-    const btn = $('#btnLogin', container);
-    btn.disabled = true;
-    btn.textContent = 'Anmelden...';
-
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password: pw }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        errEl.textContent = err.error || 'Anmeldung fehlgeschlagen.';
+      if (!username || !pw) {
+        errEl.textContent = t('auth.required');
         errEl.classList.remove('hidden');
         return;
       }
 
-      const data = await res.json();
-      setAuthenticated(data.token, data.username, data.role);
-      onSuccess();
-    } catch (err) {
-      errEl.textContent = `Fehler: ${err.message}`;
-      errEl.classList.remove('hidden');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Anmelden';
-    }
+      const btn = $('#btnLogin', container);
+      btn.disabled = true;
+      btn.textContent = t('auth.loggingIn');
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password: pw }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          errEl.textContent = err.error || t('auth.failed');
+          errEl.classList.remove('hidden');
+          return;
+        }
+
+        const data = await res.json();
+
+        if (langChangedByUser) {
+          // User explicitly selected a language on login screen → save to server
+          fetch('/api/auth/language', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${data.token}` },
+            body: JSON.stringify({ language: getLanguage() }),
+          }).catch(() => {});
+        } else if (data.language && data.language !== getLanguage()) {
+          // No explicit selection → apply the user's saved server preference
+          setLanguage(data.language, { save: true, notify: false });
+        }
+
+        setAuthenticated(data.token, data.username, data.role);
+        onSuccess();
+      } catch (err) {
+        errEl.textContent = `${err.message}`;
+        errEl.classList.remove('hidden');
+      } finally {
+        const btn2 = $('#btnLogin', container);
+        if (btn2) {
+          btn2.disabled = false;
+          btn2.textContent = t('auth.loginBtn');
+        }
+      }
+    };
+
+    $('#btnLogin', container).addEventListener('click', doLogin);
+    $('#loginPw', container).addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doLogin();
+    });
+    $('#loginUser', container).addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') $('#loginPw', container).focus();
+    });
+
+    setTimeout(() => $('#loginUser', container)?.focus(), 50);
   };
 
-  $('#btnLogin', container).addEventListener('click', doLogin);
-  $('#loginPw', container).addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') doLogin();
-  });
-  $('#loginUser', container).addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') $('#loginPw', container).focus();
-  });
-
-  // Focus username field
-  setTimeout(() => $('#loginUser', container)?.focus(), 50);
+  render();
 }

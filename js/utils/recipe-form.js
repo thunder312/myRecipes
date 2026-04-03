@@ -1,74 +1,82 @@
-const CATEGORIES = ['Vorspeise','Hauptspeise','Nachspeise','Fingerfood','Suppe','Salat','Beilage','Getränk','Snack','Brot/Gebäck','Gewürzmischungen','Kuchen','Soße','Sauerkonserven','Wurstrezept'];
-const DIFFICULTIES = ['leicht','mittel','schwer'];
+import { t, getCategoryList, getDifficultyOptions, translateCategory, translateDifficulty } from '../i18n.js';
 
 export function renderRecipeForm(targetEl, data) {
+  const categories = getCategoryList();
+  const difficulties = getDifficultyOptions();
+
+  // The category value in data may be DE or EN – find the matching option in the current list
+  const currentCat = translateCategory(data.category);
+  const currentDiff = data.difficulty; // always stored as DE key (leicht/mittel/schwer)
+
   targetEl.innerHTML = `
     <div class="form-group">
-      <label>Titel</label>
+      <label>${t('recipeForm.titleLabel')}</label>
       <input type="text" class="input" data-field="title" value="${esc(data.title || '')}" />
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Kategorie</label>
+        <label>${t('recipeForm.categoryLabel')}</label>
         <select class="select" data-field="category">
-          ${CATEGORIES.map(c => `<option value="${c}" ${c === data.category ? 'selected' : ''}>${c}</option>`).join('')}
+          <option value="">${t('recipeForm.selectCategory')}</option>
+          ${categories.map(c => `<option value="${c}" ${c === currentCat ? 'selected' : ''}>${c}</option>`).join('')}
         </select>
       </div>
       <div class="form-group">
-        <label>Herkunft</label>
+        <label>${t('recipeForm.originLabel')}</label>
         <input type="text" class="input" data-field="origin" value="${esc(data.origin || '')}" />
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Zubereitungszeit (Min.)</label>
+        <label>${t('recipeForm.prepTimeLabel')}</label>
         <input type="number" class="input" data-field="prepTime" value="${data.prepTime || ''}" />
       </div>
       <div class="form-group">
-        <label>Portionen</label>
+        <label>${t('recipeForm.servingsLabel')}</label>
         <input type="number" class="input" data-field="servings" value="${data.servings || ''}" />
       </div>
       <div class="form-group">
-        <label>Schwierigkeit</label>
+        <label>${t('recipeForm.difficultyLabel')}</label>
         <select class="select" data-field="difficulty">
-          ${DIFFICULTIES.map(d => `<option value="${d}" ${d === data.difficulty ? 'selected' : ''}>${d}</option>`).join('')}
+          <option value="">${t('recipeForm.selectDifficulty')}</option>
+          ${difficulties.map(d => `<option value="${d.key}" ${d.key === currentDiff ? 'selected' : ''}>${d.label}</option>`).join('')}
         </select>
       </div>
     </div>
     <div class="form-group">
-      <label>Hauptzutat</label>
+      <label>${t('recipeForm.mainIngredientLabel')}</label>
       <input type="text" class="input" data-field="mainIngredient" value="${esc(data.mainIngredient || '')}" />
     </div>
     <div class="form-group">
-      <label>Beilagen (kommagetrennt)</label>
+      <label>${t('recipeForm.sidesLabel')}</label>
       <input type="text" class="input" data-field="sides" value="${esc((data.sides || []).join(', '))}" />
     </div>
     <div class="form-group">
-      <label>Tags (kommagetrennt)</label>
+      <label>${t('recipeForm.tagsLabel')}</label>
       <input type="text" class="input" data-field="tags" value="${esc((data.tags || []).join(', '))}" />
     </div>
     <div class="form-group">
-      <label>Zutaten (Strichpunkt-getrennt)</label>
+      <label>${t('recipeForm.ingredientsLabel')}</label>
       <textarea class="input input--textarea" data-field="ingredients" rows="3">${esc((data.ingredients || []).join('; '))}</textarea>
     </div>
     <div class="form-group">
-      <label>Zubereitung</label>
-      <textarea class="input input--textarea" data-field="recipeText" rows="8" placeholder="Zubereitungsschritte...">${esc(data.recipeText || '')}</textarea>
+      <label>${t('recipeForm.preparationLabel')}</label>
+      <textarea class="input input--textarea" data-field="recipeText" rows="8" placeholder="${t('recipeForm.prepPlaceholder')}">${esc(data.recipeText || '')}</textarea>
     </div>
     <div class="form-group">
-      <label>Beschreibung</label>
+      <label>${t('recipeForm.descriptionLabel')}</label>
       <textarea class="input input--textarea" data-field="description" rows="2">${esc(data.description || '')}</textarea>
     </div>
     <div class="form-group">
-      <label>Notizen / Tipps</label>
+      <label>${t('recipeForm.notesLabel')}</label>
       <textarea class="input input--textarea" data-field="importNotes" rows="3"
-                placeholder="Tipps, Hinweise, Variationen...">${esc(data.importNotes || (Array.isArray(data.notes) ? data.notes.map(n => n.text).join('\n') : ''))}</textarea>
+                placeholder="${t('recipeForm.notesPlaceholder')}">${esc(data.importNotes || (Array.isArray(data.notes) ? data.notes.map(n => n.text).join('\n') : ''))}</textarea>
     </div>
     <div class="form-group">
-      <label>Von wem / Woher</label>
+      <label>${t('recipeForm.sourceNoteLabel')}</label>
       <input type="text" class="input" data-field="sourceNote"
              value="${esc(data.sourceNote || '')}"
-             placeholder="z. B. Von Oma, Aus dem Koch-Kurs..." />
+             placeholder="${t('recipeForm.sourcePlaceholder')}" />
     </div>
   `;
 }
@@ -97,5 +105,5 @@ export function readRecipeForm(formEl) {
 }
 
 function esc(str) {
-  return str.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

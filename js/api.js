@@ -1,4 +1,5 @@
 import { getSetting } from './db.js';
+import { t, getLanguage } from './i18n.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const BILLING_URL = 'https://console.anthropic.com/settings/billing';
@@ -13,7 +14,7 @@ function fetchWithTimeout(url, options) {
 
 async function getApiKey() {
   const key = await getSetting('apiKey');
-  if (!key) throw new Error('Kein API-Key gesetzt. Bitte unter Einstellungen hinterlegen.');
+  if (!key) throw new Error(t('apiErrors.noKey'));
   return key;
 }
 
@@ -23,15 +24,15 @@ function handleApiError(response, errBody) {
   console.error(`[API] HTTP ${status}:`, msg);
 
   if (status === 401) {
-    throw new ApiError('Ungültiger API-Key. Bitte in den Einstellungen prüfen.', status, false);
+    throw new ApiError(t('apiErrors.invalidKey'), status, false);
   }
   if (status === 429 || status === 529 || (status === 400 && /credit|balance|billing/i.test(msg))) {
     throw new ApiError(
-      `Kein Guthaben oder Rate-Limit erreicht (HTTP ${status}). <a href="${BILLING_URL}" target="_blank" rel="noopener">Guthaben aufladen</a>`,
+      `${t('apiErrors.noCredit')} (HTTP ${status}). <a href="${BILLING_URL}" target="_blank" rel="noopener">${t('apiErrors.topUp')}</a>`,
       status, true
     );
   }
-  throw new ApiError(`API-Fehler ${status}: ${msg}`, status, false);
+  throw new ApiError(t('apiErrors.apiError', status, msg), status, false);
 }
 
 export class ApiError extends Error {
@@ -73,6 +74,13 @@ export async function validateApiKey(apiKey) {
 }
 
 function buildRecipeAnalysisPrompt({ multiHint = false } = {}) {
+  const lang = getLanguage();
+  return lang === 'en'
+    ? buildRecipeAnalysisPromptEN({ multiHint })
+    : buildRecipeAnalysisPromptDE({ multiHint });
+}
+
+function buildRecipeAnalysisPromptDE({ multiHint = false } = {}) {
   let prompt = `Du bist ein Rezept-Analyse-Assistent. Analysiere den folgenden Inhalt und extrahiere strukturierte Informationen.
 
 WICHTIG: Der Inhalt kann EIN oder MEHRERE Rezepte enthalten!
@@ -111,7 +119,48 @@ Wichtige Regeln:
   if (multiHint) {
     prompt += `\n\nWICHTIG: Der Benutzer hat angegeben, dass diese Quelle MEHRERE Rezepte enthält. Analysiere den gesamten Inhalt sorgfältig und trenne ALLE Rezepte einzeln voneinander. Übersehe keines!`;
   }
+  return prompt;
+}
 
+function buildRecipeAnalysisPromptEN({ multiHint = false } = {}) {
+  let prompt = `You are a recipe analysis assistant. Analyse the following content and extract structured information.
+
+IMPORTANT: The content may contain ONE or MULTIPLE recipes!
+- If the content contains MULTIPLE recipes, respond with a JSON ARRAY of recipe objects.
+- If the content contains only ONE recipe, respond with a single JSON object (no array).
+- If you CANNOT read the content or recognise NO recipe, respond with an empty array: []
+- NEVER invent placeholder recipes. An empty array is better than a recipe with a made-up title.
+
+Each recipe object has the following fields:
+
+{
+  "title": "Name of the dish",
+  "category": "One of: Starter, Main Course, Dessert, Finger Food, Soup, Salad, Side Dish, Drink, Snack, Bread & Pastry, Spice Blend, Cake, Sauce, Preserves, Sausage",
+  "origin": "Cuisine origin e.g. Germany, Italy, USA, Hungary, France, etc. or 'International' if unclear",
+  "prepTime": Total time in minutes as a number (sum of prep time + cooking time + resting/marinating/baking time – add ALL mentioned times). null only if truly no time is given,
+  "mainIngredient": "Main ingredient e.g. beef, chicken, pork, fish, vegetables, pasta, etc.",
+  "sides": ["Suitable side dishes as array, e.g. rice, potatoes, salad, bread"],
+  "tags": ["Relevant tags as array, e.g. vegetarian, vegan, quick, gluten-free, lactose-free, Friday-friendly, festive, comfort food, low-carb"],
+  "ingredients": ["All ingredients as array"],
+  "description": "Short description of the dish in 1-2 sentences",
+  "servings": Servings as number or null,
+  "difficulty": "One of: leicht, mittel, schwer",
+  "recipeText": "The complete preparation steps as plain text. EXPLICITLY look for sections headed 'Preparation', 'Instructions', 'Method', 'Directions' etc. – the entire content of those sections belongs here. NO Markdown, NO HTML, NO title, NO ingredient list (that is already in 'ingredients'). Separate steps with line breaks, e.g. '1. Step one\\n2. Step two'",
+  "importNotes": "Content from sections 'Notes', 'Tips', 'Hints' etc. as plain text. null if no such section exists"
+}
+
+Important rules:
+- The field 'recipeText' must NEVER be empty – extract all steps completely from the preparation section
+- If the recipe contains no meat, add "Friday-friendly" to the tags
+- If the preparation time is under 30 minutes, add "quick" to the tags
+- For 'prepTime': Sum ALL time values (prep time + cooking time + resting time + marinating time + baking time etc.). If e.g. "Prep: 20 min, Cook: 15 min, Rest: 30 min" is stated, prepTime = 65. Estimate total time if no explicit values are given
+- Spice blends (e.g. chicken seasoning, gyros spice, rubs, marinade mixes) belong in category "Spice Blend" – NOT in "Side Dish" or "Snack". For spice blends, "sides" is an empty array.
+- Separate recipes cleanly – each gets its own recipeText with only its preparation steps
+- Respond ONLY with the JSON, no other text`;
+
+  if (multiHint) {
+    prompt += `\n\nIMPORTANT: The user has indicated that this source contains MULTIPLE recipes. Analyse the entire content carefully and separate ALL recipes individually. Don't miss any!`;
+  }
   return prompt;
 }
 
@@ -138,8 +187,8 @@ export async function analyzeRecipeText(text, { multiHint = false } = {}) {
       })
     });
   } catch (fetchErr) {
-    const msg = fetchErr.name === 'AbortError' ? 'Timeout: API hat nicht innerhalb von 2 Minuten geantwortet.' : fetchErr.message;
-    console.error('[API] Fetch-Fehler:', msg);
+    const msg = fetchErr.name === 'AbortError' ? t('apiErrors.timeout') : fetchErr.message;
+    console.error('[API] Fetch error:', msg);
     throw new ApiError(msg, 0, false);
   }
 
@@ -163,9 +212,7 @@ export async function analyzeRecipeImages(images, { multiHint = false } = {}) {
       source: { type: 'base64', media_type: img.mediaType, data: img.base64 }
     });
   }
-  contentParts.push({
-    type: 'text',
-    text: buildRecipeAnalysisPrompt({ multiHint }) + `
+  const imageHintDE = `
 
 Analysiere die Rezepte in den Bildern. Wichtige Hinweise:
 - Die Bilder können HANDGESCHRIEBENE Rezepte enthalten – auch Bleistift, Kugelschreiber, kursive oder unordentliche Schrift.
@@ -174,7 +221,22 @@ Analysiere die Rezepte in den Bildern. Wichtige Hinweise:
 - Wenn einzelne Wörter unleserlich sind, schreibe "[unleserlich]" statt sie wegzulassen.
 - Ein Bild kann mehrere Rezepte enthalten, die durch Überschriften oder Trennlinien voneinander abgegrenzt sind.
 - Suche EXPLIZIT nach dem Abschnitt "Zubereitung" im Bild und übertrage dessen Inhalt vollständig in das Feld recipeText.
-- Suche nach Zutaten-Listen (oft nummeriert oder mit Mengenangaben wie "200g", "3 EL", "1 TL" usw.).`
+- Suche nach Zutaten-Listen (oft nummeriert oder mit Mengenangaben wie "200g", "3 EL", "1 TL" usw.).`;
+
+  const imageHintEN = `
+
+Analyse the recipes in the images. Important notes:
+- Images may contain HANDWRITTEN recipes – including pencil, ballpoint, cursive or messy writing.
+- Read EVERY recognisable piece of text – even if it is difficult to read. Complete abbreviated words sensibly from a cooking context.
+- NEVER return an empty array [] just because the handwriting is handwritten. Always try to extract the recipe as best you can.
+- If individual words are illegible, write "[illegible]" rather than omitting them.
+- One image may contain multiple recipes separated by headings or dividing lines.
+- EXPLICITLY look for the preparation section in the image and copy its content fully into the recipeText field.
+- Look for ingredient lists (often numbered or with quantities like "200g", "3 tbsp", "1 tsp" etc.).`;
+
+  contentParts.push({
+    type: 'text',
+    text: buildRecipeAnalysisPrompt({ multiHint }) + (getLanguage() === 'en' ? imageHintEN : imageHintDE)
   });
 
   let response;
@@ -194,8 +256,8 @@ Analysiere die Rezepte in den Bildern. Wichtige Hinweise:
       })
     });
   } catch (fetchErr) {
-    const msg = fetchErr.name === 'AbortError' ? 'Timeout: API hat nicht innerhalb von 2 Minuten geantwortet.' : fetchErr.message;
-    console.error('[API] Fetch-Fehler:', msg);
+    const msg = fetchErr.name === 'AbortError' ? t('apiErrors.timeout') : fetchErr.message;
+    console.error('[API] Fetch error:', msg);
     throw new ApiError(msg, 0, false);
   }
 
@@ -252,7 +314,7 @@ function parseRecipeResponse(content) {
     } catch { /* continue */ }
   }
 
-  throw new Error('Konnte die KI-Antwort nicht verarbeiten.');
+  throw new Error(t('apiErrors.parseError'));
 }
 
 /**
@@ -307,30 +369,9 @@ export async function suggestRecipes(question, recipes) {
       max_tokens: 2048,
       messages: [{
         role: 'user',
-        content: `Du bist ein Koch-Assistent. Der Nutzer hat folgende Frage:
-
-"${question}"
-
-Hier sind die verfügbaren Rezepte:
-${JSON.stringify(recipeSummaries, null, 2)}
-
-Heute ist ${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.
-
-Wähle die passendsten Rezepte aus und antworte NUR mit einem JSON-Array. Jedes Element soll folgendes enthalten:
-[
-  {
-    "id": Rezept-ID,
-    "matchReasons": ["Grund 1 warum dieses Rezept passt", "Grund 2", ...]
-  }
-]
-
-Regeln:
-- Sortiere nach Relevanz (beste Treffer zuerst)
-- Rezepte die kürzlich gekocht wurden (lastCooked), sollen weiter hinten einsortiert werden
-- Bei "kein Fleisch" oder "Freitag": nur Rezepte mit Tag "Freitag-tauglich" oder ohne Fleisch-Hauptzutat
-- Bei Zeitangaben: filtere nach prepTime
-- Gib maximal 10 Rezepte zurück
-- Antworte NUR mit dem JSON-Array`
+        content: getLanguage() === 'en'
+          ? `You are a cooking assistant. The user has the following question:\n\n"${question}"\n\nHere are the available recipes:\n${JSON.stringify(recipeSummaries, null, 2)}\n\nToday is ${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.\n\nChoose the most suitable recipes and respond ONLY with a JSON array. Each element should contain:\n[\n  {\n    "id": recipe ID,\n    "matchReasons": ["Reason 1 why this recipe fits", "Reason 2", ...]\n  }\n]\n\nRules:\n- Sort by relevance (best matches first)\n- Recipes cooked recently (lastCooked) should be sorted further down\n- For "no meat" or "Friday": only recipes with tag "Friday-friendly" or without a meat main ingredient\n- For time constraints: filter by prepTime\n- Return at most 10 recipes\n- Respond ONLY with the JSON array`
+          : `Du bist ein Koch-Assistent. Der Nutzer hat folgende Frage:\n\n"${question}"\n\nHier sind die verfügbaren Rezepte:\n${JSON.stringify(recipeSummaries, null, 2)}\n\nHeute ist ${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.\n\nWähle die passendsten Rezepte aus und antworte NUR mit einem JSON-Array. Jedes Element soll folgendes enthalten:\n[\n  {\n    "id": Rezept-ID,\n    "matchReasons": ["Grund 1 warum dieses Rezept passt", "Grund 2", ...]\n  }\n]\n\nRegeln:\n- Sortiere nach Relevanz (beste Treffer zuerst)\n- Rezepte die kürzlich gekocht wurden (lastCooked), sollen weiter hinten einsortiert werden\n- Bei "kein Fleisch" oder "Freitag": nur Rezepte mit Tag "Freitag-tauglich" oder ohne Fleisch-Hauptzutat\n- Bei Zeitangaben: filtere nach prepTime\n- Gib maximal 10 Rezepte zurück\n- Antworte NUR mit dem JSON-Array`
       }]
     })
   });
@@ -348,6 +389,6 @@ Regeln:
   } catch {
     const match = content.match(/\[[\s\S]*\]/);
     if (match) return JSON.parse(match[0]);
-    throw new Error('Konnte die KI-Antwort nicht verarbeiten.');
+    throw new Error(t('apiErrors.parseError'));
   }
 }

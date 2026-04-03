@@ -6,6 +6,7 @@ import { $, showToast } from '../utils/helpers.js';
 import { isAuthenticated, isAdmin } from '../utils/auth.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { generateCookbookPDF, generateCookbookA5PDF } from '../pdf-generator.js';
+import { t } from '../i18n.js';
 
 export async function render(container) {
   await ensureAuthenticated(container, () => renderCookbooks(container));
@@ -17,10 +18,10 @@ async function renderCookbooks(container) {
   container.innerHTML = `
     <div class="cookbooks">
       <div class="cookbooks__header">
-        <h1>Kochbücher</h1>
+        <h1>${t('cookbooks.title')}</h1>
         <button class="btn btn--primary" id="btnNewCookbook">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Neues Kochbuch
+          ${t('cookbooks.newBtn')}
         </button>
       </div>
 
@@ -30,26 +31,26 @@ async function renderCookbooks(container) {
       <div class="modal hidden" id="cookbookModal">
         <div class="modal__backdrop" id="modalBackdrop"></div>
         <div class="modal__box">
-          <h2 id="modalTitle">Kochbuch anlegen</h2>
+          <h2 id="modalTitle">${t('cookbooks.createTitle')}</h2>
           <div class="form-group">
-            <label for="cbName">Name *</label>
-            <input type="text" id="cbName" class="input" placeholder="z. B. Familienrezepte" />
+            <label for="cbName">${t('cookbooks.nameLabel')}</label>
+            <input type="text" id="cbName" class="input" placeholder="${t('cookbooks.namePlaceholder')}" />
           </div>
           <div class="form-group">
-            <label for="cbDescription">Beschreibung</label>
-            <input type="text" id="cbDescription" class="input" placeholder="Kurze Beschreibung" />
+            <label for="cbDescription">${t('cookbooks.descLabel')}</label>
+            <input type="text" id="cbDescription" class="input" />
           </div>
           <div class="form-group">
-            <label for="cbCoverTitle">Deckblatt-Titel</label>
-            <input type="text" id="cbCoverTitle" class="input" placeholder="Erscheint groß auf dem Deckblatt" />
+            <label for="cbCoverTitle">${t('cookbooks.coverTitleLabel')}</label>
+            <input type="text" id="cbCoverTitle" class="input" />
           </div>
           <div class="form-group">
-            <label for="cbCoverSubtitle">Deckblatt-Untertitel</label>
-            <input type="text" id="cbCoverSubtitle" class="input" placeholder="z. B. Zusammengestellt von Familie Müller" />
+            <label for="cbCoverSubtitle">${t('cookbooks.coverSubtitleLabel')}</label>
+            <input type="text" id="cbCoverSubtitle" class="input" placeholder="${t('cookbooks.subtitlePlaceholder')}" />
           </div>
           <div class="modal__actions">
-            <button class="btn btn--primary" id="btnSaveCookbook">Speichern</button>
-            <button class="btn btn--ghost" id="btnCancelModal">Abbrechen</button>
+            <button class="btn btn--primary" id="btnSaveCookbook">${t('cookbooks.saveBtn')}</button>
+            <button class="btn btn--ghost" id="btnCancelModal">${t('cookbooks.cancelBtn')}</button>
           </div>
         </div>
       </div>
@@ -58,19 +59,19 @@ async function renderCookbooks(container) {
       <div class="modal hidden" id="assignModal">
         <div class="modal__backdrop" id="assignBackdrop"></div>
         <div class="modal__box modal__box--wide">
-          <h2 id="assignTitle">Rezepte zuordnen</h2>
+          <h2 id="assignTitle">${t('cookbooks.assignTitle')}</h2>
           <p class="settings__hint" id="assignHint"></p>
           <div class="assign-filters">
-            <input type="text" id="assignSearch" class="input" placeholder="Rezept suchen..." />
+            <input type="text" id="assignSearch" class="input" placeholder="${t('cookbooks.searchPlaceholder')}" />
             <div class="assign-select-btns">
-              <button class="btn btn--ghost btn--sm" id="btnAssignSelectAll">Alle auswählen</button>
-              <button class="btn btn--ghost btn--sm" id="btnAssignSelectNone">Keine</button>
+              <button class="btn btn--ghost btn--sm" id="btnAssignSelectAll">${t('cookbooks.selectAll')}</button>
+              <button class="btn btn--ghost btn--sm" id="btnAssignSelectNone">${t('cookbooks.selectNone')}</button>
             </div>
           </div>
           <div class="assign-list" id="assignList"></div>
           <div class="modal__actions">
-            <button class="btn btn--primary" id="btnConfirmAssign">Zuordnen</button>
-            <button class="btn btn--ghost" id="btnCancelAssign">Abbrechen</button>
+            <button class="btn btn--primary" id="btnConfirmAssign">${t('cookbooks.assignBtn')}</button>
+            <button class="btn btn--ghost" id="btnCancelAssign">${t('cookbooks.cancelBtn')}</button>
           </div>
         </div>
       </div>
@@ -89,33 +90,33 @@ async function renderCookbooks(container) {
         <div class="cookbook-card__cover">
           <svg class="cookbook-card__book-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
           <div class="cookbook-card__name">${esc(cb.name)}</div>
-          <div class="cookbook-card__count">${cb.recipeCount ?? 0} Rezept${(cb.recipeCount ?? 0) !== 1 ? 'e' : ''}</div>
+          <div class="cookbook-card__count">${t('cookbooks.recipeCount', cb.recipeCount ?? 0)}</div>
         </div>
         <div class="cookbook-card__body">
           ${cb.description ? `<p class="cookbook-card__desc">${esc(cb.description)}</p>` : ''}
           <div class="cookbook-card__actions">
             <div class="cookbook-card__actions-primary">
-              <button class="btn btn--ghost btn--sm" data-action="assign" data-id="${cb.id}" title="Rezepte zuordnen">
+              <button class="btn btn--ghost btn--sm" data-action="assign" data-id="${cb.id}" title="${t('cookbooks.assignTitle')}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-                Zuordnen
+                ${t('cookbooks.assignBtn')}
               </button>
-              <button class="btn btn--ghost btn--sm" data-action="export" data-id="${cb.id}" title="Als A4-PDF exportieren">
+              <button class="btn btn--ghost btn--sm" data-action="export" data-id="${cb.id}" title="A4 PDF">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                PDF
+                ${t('cookbooks.pdfBtn')}
               </button>
-              <button class="btn btn--ghost btn--sm" data-action="export-a5" data-id="${cb.id}" title="Als A5-PDF exportieren (doppelseitig drucken, dann schneiden)">
+              <button class="btn btn--ghost btn--sm" data-action="export-a5" data-id="${cb.id}" title="A5 PDF">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                A5
+                ${t('cookbooks.a5Btn')}
               </button>
             </div>
             <div class="cookbook-card__actions-secondary">
-              <button class="btn btn--ghost btn--sm" data-action="edit" data-id="${cb.id}" title="Bearbeiten">
+              <button class="btn btn--ghost btn--sm" data-action="edit" data-id="${cb.id}" title="${t('cookbooks.editBtn')}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </button>
-              ${isAdmin() ? `<button class="btn btn--ghost btn--sm btn--danger-text" data-action="clear" data-id="${cb.id}" title="Alle Rezepte aus Kochbuch entfernen">
+              ${isAdmin() ? `<button class="btn btn--ghost btn--sm btn--danger-text" data-action="clear" data-id="${cb.id}" title="${t('cookbooks.clearConfirm', '')}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
               </button>` : ''}
-              ${cb.id !== 1 ? `<button class="btn btn--ghost btn--sm btn--danger-text" data-action="delete" data-id="${cb.id}" title="Löschen">
+              ${cb.id !== 1 ? `<button class="btn btn--ghost btn--sm btn--danger-text" data-action="delete" data-id="${cb.id}" title="${t('cookbooks.deleteBtn')}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
               </button>` : ''}
             </div>
@@ -129,7 +130,7 @@ async function renderCookbooks(container) {
 
   function openModal(cookbook = null) {
     editingCookbookId = cookbook ? cookbook.id : null;
-    $('#modalTitle', container).textContent = cookbook ? 'Kochbuch bearbeiten' : 'Kochbuch anlegen';
+    $('#modalTitle', container).textContent = cookbook ? t('cookbooks.editTitle') : t('cookbooks.createTitle');
     $('#cbName', container).value = cookbook ? cookbook.name : '';
     $('#cbDescription', container).value = cookbook ? (cookbook.description || '') : '';
     $('#cbCoverTitle', container).value = cookbook ? (cookbook.coverTitle || '') : '';
@@ -149,13 +150,12 @@ async function renderCookbooks(container) {
     assignTargetCookbookId = cookbookId;
     const cb = cookbooks.find(c => c.id === cookbookId);
 
-    // Get all recipes and which are already in this cookbook
     assignAllRecipes = await getAllRecipes();
     const alreadyIn = await getCookbookRecipes(cookbookId);
     const alreadyInIds = new Set(alreadyIn.map(r => r.id));
 
-    $('#assignTitle', container).textContent = `Rezepte zuordnen: ${cb.name}`;
-    $('#assignHint', container).textContent = `Wähle Rezepte aus, die dem Kochbuch „${cb.name}" zugeordnet werden sollen. Bereits zugeordnete Rezepte sind vorausgewählt.`;
+    $('#assignTitle', container).textContent = t('cookbooks.assignTitle') + ': ' + cb.name;
+    $('#assignHint', container).textContent = t('cookbooks.assignHint', cb.name);
     $('#assignSearch', container).value = '';
 
     filteredAssignRecipes = [...assignAllRecipes];
@@ -201,9 +201,9 @@ async function renderCookbooks(container) {
     const cb = cookbooks.find(c => c.id === cookbookId);
     if (!cb) return;
     try {
-      showToast('PDF wird erstellt...', 'info');
+      showToast(t('cookbooks.pdfCreating'), 'info');
       const recipes = await getCookbookRecipes(cookbookId);
-      if (recipes.length === 0) { showToast('Dieses Kochbuch enthält noch keine Rezepte.', 'warning'); return; }
+      if (recipes.length === 0) { showToast(t('cookbooks.empty'), 'warning'); return; }
       const blob = generateCookbookPDF(cb, recipes);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -211,9 +211,9 @@ async function renderCookbooks(container) {
       a.download = `${(cb.name || 'kochbuch').replace(/[^a-z0-9äöü]/gi, '-').toLowerCase()}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      showToast(`PDF für „${cb.name}" heruntergeladen.`, 'success');
+      showToast(t('cookbooks.pdfDownloaded', cb.name), 'success');
     } catch (err) {
-      showToast(`PDF-Fehler: ${err.message}`, 'error');
+      showToast(t('cookbooks.pdfError', err.message), 'error');
     }
   }
 
@@ -221,9 +221,9 @@ async function renderCookbooks(container) {
     const cb = cookbooks.find(c => c.id === cookbookId);
     if (!cb) return;
     try {
-      showToast('A5-PDF wird erstellt...', 'info');
+      showToast(t('cookbooks.pdfCreating'), 'info');
       const recipes = await getCookbookRecipes(cookbookId);
-      if (recipes.length === 0) { showToast('Dieses Kochbuch enthält noch keine Rezepte.', 'warning'); return; }
+      if (recipes.length === 0) { showToast(t('cookbooks.empty'), 'warning'); return; }
       const blob = generateCookbookA5PDF(cb, recipes);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -231,9 +231,9 @@ async function renderCookbooks(container) {
       a.download = `${(cb.name || 'kochbuch').replace(/[^a-z0-9äöü]/gi, '-').toLowerCase()}-a5.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      showToast(`A5-PDF für „${cb.name}" heruntergeladen.`, 'success');
+      showToast(t('cookbooks.pdfDownloaded', cb.name), 'success');
     } catch (err) {
-      showToast(`PDF-Fehler: ${err.message}`, 'error');
+      showToast(t('cookbooks.pdfError', err.message), 'error');
     }
   }
 
@@ -243,7 +243,7 @@ async function renderCookbooks(container) {
 
   $('#btnSaveCookbook', container).addEventListener('click', async () => {
     const name = $('#cbName', container).value.trim();
-    if (!name) { showToast('Bitte einen Namen eingeben.', 'warning'); return; }
+    if (!name) { showToast(t('cookbooks.nameRequired'), 'warning'); return; }
 
     const data = {
       name,
@@ -257,16 +257,16 @@ async function renderCookbooks(container) {
         await updateCookbook({ ...data, id: editingCookbookId });
         const idx = cookbooks.findIndex(c => c.id === editingCookbookId);
         if (idx >= 0) cookbooks[idx] = { ...cookbooks[idx], ...data };
-        showToast('Kochbuch aktualisiert.', 'success');
+        showToast(t('cookbooks.updated', name), 'success');
       } else {
         const id = await addCookbook(data);
         cookbooks.push({ id, ...data, createdAt: new Date().toISOString() });
-        showToast('Kochbuch erstellt.', 'success');
+        showToast(t('cookbooks.created', name), 'success');
       }
       closeModal();
       renderList();
     } catch (err) {
-      showToast(`Fehler: ${err.message}`, 'error');
+      showToast(err.message, 'error');
     }
   });
 
@@ -278,10 +278,10 @@ async function renderCookbooks(container) {
     const recipeIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.recipeId, 10));
     try {
       await assignRecipesToCookbook(recipeIds, assignTargetCookbookId);
-      showToast(`${recipeIds.length} Rezept${recipeIds.length !== 1 ? 'e' : ''} zugeordnet.`, 'success');
+      showToast(t('cookbooks.assignedCount', recipeIds.length), 'success');
       closeAssignModal();
     } catch (err) {
-      showToast(`Fehler: ${err.message}`, 'error');
+      showToast(err.message, 'error');
     }
   });
 
@@ -299,31 +299,30 @@ async function renderCookbooks(container) {
       const cb = cookbooks.find(c => c.id === id);
       if (cb) openModal(cb);
     } else if (action === 'delete') {
-      if (id === 1) { showToast('Das Standard-Kochbuch kann nicht gelöscht werden.', 'warning'); return; }
-      if (!confirm('Kochbuch wirklich löschen? Die Rezepte bleiben erhalten.')) return;
+      if (id === 1) { showToast(t('cookbooks.deleteStandardError'), 'warning'); return; }
+      const cb = cookbooks.find(c => c.id === id);
+      if (!confirm(t('cookbooks.deleteConfirm', cb?.name || '') + '\n' + t('cookbooks.deleteHint'))) return;
       try {
         await deleteCookbook(id);
         const idx = cookbooks.findIndex(c => c.id === id);
         if (idx >= 0) cookbooks.splice(idx, 1);
-        showToast('Kochbuch gelöscht.', 'success');
+        showToast(t('cookbooks.deleted', cb?.name || ''), 'success');
         renderList();
       } catch (err) {
-        showToast(`Fehler: ${err.message}`, 'error');
+        showToast(err.message, 'error');
       }
     } else if (action === 'clear') {
       const cb = cookbooks.find(c => c.id === id);
-      const hint = id === 1
-        ? 'Rezepte werden automatisch in die persönlichen Kochbücher ihrer Ersteller verschoben.'
-        : 'Die Rezepte bleiben erhalten, werden aber aus diesem Kochbuch entfernt.';
-      if (!confirm(`Alle Rezepte aus „${cb.name}" entfernen?\n${hint}`)) return;
+      const hint = id === 1 ? t('cookbooks.clearConfirmHintMain') : t('cookbooks.clearConfirmHint');
+      if (!confirm(t('cookbooks.clearConfirm', cb.name) + '\n' + hint)) return;
       try {
         await clearCookbook(id);
         const idx = cookbooks.findIndex(c => c.id === id);
         if (idx >= 0) cookbooks[idx] = { ...cookbooks[idx], recipeCount: 0 };
-        showToast(`Kochbuch „${cb.name}" geleert.`, 'success');
+        showToast(t('cookbooks.clearedMsg', cb.name), 'success');
         renderList();
       } catch (err) {
-        showToast(`Fehler: ${err.message}`, 'error');
+        showToast(err.message, 'error');
       }
     } else if (action === 'assign') {
       await openAssignModal(id);

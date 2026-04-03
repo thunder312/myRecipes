@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { getUserByUsername, updateUserPassword, updateUsername, getUser, verifyPassword } = require('../db');
+const { getUserByUsername, updateUserPassword, updateUsername, getUser, verifyPassword, getUserLanguage, setUserLanguage } = require('../db');
 
 const router = Router();
 
@@ -32,7 +32,8 @@ router.post('/login', (req, res) => {
 
   const { createToken } = req.app.get('auth');
   const token = createToken(user.id, user.username, user.role);
-  res.json({ success: true, token, username: user.username, role: user.role });
+  const language = getUserLanguage(user.id);
+  res.json({ success: true, token, username: user.username, role: user.role, language });
 });
 
 // POST /api/auth/logout
@@ -92,6 +93,19 @@ router.post('/change-username', (req, res) => {
   invalidateToken(token);
   const newToken = createToken(tokenData.userId, newUsername.trim(), tokenData.role);
   res.json({ success: true, token: newToken, username: newUsername.trim() });
+});
+
+// PATCH /api/auth/language – save preferred language for authenticated user
+router.patch('/language', (req, res) => {
+  const { validateTokenWithData } = req.app.get('auth');
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const tokenData = validateTokenWithData(token);
+  if (!tokenData) return res.status(401).json({ error: 'Nicht authentifiziert' });
+  const { language } = req.body;
+  if (!['de', 'en'].includes(language)) return res.status(400).json({ error: 'Invalid language' });
+  setUserLanguage(tokenData.userId, language);
+  res.json({ success: true });
 });
 
 module.exports = router;

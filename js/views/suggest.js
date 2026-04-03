@@ -3,6 +3,7 @@ import { getSetting } from '../db.js';
 import { suggestRecipes } from '../api.js';
 import { $, createElement, showToast, categoryChipClass } from '../utils/helpers.js';
 import { isAuthenticated, isAdmin } from '../utils/auth.js';
+import { t, translateCategory } from '../i18n.js';
 
 export async function render(container) {
   const loggedIn = isAuthenticated();
@@ -10,24 +11,24 @@ export async function render(container) {
 
   container.innerHTML = `
     <div class="suggest">
-      <h1>Was koche ich heute?</h1>
-      <p class="suggest__intro">Stelle eine Frage und ich schlage dir passende Rezepte vor.</p>
+      <h1>${t('suggest.title')}</h1>
+      <p class="suggest__intro">${t('suggest.intro')}</p>
 
       <div class="suggest__input-group">
-        <textarea id="questionInput" class="input input--textarea" rows="2" placeholder="z.B. Was kann ich mit Kartoffeln machen?"></textarea>
+        <textarea id="questionInput" class="input input--textarea" rows="2" placeholder="${t('suggest.placeholder')}"></textarea>
         <div class="suggest__filters">
-          <label class="suggest__filter-check"><input type="checkbox" id="filterHauptgericht" checked /> Nur Hauptgerichte</label>
-          <label class="suggest__filter-check"><input type="checkbox" id="filterSalat" checked /> Salate einschließen</label>
-          ${loggedIn ? '<label class="suggest__filter-check suggest__filter-save"><input type="checkbox" id="saveQuery" /> Frage speichern</label>' : ''}
+          <label class="suggest__filter-check"><input type="checkbox" id="filterHauptgericht" checked /> ${t('suggest.filterMain')}</label>
+          <label class="suggest__filter-check"><input type="checkbox" id="filterSalat" checked /> ${t('suggest.filterSalad')}</label>
+          ${loggedIn ? `<label class="suggest__filter-check suggest__filter-save"><input type="checkbox" id="saveQuery" /> ${t('suggest.filterSave')}</label>` : ''}
         </div>
-        <button class="btn btn--primary" id="btnAsk">Rezepte vorschlagen</button>
+        <button class="btn btn--primary" id="btnAsk">${t('suggest.askBtn')}</button>
       </div>
 
       <div class="suggest__chips" id="savedChips"></div>
 
       <div class="suggest__loading hidden" id="loading">
         <div class="spinner"></div>
-        <p>Suche passende Rezepte...</p>
+        <p>${t('suggest.loading')}</p>
       </div>
 
       <div class="suggest__results hidden" id="results"></div>
@@ -43,34 +44,17 @@ export async function render(container) {
   async function renderChips() {
     savedChips.innerHTML = '';
     let queries = [];
-    try {
-      queries = await getSavedQueries();
-    } catch { /* ignore */ }
+    try { queries = await getSavedQueries(); } catch { /* ignore */ }
 
     queries.forEach(q => {
-      const chip = createElement('button', {
-        className: 'chip chip--clickable',
-        textContent: q.question,
-      });
-      chip.addEventListener('click', () => {
-        questionInput.value = q.question;
-        performSearch();
-      });
+      const chip = createElement('button', { className: 'chip chip--clickable', textContent: q.question });
+      chip.addEventListener('click', () => { questionInput.value = q.question; performSearch(); });
 
       if (admin) {
-        const del = createElement('button', {
-          className: 'chip__delete',
-          title: 'Frage entfernen',
-          innerHTML: '&times;',
-        });
-        del.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          await deleteSavedQuery(q.id);
-          renderChips();
-        });
+        const del = createElement('button', { className: 'chip__delete', innerHTML: '&times;' });
+        del.addEventListener('click', async (e) => { e.stopPropagation(); await deleteSavedQuery(q.id); renderChips(); });
         chip.appendChild(del);
       }
-
       savedChips.appendChild(chip);
     });
   }
@@ -78,45 +62,34 @@ export async function render(container) {
   await renderChips();
 
   btnAsk.addEventListener('click', performSearch);
-  questionInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      performSearch();
-    }
-  });
+  questionInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); performSearch(); } });
 
   async function performSearch() {
     const question = questionInput.value.trim();
-    if (!question) {
-      showToast('Bitte eine Frage eingeben.', 'warning');
-      return;
-    }
+    if (!question) { showToast(t('suggest.noQuestion'), 'warning'); return; }
 
     const apiKey = await getSetting('apiKey');
-    if (!apiKey) {
-      showToast('Bitte zuerst den API-Key in den Einstellungen hinterlegen.', 'warning');
-      return;
-    }
+    if (!apiKey) { showToast(t('suggest.noApiKey'), 'warning'); return; }
 
     const allRecipes = await getAllRecipes();
-    if (allRecipes.length === 0) {
-      showToast('Noch keine Rezepte vorhanden. Importiere zuerst ein Rezept.', 'warning');
-      return;
-    }
+    if (allRecipes.length === 0) { showToast(t('suggest.noRecipes'), 'warning'); return; }
 
     const hauptOnly = $('#filterHauptgericht', container).checked;
     const includeSalat = $('#filterSalat', container).checked;
 
     let recipes = allRecipes;
     if (hauptOnly) {
-      const allowed = ['Hauptspeise'];
-      if (includeSalat) allowed.push('Salat');
-      recipes = allRecipes.filter(r => allowed.includes(r.category));
+      // Match both DE and EN category names
+      const mainDE = 'Hauptspeise', mainEN = 'Main Course';
+      const salatDE = 'Salat', salatEN = 'Salad';
+      recipes = allRecipes.filter(r => {
+        const cat = r.category || '';
+        if (cat === mainDE || cat === mainEN) return true;
+        if (includeSalat && (cat === salatDE || cat === salatEN)) return true;
+        return false;
+      });
 
-      if (recipes.length === 0) {
-        showToast('Keine Rezepte in den gefilterten Kategorien gefunden.', 'warning');
-        return;
-      }
+      if (recipes.length === 0) { showToast(t('suggest.noCategory'), 'warning'); return; }
     }
 
     loading.classList.remove('hidden');
@@ -126,7 +99,6 @@ export async function render(container) {
     try {
       const suggestions = await suggestRecipes(question, recipes);
 
-      // Save query if checkbox is checked
       const saveCheckbox = $('#saveQuery', container);
       if (saveCheckbox && saveCheckbox.checked) {
         await addSavedQuery(question);
@@ -136,7 +108,7 @@ export async function render(container) {
 
       renderResults(suggestions, allRecipes);
     } catch (err) {
-      showToast(`Fehler: ${err.message}`, 'error');
+      showToast(err.message, 'error');
     } finally {
       loading.classList.add('hidden');
       btnAsk.disabled = false;
@@ -148,39 +120,36 @@ export async function render(container) {
     results.classList.remove('hidden');
 
     if (!suggestions || suggestions.length === 0) {
-      results.innerHTML = '<p class="suggest__no-results">Keine passenden Rezepte gefunden.</p>';
+      results.innerHTML = `<p class="suggest__no-results">${t('suggest.noMatch')}</p>`;
       return;
     }
 
-    const heading = createElement('h2', { textContent: `${suggestions.length} Vorschläge gefunden` });
+    const heading = createElement('h2', { textContent: t('suggest.results', suggestions.length) });
     results.appendChild(heading);
 
     suggestions.forEach((suggestion, index) => {
       const recipe = allRecipes.find(r => r.id === suggestion.id);
       if (!recipe) return;
 
+      const displayCat = translateCategory(recipe.category);
+
       const card = createElement('div', { className: 'suggest-card' }, [
         createElement('div', { className: 'suggest-card__rank', textContent: `#${index + 1}` }),
         createElement('div', { className: 'suggest-card__body' }, [
-          createElement('a', {
-            href: `#detail/${recipe.id}`,
-            className: 'suggest-card__title'
-          }, [recipe.title]),
+          createElement('a', { href: `#detail/${recipe.id}`, className: 'suggest-card__title' }, [recipe.title]),
           createElement('div', { className: 'suggest-card__meta' }, [
-            recipe.category ? createElement('span', { className: `chip ${categoryChipClass(recipe.category)}`, textContent: recipe.category }) : null,
+            recipe.category ? createElement('span', { className: `chip ${categoryChipClass(recipe.category)}`, textContent: displayCat }) : null,
             recipe.origin ? createElement('span', { className: 'chip chip--origin', textContent: recipe.origin }) : null,
-            recipe.prepTime ? createElement('span', { className: 'chip chip--time', textContent: `${recipe.prepTime} Min.` }) : null
+            recipe.prepTime ? createElement('span', { className: 'chip chip--time', textContent: t('detail.minutes', recipe.prepTime) }) : null,
           ].filter(Boolean)),
           createElement('div', { className: 'suggest-card__reasons' }, [
-            createElement('strong', { textContent: 'Warum dieses Rezept: ' }),
-            ...suggestion.matchReasons.map(reason =>
-              createElement('span', { className: 'chip chip--reason', textContent: reason })
-            )
+            createElement('strong', { textContent: t('suggest.why') + ': ' }),
+            ...suggestion.matchReasons.map(reason => createElement('span', { className: 'chip chip--reason', textContent: reason })),
           ]),
           recipe.cookedCount
-            ? createElement('small', { className: 'suggest-card__stats', textContent: `${recipe.cookedCount}× gekocht` })
-            : createElement('small', { className: 'suggest-card__stats', textContent: 'Noch nie gekocht' })
-        ])
+            ? createElement('small', { className: 'suggest-card__stats', textContent: t('suggest.cookedCount', recipe.cookedCount) })
+            : createElement('small', { className: 'suggest-card__stats', textContent: t('suggest.cookedNever') }),
+        ]),
       ]);
       results.appendChild(card);
     });

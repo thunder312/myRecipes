@@ -3,13 +3,14 @@ import { generateRecipePDF, generateRecipeA5PDF } from '../pdf-generator.js';
 import { $, createElement, formatDate, formatDateTime, todayISO, showToast, categoryChipClass } from '../utils/helpers.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
 import { isAuthenticated, getAuthUser } from '../utils/auth.js';
+import { t, translateCategory, translateDifficulty } from '../i18n.js';
 
 export async function render(container, recipeId) {
   const id = parseInt(recipeId, 10);
   const recipe = await getRecipe(id);
 
   if (!recipe) {
-    container.innerHTML = '<div class="error-state"><h2>Rezept nicht gefunden</h2><a href="#overview" class="btn">Zurück zur Übersicht</a></div>';
+    container.innerHTML = `<div class="error-state"><h2>${t('detail.notFound')}</h2><a href="#overview" class="btn">${t('detail.backToOverview')}</a></div>`;
     return;
   }
 
@@ -93,33 +94,34 @@ function esc(str) {
 function renderDetailView(container, recipe) {
   const user = getAuthUser();
   const loggedIn = isAuthenticated();
-  // Edit/delete only allowed for the creator or admins
-  // Recipes without createdBy (old data) are editable by any authenticated user
   const canEdit = loggedIn && (
     user.role === 'admin' ||
     !recipe.createdBy ||
     user.username === recipe.createdByUsername
   );
 
+  const displayCat = translateCategory(recipe.category);
+  const displayDiff = translateDifficulty(recipe.difficulty);
+
   container.innerHTML = `
     <div class="detail">
       <div class="detail__header">
-        <a href="#overview" class="btn btn--ghost">&larr; Zurück</a>
+        <a href="#overview" class="btn btn--ghost">${t('detail.back')}</a>
         <div class="detail__actions">
-          ${canEdit ? '<button class="btn btn--secondary" id="btnEdit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Bearbeiten</button>' : ''}
-          <button class="btn btn--primary" id="btnCooked">Heute gekocht</button>
-          ${canEdit ? '<button class="btn btn--danger" id="btnDelete">Löschen</button>' : ''}
+          ${canEdit ? `<button class="btn btn--secondary" id="btnEdit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> ${t('detail.editBtn')}</button>` : ''}
+          <button class="btn btn--primary" id="btnCooked">${t('detail.cookedToday')}</button>
+          ${canEdit ? `<button class="btn btn--danger" id="btnDelete">${t('detail.deleteBtn')}</button>` : ''}
         </div>
       </div>
 
       <h1 class="detail__title">${esc(recipe.title)}</h1>
 
       <div class="detail__meta">
-        ${recipe.category ? `<span class="chip ${categoryChipClass(recipe.category)}">${esc(recipe.category)}</span>` : ''}
+        ${recipe.category ? `<span class="chip ${categoryChipClass(recipe.category)}">${esc(displayCat)}</span>` : ''}
         ${recipe.origin ? `<span class="chip chip--origin">${esc(recipe.origin)}</span>` : ''}
-        ${recipe.prepTime ? `<span class="chip chip--time">${recipe.prepTime} Min.</span>` : ''}
-        ${recipe.difficulty ? `<span class="chip chip--difficulty">${esc(recipe.difficulty)}</span>` : ''}
-        ${recipe.servings ? `<span class="chip">${recipe.servings} Portionen</span>` : ''}
+        ${recipe.prepTime ? `<span class="chip chip--time">${t('detail.minutes', recipe.prepTime)}</span>` : ''}
+        ${recipe.difficulty ? `<span class="chip chip--difficulty">${esc(displayDiff)}</span>` : ''}
+        ${recipe.servings ? `<span class="chip">${t('detail.servings', recipe.servings)}</span>` : ''}
         ${recipe.mainIngredient ? `<span class="chip chip--ingredient">${esc(recipe.mainIngredient)}</span>` : ''}
       </div>
 
@@ -127,48 +129,48 @@ function renderDetailView(container, recipe) {
 
       ${recipe.tags?.length ? `
         <div class="detail__tags">
-          <strong>Tags:</strong> ${recipe.tags.map(t => `<span class="chip chip--tag">${esc(t)}</span>`).join(' ')}
+          <strong>${t('detail.tags')}:</strong> ${recipe.tags.map(tag => `<span class="chip chip--tag">${esc(tag)}</span>`).join(' ')}
         </div>
       ` : ''}
 
       ${recipe.sides?.length ? `
         <div class="detail__sides">
-          <strong>Passende Beilagen:</strong> ${recipe.sides.map(s => `<span class="chip">${esc(s)}</span>`).join(' ')}
+          <strong>${t('detail.sides')}:</strong> ${recipe.sides.map(s => `<span class="chip">${esc(s)}</span>`).join(' ')}
         </div>
       ` : ''}
 
       ${recipe.ingredients?.length ? `
         <div class="detail__ingredients">
-          <h3>Zutaten</h3>
+          <h3>${t('detail.ingredients')}</h3>
           <ul>${recipe.ingredients.map(i => `<li>${esc(i)}</li>`).join('')}</ul>
         </div>
       ` : ''}
 
       <div class="detail__recipe-text">
-        <h3>Zubereitung</h3>
+        <h3>${t('detail.preparation')}</h3>
         ${recipe.recipeText
           ? renderRecipeSteps(recipe.recipeText)
-          : `<p class="recipe-text recipe-text--empty">Keine Zubereitungsschritte vorhanden. Rezept bearbeiten um sie hinzuzufügen.</p>`
+          : `<p class="recipe-text recipe-text--empty">${t('detail.noSteps')}</p>`
         }
       </div>
 
       <div class="detail__pdf">
-        <h3>Rezept-PDF</h3>
+        <h3>${t('detail.pdfSection')}</h3>
         <div class="pdf-actions">
-          <a id="pdfDownload" class="btn btn--secondary">A4 herunterladen</a>
-          <button id="pdfOpen" class="btn btn--primary">A4 öffnen</button>
-          <a id="pdfA5Download" class="btn btn--secondary">A5 herunterladen</a>
-          <button id="pdfA5Open" class="btn btn--primary">A5 öffnen</button>
+          <a id="pdfDownload" class="btn btn--secondary">${t('detail.pdfA4Download')}</a>
+          <button id="pdfOpen" class="btn btn--primary">${t('detail.pdfA4Open')}</button>
+          <a id="pdfA5Download" class="btn btn--secondary">${t('detail.pdfA5Download')}</a>
+          <button id="pdfA5Open" class="btn btn--primary">${t('detail.pdfA5Open')}</button>
         </div>
       </div>
 
       <!-- Notes Section -->
       <div class="detail__notes">
-        <h3>Notizen</h3>
-        <p class="detail__notes-hint">Halte fest, was dir beim Kochen aufgefallen ist – geänderte Zutaten, Tipps, Variationen.</p>
+        <h3>${t('detail.notesSection')}</h3>
+        <p class="detail__notes-hint">${t('detail.noteHint')}</p>
         <div class="notes-list" id="notesList">
           ${recipe.notes.length === 0
-            ? '<p class="notes-list__empty">Noch keine Notizen vorhanden.</p>'
+            ? `<p class="notes-list__empty">${t('detail.noNotes')}</p>`
             : recipe.notes.map((note, idx) => {
                 const canDeleteNote = loggedIn && (
                   user.role === 'admin' ||
@@ -180,44 +182,44 @@ function renderDetailView(container, recipe) {
                 <div class="note-card__header">
                   ${note.username ? `<span class="note-card__author">${esc(note.username)}</span>` : ''}
                   <span class="note-card__date">${formatDateTime(note.date)}</span>
-                  ${canDeleteNote ? `<button class="note-card__delete" data-delete-note="${idx}" title="Notiz löschen">&times;</button>` : ''}
+                  ${canDeleteNote ? `<button class="note-card__delete" data-delete-note="${idx}" title="${t('detail.noteDeleteTitle')}">&times;</button>` : ''}
                 </div>
                 <div class="note-card__text">${esc(note.text)}</div>
               </div>`;
               }).join('')}
         </div>
         ${loggedIn ? `<div class="notes-add">
-          <textarea id="newNoteText" class="input input--textarea" rows="3" placeholder="Neue Notiz schreiben..."></textarea>
-          <button class="btn btn--secondary" id="btnAddNote">Notiz hinzufügen</button>
+          <textarea id="newNoteText" class="input input--textarea" rows="3" placeholder="${t('detail.notePlaceholder')}"></textarea>
+          <button class="btn btn--secondary" id="btnAddNote">${t('detail.addNoteBtn')}</button>
         </div>` : ''}
       </div>
 
       <div class="detail__stats">
-        <h3>Koch-Statistik</h3>
+        <h3>${t('detail.statsSection')}</h3>
         <div class="stat-grid">
           <div class="stat">
             <span class="stat__value" id="cookedCount">${recipe.cookedCount || 0}</span>
-            <span class="stat__label">× gekocht</span>
+            <span class="stat__label">${t('detail.timesCooked')}</span>
           </div>
           <div class="stat">
             <span class="stat__value">${recipe.cookedDates?.length ? formatDate(recipe.cookedDates[recipe.cookedDates.length - 1]) : '–'}</span>
-            <span class="stat__label">Zuletzt gekocht</span>
+            <span class="stat__label">${t('detail.lastCooked')}</span>
           </div>
           <div class="stat">
             <span class="stat__value">${formatDate(recipe.createdAt)}</span>
-            <span class="stat__label">Importiert am</span>
+            <span class="stat__label">${t('detail.importedOn')}</span>
           </div>
         </div>
         ${recipe.cookedDates?.length ? `
           <details class="detail__history">
-            <summary>Koch-Historie (${recipe.cookedDates.length} Einträge)</summary>
+            <summary>${t('detail.cookingHistory', recipe.cookedDates.length)}</summary>
             <ul>${[...recipe.cookedDates].reverse().map(d => `<li>${formatDate(d)}</li>`).join('')}</ul>
           </details>
         ` : ''}
       </div>
 
       <div class="detail__source">
-        <small>Quelle: ${esc(recipe.sourceType)} – ${esc(recipe.sourceRef) || '–'}</small>
+        <small>${t('detail.source')}: ${esc(recipe.sourceType)} – ${esc(recipe.sourceRef) || '–'}</small>
       </div>
     </div>
   `;
@@ -265,13 +267,13 @@ function renderDetailView(container, recipe) {
   });
   $('#pdfA5Open', container).addEventListener('click', () => openPdfInTab(getPdfA5Url(), filenameA5));
 
-  // "Heute gekocht" – PATCH (no ownership required)
+  // "Cooked today" – PATCH (no ownership required)
   $('#btnCooked', container).addEventListener('click', async () => {
     recipe.cookedDates = recipe.cookedDates || [];
     recipe.cookedDates.push(todayISO());
     recipe.cookedCount = (recipe.cookedCount || 0) + 1;
     await patchRecipe(recipe.id, { cookedDates: recipe.cookedDates, cookedCount: recipe.cookedCount });
-    showToast(`"${recipe.title}" als gekocht markiert!`, 'success');
+    showToast(t('detail.cookedMarked'), 'success');
     renderDetailView(container, recipe);
   });
 
@@ -280,12 +282,12 @@ function renderDetailView(container, recipe) {
     $('#btnAddNote', container).addEventListener('click', async () => {
       const text = $('#newNoteText', container).value.trim();
       if (!text) {
-        showToast('Bitte Notiz eingeben.', 'warning');
+        showToast(t('detail.noteRequired'), 'warning');
         return;
       }
       recipe.notes.push({ date: new Date().toISOString(), text, username: user.username });
       await patchRecipe(recipe.id, { notes: recipe.notes });
-      showToast('Notiz gespeichert.', 'success');
+      showToast(t('detail.noteSaved'), 'success');
       renderDetailView(container, recipe);
     });
   }
@@ -294,10 +296,10 @@ function renderDetailView(container, recipe) {
   container.querySelectorAll('[data-delete-note]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const idx = parseInt(btn.dataset.deleteNote, 10);
-      if (!confirm('Notiz wirklich löschen?')) return;
+      if (!confirm(t('detail.noteDeleteConfirm'))) return;
       recipe.notes.splice(idx, 1);
       await patchRecipe(recipe.id, { notes: recipe.notes });
-      showToast('Notiz gelöscht.', 'info');
+      showToast(t('detail.noteDeleted'), 'info');
       renderDetailView(container, recipe);
     });
   });
@@ -310,9 +312,9 @@ function renderDetailView(container, recipe) {
 
     // Delete button
     $('#btnDelete', container).addEventListener('click', async () => {
-      if (confirm(`Rezept "${recipe.title}" wirklich löschen?`)) {
+      if (confirm(t('detail.deleteConfirm'))) {
         await deleteRecipe(recipe.id);
-        showToast('Rezept gelöscht.', 'info');
+        showToast(t('detail.recipeDeleted'), 'info');
         window.location.hash = '#overview';
       }
     });
@@ -323,13 +325,13 @@ function renderEditView(container, recipe) {
   container.innerHTML = `
     <div class="detail">
       <div class="detail__header">
-        <button class="btn btn--ghost" id="btnCancelEdit">&larr; Abbrechen</button>
+        <button class="btn btn--ghost" id="btnCancelEdit">${t('detail.cancelBtn')}</button>
         <div class="detail__actions">
-          <button class="btn btn--primary" id="btnSaveEdit">Änderungen speichern</button>
+          <button class="btn btn--primary" id="btnSaveEdit">${t('detail.saveChangesBtn')}</button>
         </div>
       </div>
 
-      <h2 style="margin-bottom: var(--space-xl);">Rezept bearbeiten</h2>
+      <h2 style="margin-bottom: var(--space-xl);">${t('detail.editTitle')}</h2>
 
       <div class="edit-form" id="editForm"></div>
     </div>
@@ -362,7 +364,7 @@ function renderEditView(container, recipe) {
     Object.assign(recipe, rest);
 
     await updateRecipe(recipe);
-    showToast(`"${recipe.title}" aktualisiert!`, 'success');
+    showToast(t('detail.recipeSaved'), 'success');
     renderDetailView(container, recipe);
   });
 }

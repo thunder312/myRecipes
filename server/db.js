@@ -130,6 +130,9 @@ function migrateSchema() {
   if (!userCols.includes('passwordHash')) {
     db.exec('ALTER TABLE users ADD COLUMN passwordHash TEXT NOT NULL DEFAULT \'\'');
   }
+  if (!userCols.includes('language')) {
+    db.exec("ALTER TABLE users ADD COLUMN language TEXT NOT NULL DEFAULT 'de'");
+  }
 
   // Add userId to cookbooks (links a cookbook to its owner)
   const cbCols = db.pragma('table_info(cookbooks)').map(r => r.name);
@@ -614,6 +617,15 @@ function updateUserRole(id, role) {
   getDB().prepare('UPDATE users SET role = ? WHERE id = ?').run(role, id);
 }
 
+function getUserLanguage(id) {
+  const row = getDB().prepare('SELECT language FROM users WHERE id = ?').get(id);
+  return row ? (row.language || 'de') : 'de';
+}
+
+function setUserLanguage(id, lang) {
+  getDB().prepare('UPDATE users SET language = ? WHERE id = ?').run(lang, id);
+}
+
 function updateUsername(id, newUsername) {
   const existing = getUserByUsername(newUsername);
   if (existing && existing.id !== id) throw new Error('Benutzername bereits vergeben.');
@@ -688,6 +700,8 @@ module.exports = {
   updateUserRole,
   updateUsername,
   deleteUser,
+  getUserLanguage,
+  setUserLanguage,
   getAllSavedQueries,
   addSavedQuery,
   deleteSavedQuery,

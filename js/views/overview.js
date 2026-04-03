@@ -1,20 +1,12 @@
 import { getAllRecipes, deleteRecipe, getAllCookbooks, assignRecipesToCookbook, getCookbookMemberships } from '../db.js';
 import { $, createElement, formatDate, debounce, showToast, categoryChipClass } from '../utils/helpers.js';
 import { isAuthenticated } from '../utils/auth.js';
-
-const CATEGORIES = ['Alle', 'Vorspeise', 'Hauptspeise', 'Nachspeise', 'Fingerfood', 'Suppe', 'Salat', 'Beilage', 'Getränk', 'Snack', 'Brot/Gebäck', 'Gewürzmischungen', 'Kuchen', 'Soße', 'Sauerkonserven', 'Wurstrezept'];
-const SORT_OPTIONS = [
-  { value: 'newest', label: 'Neueste zuerst' },
-  { value: 'alpha', label: 'Alphabetisch' },
-  { value: 'lastCooked', label: 'Zuletzt gekocht' },
-  { value: 'mostCooked', label: 'Am häufigsten gekocht' }
-];
+import { t, getCategoryList, translateCategory } from '../i18n.js';
 
 export async function render(container) {
   let recipes = await getAllRecipes();
   const canEdit = isAuthenticated();
   let cookbooks = await getAllCookbooks();
-  // Build recipeId -> Set<cookbookId> map for filtering
   let recipeCookbookMap = new Map();
   async function refreshMemberships() {
     const memberships = await getCookbookMemberships();
@@ -28,63 +20,68 @@ export async function render(container) {
   let selectMode = false;
   const selected = new Set();
 
+  const sortOptions = [
+    { value: 'newest', label: t('overview.sortNewest') },
+    { value: 'alpha', label: t('overview.sortAlpha') },
+    { value: 'lastCooked', label: t('overview.sortLastCooked') },
+    { value: 'mostCooked', label: t('overview.sortMostCooked') },
+  ];
+  const categories = [t('overview.allCategories'), ...getCategoryList()];
+
   container.innerHTML = `
     <div class="overview">
       <div class="overview__header">
-        <h1>Meine Rezepte <span class="badge" id="recipeCount">${recipes.length}</span></h1>
-        ${canEdit ? '<button class="btn btn--ghost" id="btnToggleSelect"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg> Auswählen</button>' : ''}
+        <h1>${t('overview.title')} <span class="badge" id="recipeCount">${recipes.length}</span></h1>
+        ${canEdit ? `<button class="btn btn--ghost" id="btnToggleSelect"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg> ${t('overview.selectBtn')}</button>` : ''}
       </div>
       <div class="overview__filters">
-        <input type="text" id="searchInput" class="input" placeholder="Rezept suchen..." />
+        <input type="text" id="searchInput" class="input" placeholder="${t('overview.searchPlaceholder')}" />
         <select id="categoryFilter" class="select">
-          ${CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+          ${categories.map(c => `<option value="${c}">${c}</option>`).join('')}
         </select>
         <select id="originFilter" class="select">
-          <option value="Alle">Alle Herkünfte</option>
+          <option value="__all">${t('overview.allOrigins')}</option>
         </select>
         <select id="cookbookFilter" class="select">
-          <option value="0">Alle Kochbücher</option>
+          <option value="0">${t('overview.allCookbooks')}</option>
           ${cookbooks.map(cb => `<option value="${cb.id}">${esc(cb.name)}</option>`).join('')}
         </select>
         <select id="sortSelect" class="select">
-          ${SORT_OPTIONS.map(s => `<option value="${s.value}">${s.label}</option>`).join('')}
+          ${sortOptions.map(s => `<option value="${s.value}">${s.label}</option>`).join('')}
         </select>
       </div>
       <div class="recipe-list" id="recipeGrid"></div>
       <div class="empty-state hidden" id="emptyState">
         <div class="empty-state__icon">📖</div>
-        <p>Noch keine Rezepte vorhanden.</p>
-        <a href="#import" class="btn btn--primary">Rezept importieren</a>
+        <p id="emptyMsg">${t('overview.empty')}</p>
+        <a href="#import" class="btn btn--primary" id="emptyImportLink">${t('import.btnUrl')}</a>
       </div>
       ${canEdit ? `
       <div class="bulk-bar hidden" id="bulkBar">
         <div class="bulk-bar__info">
-          <button class="btn btn--ghost btn--sm" id="btnSelectAll">Alle auswählen</button>
-          <span id="bulkCount">0 ausgewählt</span>
+          <button class="btn btn--ghost btn--sm" id="btnSelectAll">${t('overview.selectAll')}</button>
+          <span id="bulkCount">0</span>
         </div>
         <div class="bulk-bar__actions">
-          <button class="btn btn--ghost btn--sm" id="btnCancelSelect">Abbrechen</button>
-          <button class="btn btn--secondary btn--sm" id="btnBulkAssign">Kochbuch zuordnen</button>
-          <button class="btn btn--danger btn--sm" id="btnBulkDelete">Ausgewählte löschen</button>
+          <button class="btn btn--ghost btn--sm" id="btnCancelSelect">${t('overview.cancelBtn')}</button>
+          <button class="btn btn--secondary btn--sm" id="btnBulkAssign">${t('overview.assignCookbook')}</button>
+          <button class="btn btn--danger btn--sm" id="btnBulkDelete">${t('overview.deleteSelected')}</button>
         </div>
       </div>
-      <!-- Cookbook assign picker -->
       <div class="modal hidden" id="assignCookbookModal">
         <div class="modal__backdrop" id="assignCookbookBackdrop"></div>
         <div class="modal__box">
-          <h2>Kochbuch auswählen</h2>
-          <p class="settings__hint">Ordne die ausgewählten Rezepte einem Kochbuch zu.</p>
+          <h2>${t('overview.chooseCookbook')}</h2>
           <div class="assign-list" id="assignCookbookList"></div>
           <div class="modal__actions">
-            <button class="btn btn--primary" id="btnConfirmCookbookAssign">Zuordnen</button>
-            <button class="btn btn--ghost" id="btnCancelCookbookAssign">Abbrechen</button>
+            <button class="btn btn--primary" id="btnConfirmCookbookAssign">${t('overview.assignBtn')}</button>
+            <button class="btn btn--ghost" id="btnCancelCookbookAssign">${t('overview.cancelBtn')}</button>
           </div>
         </div>
       </div>` : ''}
     </div>
   `;
 
-  // Populate origin filter
   const origins = [...new Set(recipes.map(r => r.origin).filter(Boolean))].sort();
   const originSelect = $('#originFilter', container);
   origins.forEach(o => {
@@ -102,8 +99,8 @@ export async function render(container) {
       grid.classList.add('hidden');
       emptyState.classList.remove('hidden');
       if (recipes.length > 0) {
-        emptyState.querySelector('p').textContent = 'Keine Rezepte gefunden.';
-        emptyState.querySelector('a')?.remove();
+        $('#emptyMsg', container).textContent = t('overview.searchPlaceholder').replace('…', '');
+        $('#emptyImportLink', container)?.remove();
       }
       return;
     }
@@ -115,41 +112,32 @@ export async function render(container) {
       row.className = 'recipe-row' + (selectMode ? ' recipe-row--selectable' : '') + (selected.has(recipe.id) ? ' recipe-row--selected' : '');
       row.dataset.id = recipe.id;
 
+      const displayCat = translateCategory(recipe.category);
+
       row.innerHTML = `
         ${selectMode ? `<div class="recipe-row__checkbox"><input type="checkbox" ${selected.has(recipe.id) ? 'checked' : ''} /></div>` : ''}
         <div class="recipe-row__title">${esc(recipe.title)}</div>
         <div class="recipe-row__chips">
-          ${recipe.category ? `<span class="chip ${categoryChipClass(recipe.category)}">${esc(recipe.category)}</span>` : ''}
+          ${recipe.category ? `<span class="chip ${categoryChipClass(recipe.category)}">${esc(displayCat)}</span>` : ''}
           ${recipe.origin ? `<span class="chip chip--origin">${esc(recipe.origin)}</span>` : ''}
         </div>
-        ${recipe.prepTime ? `<div class="recipe-row__time">${recipe.prepTime} Min.</div>` : '<div class="recipe-row__time"></div>'}
+        ${recipe.prepTime ? `<div class="recipe-row__time">${t('detail.minutes', recipe.prepTime)}</div>` : '<div class="recipe-row__time"></div>'}
         <div class="recipe-row__cooked">${recipe.cookedCount ? `${recipe.cookedCount}×` : '–'}</div>
       `;
 
       if (selectMode) {
-        row.addEventListener('click', (e) => {
-          e.preventDefault();
-          toggleSelect(recipe.id);
-        });
+        row.addEventListener('click', (e) => { e.preventDefault(); toggleSelect(recipe.id); });
       } else {
-        row.addEventListener('click', () => {
-          window.location.hash = `#detail/${recipe.id}`;
-        });
+        row.addEventListener('click', () => { window.location.hash = `#detail/${recipe.id}`; });
         row.style.cursor = 'pointer';
       }
-
       grid.appendChild(row);
     });
   }
 
   function toggleSelect(id) {
-    if (selected.has(id)) {
-      selected.delete(id);
-    } else {
-      selected.add(id);
-    }
+    if (selected.has(id)) selected.delete(id); else selected.add(id);
     updateBulkUI();
-    // Update card visual
     const row = grid.querySelector(`[data-id="${id}"]`);
     if (row) {
       row.classList.toggle('recipe-row--selected', selected.has(id));
@@ -161,9 +149,8 @@ export async function render(container) {
   function updateBulkUI() {
     const bulkBar = $('#bulkBar', container);
     if (!bulkBar) return;
-    const count = selected.size;
-    $('#bulkCount', container).textContent = `${count} ausgewählt`;
-    $('#btnBulkDelete', container).disabled = count === 0;
+    $('#bulkCount', container).textContent = String(selected.size);
+    $('#btnBulkDelete', container).disabled = selected.size === 0;
   }
 
   function enterSelectMode() {
@@ -185,6 +172,8 @@ export async function render(container) {
     applyFilters();
   }
 
+  const allCatLabel = t('overview.allCategories');
+
   function applyFilters() {
     const search = ($('#searchInput', container).value || '').toLowerCase();
     const category = $('#categoryFilter', container).value;
@@ -193,8 +182,9 @@ export async function render(container) {
     const sort = $('#sortSelect', container).value;
 
     let filtered = recipes.filter(r => {
-      if (category !== 'Alle' && r.category !== category) return false;
-      if (origin !== 'Alle' && r.origin !== origin) return false;
+      // Category filter: compare translated value
+      if (category !== allCatLabel && translateCategory(r.category) !== category) return false;
+      if (origin !== '__all' && r.origin !== origin) return false;
       if (cookbookId !== 0 && !recipeCookbookMap.get(r.id)?.has(cookbookId)) return false;
       if (search) {
         const haystack = [r.title, r.description, r.mainIngredient, ...(r.tags || []), ...(r.ingredients || [])].join(' ').toLowerCase();
@@ -220,37 +210,32 @@ export async function render(container) {
     $('#recipeCount', container).textContent = filtered.length;
   }
 
-  // Filter event listeners
   $('#searchInput', container).addEventListener('input', debounce(applyFilters));
   $('#categoryFilter', container).addEventListener('change', applyFilters);
   $('#originFilter', container).addEventListener('change', applyFilters);
   $('#cookbookFilter', container).addEventListener('change', applyFilters);
   $('#sortSelect', container).addEventListener('change', applyFilters);
 
-  // Bulk-select event listeners
   if (canEdit) {
     $('#btnToggleSelect', container).addEventListener('click', enterSelectMode);
     $('#btnCancelSelect', container).addEventListener('click', exitSelectMode);
 
     $('#btnSelectAll', container).addEventListener('click', () => {
       const allSelected = currentFiltered.every(r => selected.has(r.id));
-      if (allSelected) {
-        currentFiltered.forEach(r => selected.delete(r.id));
-      } else {
-        currentFiltered.forEach(r => selected.add(r.id));
-      }
+      if (allSelected) currentFiltered.forEach(r => selected.delete(r.id));
+      else currentFiltered.forEach(r => selected.add(r.id));
       updateBulkUI();
       applyFilters();
     });
 
     $('#btnBulkAssign', container).addEventListener('click', () => {
-      if (selected.size === 0) { showToast('Bitte erst Rezepte auswählen.', 'warning'); return; }
+      if (selected.size === 0) { showToast(t('overview.noneSelected'), 'warning'); return; }
       const list = $('#assignCookbookList', container);
       list.innerHTML = cookbooks.map(cb => `
         <label class="assign-item">
           <input type="radio" name="assignCookbook" value="${cb.id}" ${cb.id === 1 ? 'checked' : ''} />
-          <span class="assign-item__title">${escOv(cb.name)}</span>
-          ${cb.description ? `<span class="assign-item__sub">${escOv(cb.description)}</span>` : ''}
+          <span class="assign-item__title">${esc(cb.name)}</span>
+          ${cb.description ? `<span class="assign-item__sub">${esc(cb.description)}</span>` : ''}
         </label>
       `).join('');
       $('#assignCookbookModal', container).classList.remove('hidden');
@@ -258,40 +243,31 @@ export async function render(container) {
 
     $('#btnConfirmCookbookAssign', container).addEventListener('click', async () => {
       const radio = container.querySelector('input[name="assignCookbook"]:checked');
-      if (!radio) { showToast('Bitte ein Kochbuch wählen.', 'warning'); return; }
-      const cookbookId = parseInt(radio.value, 10);
+      if (!radio) { showToast(t('overview.chooseCookbook'), 'warning'); return; }
+      const cbId = parseInt(radio.value, 10);
       const recipeIds = Array.from(selected);
       try {
-        await assignRecipesToCookbook(recipeIds, cookbookId);
+        await assignRecipesToCookbook(recipeIds, cbId);
         await refreshMemberships();
-        const cb = cookbooks.find(c => c.id === cookbookId);
-        showToast(`${recipeIds.length} Rezept${recipeIds.length !== 1 ? 'e' : ''} dem Kochbuch „${cb?.name}" zugeordnet.`, 'success');
+        const cb = cookbooks.find(c => c.id === cbId);
+        showToast(t('overview.assigned', recipeIds.length, cb?.name || ''), 'success');
         $('#assignCookbookModal', container).classList.add('hidden');
         exitSelectMode();
       } catch (err) {
-        showToast(`Fehler: ${err.message}`, 'error');
+        showToast(t('overview.assignError'), 'error');
       }
     });
 
-    $('#btnCancelCookbookAssign', container).addEventListener('click', () => {
-      $('#assignCookbookModal', container).classList.add('hidden');
-    });
-    $('#assignCookbookBackdrop', container).addEventListener('click', () => {
-      $('#assignCookbookModal', container).classList.add('hidden');
-    });
+    $('#btnCancelCookbookAssign', container).addEventListener('click', () => $('#assignCookbookModal', container).classList.add('hidden'));
+    $('#assignCookbookBackdrop', container).addEventListener('click', () => $('#assignCookbookModal', container).classList.add('hidden'));
 
     $('#btnBulkDelete', container).addEventListener('click', async () => {
       const count = selected.size;
       if (count === 0) return;
-      if (!confirm(`${count} Rezept${count > 1 ? 'e' : ''} wirklich löschen? Das kann nicht rückgängig gemacht werden.`)) return;
-
+      if (!confirm(t('overview.deleteConfirm', count))) return;
       let deleted = 0;
-      for (const id of selected) {
-        await deleteRecipe(id);
-        deleted++;
-      }
-
-      showToast(`${deleted} Rezept${deleted > 1 ? 'e' : ''} gelöscht.`, 'info');
+      for (const id of selected) { await deleteRecipe(id); deleted++; }
+      showToast(t('overview.deleted', deleted), 'info');
       recipes = await getAllRecipes();
       exitSelectMode();
     });
@@ -303,8 +279,4 @@ export async function render(container) {
 function esc(str) {
   if (!str) return '';
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-function escOv(str) {
-  return esc(str);
 }
