@@ -7,3 +7,5 @@ dist
 nul
 data/
 .env
+deploy.md
+doc/deploy.md
