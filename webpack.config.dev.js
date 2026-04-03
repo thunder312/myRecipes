@@ -11,6 +11,7 @@ module.exports = merge(common, {
     }),
   ],
   devServer: {
+    host: '0.0.0.0',
     liveReload: true,
     hot: true,
     open: true,

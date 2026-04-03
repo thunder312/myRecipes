@@ -5,6 +5,7 @@
 - ~~Überlanges Rezept (Japanische Nudelsuppe...) A5 macht nur ein Blatt (2Seiten)~~
 - Bilder einfügen?
 - Notiz hinzufügen funktioniert nicht.
+- ~~PDF Export auf mobilen Geräten verbessert (Download → nativer PDF-Viewer)~~
 
 ## Handschrift trainieren:
 - ~~Rezepte/Asia/20211110_Doro_AsiaHühnerNudelTopf.pdf~~

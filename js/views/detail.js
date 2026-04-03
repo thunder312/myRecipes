@@ -21,16 +21,32 @@ export async function render(container, recipeId) {
   renderDetailView(container, recipe);
 }
 
+function isMobileDevice() {
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+}
+
 function openPdfInTab(url, filename) {
-  const title = filename.replace(/\.pdf$/i, '');
-  const win = window.open('', '_blank');
-  if (!win) return;
-  win.document.write(
-    `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>` +
-    `<style>*{margin:0;padding:0}html,body,embed{width:100%;height:100%;border:0;display:block}</style></head>` +
-    `<body><embed src="${url}" type="application/pdf"></body></html>`
-  );
-  win.document.close();
+  if (isMobileDevice()) {
+    // Mobile: Download auslösen → öffnet im nativen PDF-Viewer des Geräts
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } else {
+    // Desktop: embed-Trick für sprechenden Tab-Titel
+    const title = filename.replace(/\.pdf$/i, '');
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(
+      `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>` +
+      `<style>*{margin:0;padding:0}html,body,embed{width:100%;height:100%;border:0;display:block}</style></head>` +
+      `<body><embed src="${url}" type="application/pdf"></body></html>`
+    );
+    win.document.close();
+  }
 }
 
 function splitIntoSteps(text) {
