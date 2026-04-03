@@ -4,7 +4,7 @@
 - ~~Kochbuch Export in A5 (quer, doppelseitig beachten)~~
 - ~~Überlanges Rezept (Japanische Nudelsuppe...) A5 macht nur ein Blatt (2Seiten)~~
 - Bilder einfügen?
-- Notiz hinzufügen funktioniert nicht.
+- ~~Notiz hinzufügen funktioniert nicht.~~
 - ~~PDF Export auf mobilen Geräten verbessert (Download → nativer PDF-Viewer)~~
 
 ## Handschrift trainieren:

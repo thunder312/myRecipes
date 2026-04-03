@@ -429,7 +429,12 @@ async function renderImportForm(container) {
 
     try {
       const results = await processFn(); // always an array, with ._filtered count
-      results.forEach(r => { r.sourceNote = sourceNote || ''; });
+      results.forEach(r => {
+        r.sourceNote = sourceNote || '';
+        if (r.sourceType === 'url' && r.sourceRef) {
+          r.importNotes = (r.importNotes ? r.importNotes + '\n' : '') + `Quelle: ${r.sourceRef}`;
+        }
+      });
       const filteredCount = results._filtered || 0;
 
       if (results.length === 0) {
