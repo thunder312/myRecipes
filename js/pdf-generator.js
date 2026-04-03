@@ -9,6 +9,10 @@ function splitIntoSteps(text) {
   return result.length > 1 ? result : lines;
 }
 
+function isStepHeading(s) {
+  return /^[^.!?]{1,60}:\s*$/.test(s);
+}
+
 // Canonical display order for categories
 const CATEGORY_ORDER = [
   'Vorspeise', 'Suppe', 'Salat', 'Hauptspeise', 'Beilage',
@@ -315,22 +319,33 @@ function addRecipeToDoc(doc, recipeData) {
     doc.text('Zubereitung', margin, y);
     y += 8;
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
     const steps = splitIntoSteps(recipeData.recipeText);
     const alreadyNumbered = steps.length > 1 && /^\d+[.)]\s/.test(steps[0]);
-    for (let idx = 0; idx < steps.length; idx++) {
-      const label = alreadyNumbered ? '' : `${idx + 1}. `;
-      const indent = alreadyNumbered ? 0 : doc.getTextWidth(label);
-      const stepLines = doc.splitTextToSize(label + steps[idx], contentWidth);
-      y = checkPageBreak(doc, y, 7, margin);
-      doc.text(stepLines[0], margin, y);
-      for (let i = 1; i < stepLines.length; i++) {
-        y += 5.5;
+    let stepNum = 0;
+    for (const step of steps) {
+      if (isStepHeading(step)) {
+        stepNum = 0;
+        y = checkPageBreak(doc, y, 9, margin);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text(step.replace(/:\s*$/, ''), margin, y);
+        y += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+      } else {
+        stepNum++;
+        const label = alreadyNumbered ? '' : `${stepNum}. `;
+        const indent = alreadyNumbered ? 0 : doc.getTextWidth(label);
+        const stepLines = doc.splitTextToSize(label + step, contentWidth);
         y = checkPageBreak(doc, y, 7, margin);
-        doc.text(stepLines[i], margin + indent, y);
+        doc.text(stepLines[0], margin, y);
+        for (let i = 1; i < stepLines.length; i++) {
+          y += 5.5;
+          y = checkPageBreak(doc, y, 7, margin);
+          doc.text(stepLines[i], margin + indent, y);
+        }
+        y += 5.5;
       }
-      y += 5.5;
     }
     y += 4;
   }
@@ -425,18 +440,31 @@ export function generateRecipePDF(recipeData) {
     doc.setFontSize(11);
     const steps = splitIntoSteps(recipeData.recipeText);
     const alreadyNumbered = steps.length > 1 && /^\d+[.)]\s/.test(steps[0]);
-    for (let idx = 0; idx < steps.length; idx++) {
-      const label = alreadyNumbered ? '' : `${idx + 1}. `;
-      const indent = alreadyNumbered ? 0 : doc.getTextWidth(label);
-      const stepLines = doc.splitTextToSize(label + steps[idx], contentWidth);
-      y = checkPageBreak(doc, y, 7, margin);
-      doc.text(stepLines[0], margin, y);
-      for (let i = 1; i < stepLines.length; i++) {
-        y += 5.5;
+    let stepNum = 0;
+    for (const step of steps) {
+      if (isStepHeading(step)) {
+        stepNum = 0;
+        y = checkPageBreak(doc, y, 9, margin);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text(step.replace(/:\s*$/, ''), margin, y);
+        y += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+      } else {
+        stepNum++;
+        const label = alreadyNumbered ? '' : `${stepNum}. `;
+        const indent = alreadyNumbered ? 0 : doc.getTextWidth(label);
+        const stepLines = doc.splitTextToSize(label + step, contentWidth);
         y = checkPageBreak(doc, y, 7, margin);
-        doc.text(stepLines[i], margin + indent, y);
+        doc.text(stepLines[0], margin, y);
+        for (let i = 1; i < stepLines.length; i++) {
+          y += 5.5;
+          y = checkPageBreak(doc, y, 7, margin);
+          doc.text(stepLines[i], margin + indent, y);
+        }
+        y += 5.5;
       }
-      y += 5.5;
     }
     y += 4;
   }
@@ -617,18 +645,31 @@ export function generateRecipeA5PDF(recipeData) {
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(fs.body);
-    for (let idx = 0; idx < steps.length; idx++) {
-      const label = alreadyNumbered ? '' : `${idx + 1}. `;
-      const indent = alreadyNumbered ? 0 : doc.getTextWidth(label);
-      const lines = doc.splitTextToSize(label + steps[idx], colWidth);
-      ensureSpace(4.5 * lines.length);
-      doc.text(lines[0], x, y);
-      for (let i = 1; i < lines.length; i++) {
-        y += 4.5;
-        ensureSpace(4.5);
-        doc.text(lines[i], x + indent, y);
+    let stepNum = 0;
+    for (const step of steps) {
+      if (isStepHeading(step)) {
+        stepNum = 0;
+        ensureSpace(fs.body + 4);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(fs.body);
+        doc.text(step.replace(/:\s*$/, ''), x, y);
+        y += 5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(fs.body);
+      } else {
+        stepNum++;
+        const label = alreadyNumbered ? '' : `${stepNum}. `;
+        const indent = alreadyNumbered ? 0 : doc.getTextWidth(label);
+        const lines = doc.splitTextToSize(label + step, colWidth);
+        ensureSpace(4.5 * lines.length);
+        doc.text(lines[0], x, y);
+        for (let i = 1; i < lines.length; i++) {
+          y += 4.5;
+          ensureSpace(4.5);
+          doc.text(lines[i], x + indent, y);
+        }
+        y += 5;
       }
-      y += 5;
     }
     y += 3;
   }
@@ -782,19 +823,31 @@ function buildRecipeA5Pages(doc, recipe, colWidth, fs, topY, availH) {
     const steps = splitIntoSteps(recipe.recipeText);
     const alreadyNumbered = steps.length > 1 && /^\d+[.)]\s/.test(steps[0]);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body);
-    for (let idx = 0; idx < steps.length; idx++) {
-      const label = alreadyNumbered ? '' : `${idx + 1}. `;
-      const indent = alreadyNumbered ? 0 : doc.getTextWidth(label);
-      const stepLines = doc.splitTextToSize(label + steps[idx], colWidth);
-      const stepH = stepLines.length * 4.5 + 1;
-      const capturedLines = stepLines, capturedIndent = indent;
-      addBlock(stepH, (doc, x, y) => {
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body); doc.setTextColor(0);
-        doc.text(capturedLines[0], x, y);
-        let curY = y;
-        for (let i = 1; i < capturedLines.length; i++) { curY += 4.5; doc.text(capturedLines[i], x + capturedIndent, curY); }
-        return curY + 5;
-      });
+    let stepNum = 0;
+    for (const step of steps) {
+      if (isStepHeading(step)) {
+        stepNum = 0;
+        const headingText = step.replace(/:\s*$/, '');
+        addBlock(fs.body + 3, (doc, x, y) => {
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(fs.body); doc.setTextColor(0);
+          doc.text(headingText, x, y);
+          return y + 5;
+        });
+      } else {
+        stepNum++;
+        const label = alreadyNumbered ? '' : `${stepNum}. `;
+        const indent = alreadyNumbered ? 0 : doc.getTextWidth(label);
+        const stepLines = doc.splitTextToSize(label + step, colWidth);
+        const stepH = stepLines.length * 4.5 + 1;
+        const capturedLines = stepLines, capturedIndent = indent;
+        addBlock(stepH, (doc, x, y) => {
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body); doc.setTextColor(0);
+          doc.text(capturedLines[0], x, y);
+          let curY = y;
+          for (let i = 1; i < capturedLines.length; i++) { curY += 4.5; doc.text(capturedLines[i], x + capturedIndent, curY); }
+          return curY + 5;
+        });
+      }
     }
     addBlock(3, (doc, x, y) => y + 3);
   }
