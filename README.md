@@ -108,7 +108,14 @@ Startet gleichzeitig:
 
 Aufruf im Browser: `http://localhost:8080`
 
-Beim ersten Start wird automatisch ein Admin-Benutzer angelegt (Zugangsdaten in der Konsole).
+Beim ersten Start wird automatisch ein Admin-Benutzer angelegt:
+
+| | |
+|---|---|
+| **Benutzername** | `admin` |
+| **Passwort** | `admin` |
+
+> **Wichtig:** Passwort nach dem ersten Login sofort unter **Einstellungen → Passwort ändern** ändern!
 
 > **Tipp für mobile Geräte im lokalen Netz:** In `webpack.config.dev.js` ist `host: '0.0.0.0'` gesetzt. Die eigene IP-Adresse (`ipconfig`) im WLAN-Gerät eingeben: `http://192.168.x.x:8080`
 

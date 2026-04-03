@@ -110,7 +110,14 @@ Starts simultaneously:
 
 Open in your browser: `http://localhost:8080`
 
-On first start an admin user is created automatically (credentials are printed to the console).
+On first start an admin user is created automatically:
+
+| | |
+|---|---|
+| **Username** | `admin` |
+| **Password** | `admin` |
+
+> **Important:** Change the password immediately after first login via **Settings → Change Password**!
 
 > **Tip for mobile devices on the same Wi-Fi:** `webpack.config.dev.js` sets `host: '0.0.0.0'`. Find your local IP (`ipconfig` / `ifconfig`) and open `http://192.168.x.x:8080` on your mobile device.
 
