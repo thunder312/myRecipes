@@ -396,7 +396,8 @@ export const de = {
   apiErrors: {
     noKey: 'Kein API-Key gesetzt. Bitte unter Einstellungen hinterlegen.',
     invalidKey: 'Ungültiger API-Key. Bitte in den Einstellungen prüfen.',
-    noCredit: 'Kein Guthaben oder Rate-Limit erreicht.',
+    noCredit: 'Kein API-Guthaben mehr.',
+    rateLimit: 'Rate-Limit der API erreicht – bitte kurz warten und erneut versuchen.',
     timeout: 'Timeout: API hat nicht innerhalb von 2 Minuten geantwortet.',
     parseError: 'Konnte die KI-Antwort nicht verarbeiten.',
     apiError: (status, msg) => `API-Fehler ${status}: ${msg}`,

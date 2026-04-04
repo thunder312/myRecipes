@@ -26,7 +26,16 @@ function handleApiError(response, errBody) {
   if (status === 401) {
     throw new ApiError(t('apiErrors.invalidKey'), status, false);
   }
-  if (status === 429 || status === 529 || (status === 400 && /credit|balance|billing/i.test(msg))) {
+  if (status === 429) {
+    if (errBody?.error?.type === 'rate_limit_error') {
+      throw new ApiError(t('apiErrors.rateLimit'), status, true);
+    }
+    throw new ApiError(
+      `${t('apiErrors.noCredit')} (HTTP ${status}). <a href="${BILLING_URL}" target="_blank" rel="noopener">${t('apiErrors.topUp')}</a>`,
+      status, true
+    );
+  }
+  if (status === 529 || (status === 400 && /credit|balance|billing/i.test(msg))) {
     throw new ApiError(
       `${t('apiErrors.noCredit')} (HTTP ${status}). <a href="${BILLING_URL}" target="_blank" rel="noopener">${t('apiErrors.topUp')}</a>`,
       status, true

@@ -396,7 +396,8 @@ export const en = {
   apiErrors: {
     noKey: 'No API key set. Please add one in Settings.',
     invalidKey: 'Invalid API key. Please check Settings.',
-    noCredit: 'No credits or rate limit reached.',
+    noCredit: 'No API credits remaining.',
+    rateLimit: 'API rate limit reached – please wait a moment and try again.',
     timeout: 'Timeout: API did not respond within 2 minutes.',
     parseError: 'Could not process the AI response.',
     apiError: (status, msg) => `API error ${status}: ${msg}`,
