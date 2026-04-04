@@ -1620,6 +1620,63 @@ button.nav__profile {
   50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
 }
 
+/* --- Voice search picker --- */
+
+.voice-picker {
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.voice-picker h2 {
+  font-size: var(--font-size-md);
+  margin-bottom: var(--space-md);
+}
+
+.voice-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.voice-picker__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.voice-picker__item:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.voice-picker__title {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-picker__domain {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
 /* --- Multi-hint checkbox --- */
 
 .import__camera-group {

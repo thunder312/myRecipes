@@ -6,10 +6,10 @@ const MAX_PDF_IMAGE_PAGES = 20;
 const SEARCH_RESULT_SKIP_PATHS = /\/(suche|search|kategorie|category|categories|tag|tags|login|register|account|profil|profile|user|newsletter|shop|forum|video|videos|autor|author)\b/i;
 
 /**
- * Fetches a search-results page and returns the URL of the first recipe link found.
- * Follows same-domain links that look like individual recipe pages (not nav/categories).
+ * Fetches a search-results page and returns up to `max` recipe links with titles.
+ * Returns [{ url, title }] – filtered to same-domain recipe pages (not nav/categories).
  */
-export async function resolveFirstSearchResult(searchUrl) {
+export async function extractSearchResults(searchUrl, max = 5) {
   let html;
   try {
     const resp = await fetch(`/api/fetch-url?url=${encodeURIComponent(searchUrl)}`);
@@ -25,12 +25,14 @@ export async function resolveFirstSearchResult(searchUrl) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const base = new URL(searchUrl);
   const seen = new Set();
+  const results = [];
 
   for (const a of doc.querySelectorAll('a[href]')) {
+    if (results.length >= max) break;
+
     let href;
     try { href = new URL(a.getAttribute('href'), base).href; } catch { continue; }
 
-    // Strip fragment and trailing slash differences for dedup
     const key = href.split('#')[0];
     if (seen.has(key)) continue;
     seen.add(key);
@@ -40,14 +42,17 @@ export async function resolveFirstSearchResult(searchUrl) {
     if (url.pathname === '/' || url.pathname === base.pathname) continue;
     if (SEARCH_RESULT_SKIP_PATHS.test(url.pathname)) continue;
 
-    // Must have at least 2 non-empty path segments (filters out shallow category pages)
     const segments = url.pathname.split('/').filter(Boolean);
     if (segments.length < 2) continue;
 
-    return href.split('#')[0];
+    const title = a.textContent.trim().replace(/\s+/g, ' ');
+    if (title.length < 5) continue; // skip icon-only / empty links
+
+    results.push({ url: key, title });
   }
 
-  throw new Error('Kein Rezept in den Suchergebnissen gefunden.');
+  if (results.length === 0) throw new Error('Kein Rezept in den Suchergebnissen gefunden.');
+  return results;
 }
 
 export async function processURL(url, { multiHint = false } = {}) {

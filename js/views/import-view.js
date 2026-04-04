@@ -1,5 +1,5 @@
 import { getSetting, addRecipe, getAllRecipes, updateRecipe, deleteRecipe, getAllCookbooks } from '../db.js';
-import { processURL, processPDF, processImage, processImages, processText, resolveFirstSearchResult } from '../import.js';
+import { processURL, processPDF, processImage, processImages, processText, extractSearchResults } from '../import.js';
 import { parseVoiceIntent, ApiError } from '../api.js';
 import { $, showToast, categoryChipClass } from '../utils/helpers.js';
 import { setImportRunning } from '../utils/auth.js';
@@ -291,6 +291,13 @@ async function renderImportForm(container) {
         <button class="btn btn--danger" id="btnCancelBatch">${t('import.cancelBtn')}</button>
       </div>
 
+      <!-- Voice search picker -->
+      <div class="voice-picker hidden" id="voicePicker">
+        <h2>${t('import.voicePickTitle')}</h2>
+        <div class="voice-picker__list" id="voicePickerList"></div>
+        <button class="btn btn--ghost btn--sm" id="btnVoicePickerCancel">${t('import.cancelBtn')}</button>
+      </div>
+
       <!-- Batch results -->
       <div class="batch__results hidden" id="batchResults">
         <h2>${t('import.batchResultsTitle')}</h2>
@@ -311,7 +318,7 @@ async function renderImportForm(container) {
   renderCookbookCheckboxes(container);
 
   // Tabs
-  const allHideables = ['#importLoading', '#importPreview', '#multiReview', '#multiProgress', '#multiResults', '#batchProgress', '#batchResults'];
+  const allHideables = ['#importLoading', '#importPreview', '#multiReview', '#multiProgress', '#multiResults', '#batchProgress', '#batchResults', '#voicePicker'];
   container.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
       container.querySelectorAll('.tab').forEach(t => t.classList.remove('tab--active'));
@@ -349,10 +356,12 @@ async function renderImportForm(container) {
   };
 
   function buildSearchUrl(site, query) {
+    // Strip backslashes (Claude sometimes escapes hyphens as \- in JSON responses)
+    const cleanQuery = (query || '').replace(/\\/g, '').trim();
     const normalized = (site || '').replace(/^www\./, '').toLowerCase();
     const builder = SITE_SEARCH[normalized];
-    if (builder) return builder(query);
-    if (normalized) return `https://${normalized}/search?q=${encodeURIComponent(query)}`;
+    if (builder) return builder(cleanQuery);
+    if (normalized) return `https://${normalized}/search?q=${encodeURIComponent(cleanQuery)}`;
     return null;
   }
 
@@ -405,12 +414,22 @@ async function renderImportForm(container) {
           if (finalUrl) {
             if (isSearchUrl) {
               showToast(t('import.voiceSearching'), 'info');
-              finalUrl = await resolveFirstSearchResult(finalUrl);
+              const results = await extractSearchResults(finalUrl);
+              if (results.length === 1) {
+                urlInput.value = results[0].url;
+                const multiHint = $('#multiHintUrl', container).checked;
+                const sourceNote = $('#sourceNoteUrl', container).value.trim();
+                await doImport(() => processURL(results[0].url, { multiHint }), sourceNote);
+              } else {
+                urlInput.value = '';
+                showVoicePicker(results);
+              }
+            } else {
+              urlInput.value = finalUrl;
+              const multiHint = $('#multiHintUrl', container).checked;
+              const sourceNote = $('#sourceNoteUrl', container).value.trim();
+              await doImport(() => processURL(finalUrl, { multiHint }), sourceNote);
             }
-            urlInput.value = finalUrl;
-            const multiHint = $('#multiHintUrl', container).checked;
-            const sourceNote = $('#sourceNoteUrl', container).value.trim();
-            await doImport(() => processURL(finalUrl, { multiHint }), sourceNote);
           } else {
             urlInput.value = '';
             showToast(t('import.voiceNoUrl'), 'warning');
@@ -431,6 +450,35 @@ async function renderImportForm(container) {
       recognition.start();
     });
   }
+
+  function showVoicePicker(results) {
+    const picker = $('#voicePicker', container);
+    const list = $('#voicePickerList', container);
+    list.innerHTML = results.map((r, i) => `
+      <button class="voice-picker__item" data-idx="${i}">
+        <span class="voice-picker__title">${escImport(r.title)}</span>
+        <span class="voice-picker__domain">${escImport(new URL(r.url).hostname.replace('www.', ''))}</span>
+      </button>
+    `).join('');
+    allHideables.forEach(sel => $(sel, container).classList.add('hidden'));
+    picker.classList.remove('hidden');
+
+    list.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.voice-picker__item');
+      if (!btn) return;
+      const chosen = results[parseInt(btn.dataset.idx, 10)];
+      picker.classList.add('hidden');
+      const urlInput = $('#recipeUrl', container);
+      urlInput.value = chosen.url;
+      const multiHint = $('#multiHintUrl', container).checked;
+      const sourceNote = $('#sourceNoteUrl', container).value.trim();
+      await doImport(() => processURL(chosen.url, { multiHint }), sourceNote);
+    }, { once: true });
+  }
+
+  $('#btnVoicePickerCancel', container).addEventListener('click', () => {
+    $('#voicePicker', container).classList.add('hidden');
+  });
 
   $('#btnImportFile', container).addEventListener('click', async () => {
     const file = $('#recipeFile', container).files[0];
