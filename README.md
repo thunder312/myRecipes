@@ -15,6 +15,9 @@
 - **Kamera** – Direkt auf dem Mobilgerät abfotografieren
 - **Freitext** – Rezept als Text einfügen, KI strukturiert ihn
 - **Massenimport** – Ganzen Ordner mit PDFs und Bildern auf einmal verarbeiten; fehlgeschlagene Dateien lassen sich erneut versuchen
+- **Sprachsteuerung** *(experimentell)* – Rezept per Spracheingabe importieren: Mikrofon-Button im URL-Tab antippen und Befehl sprechen, z. B. „Bärlauchpalatschinken von Chefkoch". Die KI erkennt die Absicht, baut eine Such-URL und zeigt bis zu 5 Treffer zur Auswahl an – das gewählte Rezept wird direkt importiert. Funktioniert nur in Chromium-basierten Browsern (Chrome, Edge); Firefox wird nicht unterstützt.
+
+  > ⚠️ **Experimentell:** Die Suchergebnis-Auflösung funktioniert nicht auf allen Webseiten zuverlässig. Manche Seiten blockieren automatische Anfragen oder strukturieren ihre Suchergebnisseiten so, dass die Linkerkennung fehlschlägt. Als Fallback kann die URL weiterhin manuell eingegeben werden.
 
 ### Rezepte verwalten
 - Übersicht mit Suche, Filterung nach Kategorie, Herkunft, Hauptzutat, Tags

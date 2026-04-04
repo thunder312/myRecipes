@@ -15,6 +15,9 @@
 - **Camera** – take a photo directly on your mobile device
 - **Free text** – paste a recipe as plain text and the AI structures it
 - **Batch import** – process an entire folder of PDFs and images at once; failed files can be retried individually
+- **Voice control** *(experimental)* – import a recipe by voice: tap the microphone button in the URL tab and speak a command, e.g. "Wild garlic pancakes from Chefkoch". The AI recognises the intent, builds a search URL and shows up to 5 results to choose from – the selected recipe is imported directly. Only works in Chromium-based browsers (Chrome, Edge); Firefox is not supported.
+
+  > ⚠️ **Experimental:** Search result resolution does not work reliably on all websites. Some sites block automated requests or structure their search result pages in a way that prevents link detection. The URL field can always be filled in manually as a fallback.
 
 ### Managing Recipes
 - Overview with search, filtering by category, origin, main ingredient and tags
