@@ -1590,6 +1590,36 @@ button.nav__profile {
   padding: 1px 8px;
 }
 
+/* --- Voice / URL row --- */
+
+.import__url-row {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.import__url-row .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.import__mic-btn {
+  flex-shrink: 0;
+  padding: var(--space-sm);
+  line-height: 1;
+}
+
+.import__mic-btn--listening {
+  color: var(--color-error);
+  border-color: var(--color-error);
+  animation: mic-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.3); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+}
+
 /* --- Multi-hint checkbox --- */
 
 .import__camera-group {

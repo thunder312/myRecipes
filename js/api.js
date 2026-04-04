@@ -318,6 +318,61 @@ function parseRecipeResponse(content) {
 }
 
 /**
+ * Parses a voice transcript to extract a recipe import intent.
+ * Returns { url, site, query } – all fields may be null.
+ */
+export async function parseVoiceIntent(transcript) {
+  const apiKey = await getApiKey();
+
+  const systemPrompt = `You are a recipe import assistant. Extract the recipe import intent from the user's voice command.
+Return ONLY a JSON object with these fields:
+{
+  "url": "<full URL if the user explicitly stated one, otherwise null>",
+  "site": "<website domain like 'chefkoch.de' if mentioned, otherwise null>",
+  "query": "<the recipe name to search for, or null>"
+}
+
+Examples:
+- "Importier die Bärlauchpalatschinken von Chefkoch" → {"url":null,"site":"chefkoch.de","query":"Bärlauchpalatschinken"}
+- "import garlic soup from allrecipes.com" → {"url":null,"site":"allrecipes.com","query":"garlic soup"}
+- "get me https://www.chefkoch.de/rezepte/12345" → {"url":"https://www.chefkoch.de/rezepte/12345","site":null,"query":null}
+- "Tiramisu importieren" → {"url":null,"site":null,"query":"Tiramisu"}
+
+Return ONLY the JSON, no markdown, no explanation.`;
+
+  const response = await fetchWithTimeout(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 150,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: transcript }],
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    handleApiError(response, err);
+  }
+
+  const data = await response.json();
+  const text = data.content?.[0]?.text?.trim() || '{}';
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const cleaned = fenceMatch ? fenceMatch[1].trim() : text;
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return { url: null, site: null, query: transcript };
+  }
+}
+
+/**
  * Filtert ungültige/sinnlose Rezepte aus den API-Ergebnissen.
  * Gibt { valid: [...], filtered: number } zurück.
  */

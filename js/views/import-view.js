@@ -1,11 +1,11 @@
 import { getSetting, addRecipe, getAllRecipes, updateRecipe, deleteRecipe, getAllCookbooks } from '../db.js';
 import { processURL, processPDF, processImage, processImages, processText } from '../import.js';
+import { parseVoiceIntent, ApiError } from '../api.js';
 import { $, showToast, categoryChipClass } from '../utils/helpers.js';
 import { setImportRunning } from '../utils/auth.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
-import { ApiError } from '../api.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
-import { t } from '../i18n.js';
+import { t, getLanguage } from '../i18n.js';
 
 const SUPPORTED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.txt', '.text', '.md'];
 
@@ -123,7 +123,17 @@ async function renderImportForm(container) {
       <div class="import__panel" id="panel-url">
         <div class="form-group">
           <label for="recipeUrl">${t('import.urlLabel')}</label>
-          <input type="url" id="recipeUrl" class="input" placeholder="${t('import.urlPlaceholder')}" />
+          <div class="import__url-row">
+            <input type="url" id="recipeUrl" class="input" placeholder="${t('import.urlPlaceholder')}" />
+            <button class="btn btn--secondary import__mic-btn" id="btnVoice" type="button" title="${t('import.voiceBtn')}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <rect x="9" y="2" width="6" height="11" rx="3"/>
+                <path d="M5 10a7 7 0 0 0 14 0"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <div class="form-group">
           <label for="sourceNoteUrl">${t('import.sourceNoteLabel')}</label>
@@ -324,6 +334,97 @@ async function renderImportForm(container) {
     const sourceNote = $('#sourceNoteUrl', container).value.trim();
     await doImport(() => processURL(url, { multiHint }), sourceNote);
   });
+
+  // --- Voice import ---
+
+  const SITE_SEARCH = {
+    'chefkoch.de': q => `https://www.chefkoch.de/suche.php?suche=${encodeURIComponent(q)}`,
+    'allrecipes.com': q => `https://www.allrecipes.com/search?q=${encodeURIComponent(q)}`,
+    'bbcgoodfood.com': q => `https://www.bbcgoodfood.com/search/recipes?q=${encodeURIComponent(q)}`,
+    'jamieoliver.com': q => `https://www.jamieoliver.com/search/?q=${encodeURIComponent(q)}`,
+    'lecker.de': q => `https://www.lecker.de/suche?query=${encodeURIComponent(q)}`,
+    'eatsmarter.de': q => `https://eatsmarter.de/suche?q=${encodeURIComponent(q)}`,
+    'epicurious.com': q => `https://www.epicurious.com/search/${encodeURIComponent(q)}`,
+    'food.com': q => `https://www.food.com/search/${encodeURIComponent(q)}`,
+  };
+
+  function buildSearchUrl(site, query) {
+    const normalized = (site || '').replace(/^www\./, '').toLowerCase();
+    const builder = SITE_SEARCH[normalized];
+    if (builder) return builder(query);
+    if (normalized) return `https://${normalized}/search?q=${encodeURIComponent(query)}`;
+    return null;
+  }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const btnVoice = $('#btnVoice', container);
+
+  if (!SpeechRecognition) {
+    btnVoice.style.display = 'none';
+  } else {
+    let recognition = null;
+
+    btnVoice.addEventListener('click', () => {
+      if (recognition) {
+        recognition.stop();
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.lang = getLanguage() === 'de' ? 'de-DE' : 'en-US';
+      recognition.interimResults = false;
+
+      btnVoice.classList.add('import__mic-btn--listening');
+      btnVoice.title = t('import.voiceStop');
+
+      function stopListening() {
+        if (!recognition) return;
+        recognition = null;
+        btnVoice.classList.remove('import__mic-btn--listening');
+        btnVoice.title = t('import.voiceBtn');
+      }
+
+      recognition.onresult = async (event) => {
+        const transcript = event.results[0][0].transcript;
+        stopListening();
+
+        const urlInput = $('#recipeUrl', container);
+        urlInput.value = transcript;
+        showToast(t('import.voiceProcessing'), 'info');
+
+        try {
+          const intent = await parseVoiceIntent(transcript);
+
+          let finalUrl = intent.url || '';
+          if (!finalUrl && intent.query) {
+            finalUrl = buildSearchUrl(intent.site, intent.query) || '';
+          }
+
+          if (finalUrl) {
+            urlInput.value = finalUrl;
+            const multiHint = $('#multiHintUrl', container).checked;
+            const sourceNote = $('#sourceNoteUrl', container).value.trim();
+            await doImport(() => processURL(finalUrl, { multiHint }), sourceNote);
+          } else {
+            urlInput.value = '';
+            showToast(t('import.voiceNoUrl'), 'warning');
+          }
+        } catch (err) {
+          urlInput.value = '';
+          showToast(`${t('import.voiceError')}: ${err.message}`, 'error');
+        }
+      };
+
+      recognition.onerror = () => {
+        showToast(t('import.voiceError'), 'warning');
+        stopListening();
+      };
+
+      recognition.onend = () => stopListening();
+
+      recognition.start();
+    });
+  }
 
   $('#btnImportFile', container).addEventListener('click', async () => {
     const file = $('#recipeFile', container).files[0];

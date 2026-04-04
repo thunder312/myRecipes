@@ -13,5 +13,5 @@
 - ~~Rezepte/Sauerkonserven/20211020_SenfGurkenRobertsMutter.pdf~~
 
 ## Final
-- Ist der Admin User in der seed-Datenbank? Wenn nein -> einbauen; Welches Passwort hat er?
-  Beides noch in den beiden READMEs ergänzen, falls noch nicht geschehen.
+- ~~Ist der Admin User in der seed-Datenbank? Wenn nein -> einbauen; Welches Passwort hat er?
+  Beides noch in den beiden READMEs ergänzen, falls noch nicht geschehen.~~
