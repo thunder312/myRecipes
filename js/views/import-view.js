@@ -1,5 +1,5 @@
 import { getSetting, addRecipe, getAllRecipes, updateRecipe, deleteRecipe, getAllCookbooks } from '../db.js';
-import { processURL, processPDF, processImage, processImages, processText } from '../import.js';
+import { processURL, processPDF, processImage, processImages, processText, resolveFirstSearchResult } from '../import.js';
 import { parseVoiceIntent, ApiError } from '../api.js';
 import { $, showToast, categoryChipClass } from '../utils/helpers.js';
 import { setImportRunning } from '../utils/auth.js';
@@ -396,11 +396,17 @@ async function renderImportForm(container) {
           const intent = await parseVoiceIntent(transcript);
 
           let finalUrl = intent.url || '';
+          let isSearchUrl = false;
           if (!finalUrl && intent.query) {
             finalUrl = buildSearchUrl(intent.site, intent.query) || '';
+            isSearchUrl = !!finalUrl;
           }
 
           if (finalUrl) {
+            if (isSearchUrl) {
+              showToast(t('import.voiceSearching'), 'info');
+              finalUrl = await resolveFirstSearchResult(finalUrl);
+            }
             urlInput.value = finalUrl;
             const multiHint = $('#multiHintUrl', container).checked;
             const sourceNote = $('#sourceNoteUrl', container).value.trim();

@@ -179,6 +179,7 @@ export const en = {
     voiceBtn: 'Import recipe by voice',
     voiceStop: 'Stop recording',
     voiceProcessing: 'Analysing voice input…',
+    voiceSearching: 'Opening first search result…',
     voiceNoUrl: 'No URL recognised – please enter URL manually.',
     voiceError: 'Speech recognition failed',
     noUrlError: 'Please enter a URL.',

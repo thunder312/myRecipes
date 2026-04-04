@@ -3,6 +3,53 @@ import { analyzeRecipeText, analyzeRecipeImages, analyzeRecipeImage, validateRec
 const MAX_IMAGE_BYTES = 4.5 * 1024 * 1024; // stay well under API's 5 MB limit
 const MAX_PDF_IMAGE_PAGES = 20;
 
+const SEARCH_RESULT_SKIP_PATHS = /\/(suche|search|kategorie|category|categories|tag|tags|login|register|account|profil|profile|user|newsletter|shop|forum|video|videos|autor|author)\b/i;
+
+/**
+ * Fetches a search-results page and returns the URL of the first recipe link found.
+ * Follows same-domain links that look like individual recipe pages (not nav/categories).
+ */
+export async function resolveFirstSearchResult(searchUrl) {
+  let html;
+  try {
+    const resp = await fetch(`/api/fetch-url?url=${encodeURIComponent(searchUrl)}`);
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
+    html = await resp.text();
+  } catch (err) {
+    throw new Error(`Suchergebnisse konnten nicht geladen werden: ${err.message}`);
+  }
+
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const base = new URL(searchUrl);
+  const seen = new Set();
+
+  for (const a of doc.querySelectorAll('a[href]')) {
+    let href;
+    try { href = new URL(a.getAttribute('href'), base).href; } catch { continue; }
+
+    // Strip fragment and trailing slash differences for dedup
+    const key = href.split('#')[0];
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const url = new URL(href);
+    if (url.hostname !== base.hostname) continue;
+    if (url.pathname === '/' || url.pathname === base.pathname) continue;
+    if (SEARCH_RESULT_SKIP_PATHS.test(url.pathname)) continue;
+
+    // Must have at least 2 non-empty path segments (filters out shallow category pages)
+    const segments = url.pathname.split('/').filter(Boolean);
+    if (segments.length < 2) continue;
+
+    return href.split('#')[0];
+  }
+
+  throw new Error('Kein Rezept in den Suchergebnissen gefunden.');
+}
+
 export async function processURL(url, { multiHint = false } = {}) {
   let html;
   try {

@@ -179,6 +179,7 @@ export const de = {
     voiceBtn: 'Rezept per Sprache importieren',
     voiceStop: 'Aufnahme stoppen',
     voiceProcessing: 'Spracheingabe wird analysiert…',
+    voiceSearching: 'Erstes Suchergebnis wird geöffnet…',
     voiceNoUrl: 'Keine URL erkannt – bitte URL manuell eingeben.',
     voiceError: 'Spracherkennung fehlgeschlagen',
     noUrlError: 'Bitte URL eingeben.',
