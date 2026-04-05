@@ -3,6 +3,15 @@ import { $, createElement, formatDate, debounce, showToast, categoryChipClass } 
 import { isAuthenticated } from '../utils/auth.js';
 import { t, getCategoryList, translateCategory } from '../i18n.js';
 
+// Persists filter state across navigations (module is cached by ES module system)
+let filterState = {
+  search: '',
+  category: null,  // null = alle Kategorien
+  origin: '__all',
+  cookbookId: 0,
+  sort: 'alpha',
+};
+
 export async function render(container) {
   let recipes = await getAllRecipes();
   const canEdit = isAuthenticated();
@@ -21,12 +30,24 @@ export async function render(container) {
   const selected = new Set();
 
   const sortOptions = [
-    { value: 'newest', label: t('overview.sortNewest') },
     { value: 'alpha', label: t('overview.sortAlpha') },
+    { value: 'newest', label: t('overview.sortNewest') },
     { value: 'lastCooked', label: t('overview.sortLastCooked') },
     { value: 'mostCooked', label: t('overview.sortMostCooked') },
   ];
-  const categories = [t('overview.allCategories'), ...getCategoryList()];
+  const categoryList = getCategoryList();
+  const allCatLabel = t('overview.allCategories');
+
+  function buildCategoryChips() {
+    const chips = [{ value: null, label: allCatLabel, chipClass: 'chip--neutral' }];
+    categoryList.forEach(cat => {
+      chips.push({ value: cat, label: cat, chipClass: categoryChipClass(translateCategory(cat, 'de')) });
+    });
+    return chips.map(({ value, label, chipClass }) => {
+      const isActive = filterState.category === value;
+      return `<button class="chip chip--filter ${chipClass}${isActive ? ' chip--filter-active' : ''}" data-cat="${value === null ? '' : esc(value)}">${esc(label)}</button>`;
+    }).join('');
+  }
 
   container.innerHTML = `
     <div class="overview">
@@ -35,10 +56,7 @@ export async function render(container) {
         ${canEdit ? `<button class="btn btn--ghost" id="btnToggleSelect"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg> ${t('overview.selectBtn')}</button>` : ''}
       </div>
       <div class="overview__filters">
-        <input type="text" id="searchInput" class="input" placeholder="${t('overview.searchPlaceholder')}" />
-        <select id="categoryFilter" class="select">
-          ${categories.map(c => `<option value="${c}">${c}</option>`).join('')}
-        </select>
+        <input type="text" id="searchInput" class="input" placeholder="${t('overview.searchPlaceholder')}" value="${esc(filterState.search)}" />
         <select id="originFilter" class="select">
           <option value="__all">${t('overview.allOrigins')}</option>
         </select>
@@ -47,9 +65,10 @@ export async function render(container) {
           ${cookbooks.map(cb => `<option value="${cb.id}">${esc(cb.name)}</option>`).join('')}
         </select>
         <select id="sortSelect" class="select">
-          ${sortOptions.map(s => `<option value="${s.value}">${s.label}</option>`).join('')}
+          ${sortOptions.map(s => `<option value="${s.value}"${filterState.sort === s.value ? ' selected' : ''}>${s.label}</option>`).join('')}
         </select>
       </div>
+      <div class="category-chips-bar" id="categoryChipsBar">${buildCategoryChips()}</div>
       <div class="recipe-list" id="recipeGrid"></div>
       <div class="empty-state hidden" id="emptyState">
         <div class="empty-state__icon">📖</div>
@@ -85,8 +104,14 @@ export async function render(container) {
   const origins = [...new Set(recipes.map(r => r.origin).filter(Boolean))].sort();
   const originSelect = $('#originFilter', container);
   origins.forEach(o => {
-    originSelect.appendChild(createElement('option', { value: o, textContent: o }));
+    const opt = createElement('option', { value: o, textContent: o });
+    if (filterState.origin === o) opt.selected = true;
+    originSelect.appendChild(opt);
   });
+
+  // Restore cookbookFilter state
+  const cookbookSelect = $('#cookbookFilter', container);
+  cookbookSelect.value = String(filterState.cookbookId);
 
   const grid = $('#recipeGrid', container);
   const emptyState = $('#emptyState', container);
@@ -172,18 +197,20 @@ export async function render(container) {
     applyFilters();
   }
 
-  const allCatLabel = t('overview.allCategories');
-
   function applyFilters() {
     const search = ($('#searchInput', container).value || '').toLowerCase();
-    const category = $('#categoryFilter', container).value;
     const origin = $('#originFilter', container).value;
     const cookbookId = parseInt($('#cookbookFilter', container).value, 10);
     const sort = $('#sortSelect', container).value;
 
+    // Persist state
+    filterState.search = $('#searchInput', container).value || '';
+    filterState.origin = origin;
+    filterState.cookbookId = cookbookId;
+    filterState.sort = sort;
+
     let filtered = recipes.filter(r => {
-      // Category filter: compare translated value
-      if (category !== allCatLabel && translateCategory(r.category) !== category) return false;
+      if (filterState.category !== null && translateCategory(r.category) !== filterState.category) return false;
       if (origin !== '__all' && r.origin !== origin) return false;
       if (cookbookId !== 0 && !recipeCookbookMap.get(r.id)?.has(cookbookId)) return false;
       if (search) {
@@ -211,10 +238,22 @@ export async function render(container) {
   }
 
   $('#searchInput', container).addEventListener('input', debounce(applyFilters));
-  $('#categoryFilter', container).addEventListener('change', applyFilters);
   $('#originFilter', container).addEventListener('change', applyFilters);
   $('#cookbookFilter', container).addEventListener('change', applyFilters);
   $('#sortSelect', container).addEventListener('change', applyFilters);
+
+  // Category chip clicks
+  $('#categoryChipsBar', container).addEventListener('click', e => {
+    const chip = e.target.closest('[data-cat]');
+    if (!chip) return;
+    const val = chip.dataset.cat;
+    filterState.category = val === '' ? null : val;
+    // Update active state on chips
+    $('#categoryChipsBar', container).querySelectorAll('[data-cat]').forEach(c => {
+      c.classList.toggle('chip--filter-active', c.dataset.cat === (filterState.category === null ? '' : filterState.category));
+    });
+    applyFilters();
+  });
 
   if (canEdit) {
     $('#btnToggleSelect', container).addEventListener('click', enterSelectMode);

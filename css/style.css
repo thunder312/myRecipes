@@ -720,6 +720,41 @@ button.nav__profile {
   background-color: var(--color-bg);
 }
 
+.category-chips-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-xl);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-light);
+  box-shadow: var(--shadow-xs);
+}
+
+.chip--neutral {
+  background: var(--color-border-light);
+  color: var(--color-text-secondary);
+}
+
+.chip--filter {
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  user-select: none;
+}
+
+.chip--filter:hover {
+  border-color: currentColor;
+  opacity: 0.85;
+}
+
+.chip--filter-active {
+  border-color: currentColor !important;
+  box-shadow: 0 0 0 2px currentColor;
+  font-weight: 600;
+}
+
 .recipe-list {
   display: flex;
   flex-direction: column;
@@ -2431,6 +2466,10 @@ details[open] > .batch__log-heading::before,
   .overview__filters .select {
     max-width: 100%;
     width: 100%;
+  }
+
+  .category-chips-bar {
+    padding: var(--space-sm) var(--space-md);
   }
 
   .recipe-row {
