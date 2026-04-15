@@ -534,11 +534,12 @@ export function generateRecipeA5PDF(recipeData) {
   doc.viewerPreferences({ PickTrayByPDFSize: true });
   const pageWidth  = doc.internal.pageSize.getWidth();   // 297 mm
   const pageHeight = doc.internal.pageSize.getHeight();  // 210 mm
-  const marginLeft  = 15; // wider for hole punch (both sides – left col left edge, right col left edge)
-  const marginOther = 14; // top and right margin
-  const marginBottom = 4; // bottom margin (reduced by 1 cm)
+  const marginLeft   = 15; // wider for hole punch (both sides – left col left edge, right col left edge)
+  const marginRight  = 14; // right margin per column
+  const marginTop    =  4; // top margin (reduced by 1 cm)
+  const marginBottom =  4; // bottom margin (reduced by 1 cm)
   const halfWidth = pageWidth / 2; // 148.5 mm – physical center / cut line
-  const colWidth = halfWidth - marginLeft - marginOther; // ~119.5 mm per column
+  const colWidth = halfWidth - marginLeft - marginRight; // ~119.5 mm per column
   const leftX  = marginLeft;
   const rightX = halfWidth + marginLeft; // right col starts 15 mm right of center
   const maxY   = pageHeight - marginBottom;
@@ -547,19 +548,19 @@ export function generateRecipeA5PDF(recipeData) {
   const fs = { title: 16, section: 10, body: 9, meta: 8, small: 7 };
 
   let x = leftX;
-  let y = marginOther + 4;
+  let y = marginTop + 4;
   let inRightCol = false;
 
   function drawSeparator() {
     doc.setDrawColor(200);
     doc.setLineWidth(0.3);
-    doc.line(halfWidth, marginOther, halfWidth, pageHeight - marginBottom);
+    doc.line(halfWidth, marginTop, halfWidth, pageHeight - marginBottom);
   }
 
   function switchToRightCol() {
     inRightCol = true;
     x = rightX;
-    y = marginOther + 4;
+    y = marginTop + 4;
     drawSeparator();
   }
 
@@ -567,7 +568,7 @@ export function generateRecipeA5PDF(recipeData) {
     doc.addPage();
     inRightCol = false;
     x = leftX;
-    y = marginOther + 4;
+    y = marginTop + 4;
   }
 
   function ensureSpace(needed) {
@@ -958,12 +959,12 @@ function buildTocA5Pages(doc, tocEntries, colWidth, fs, topY, availH) {
 export function generateCookbookA5PDF(cookbook, recipes) {
   // Layout constants – same as generateRecipeA5PDF
   const pageWidth  = 297, pageHeight = 210;
-  const marginLeft = 15, marginOther = 14, marginBottom = 4;
+  const marginLeft = 15, marginRight = 14, marginTop = 4, marginBottom = 4;
   const halfWidth  = pageWidth / 2;           // 148.5 mm – cut line
-  const colWidth   = halfWidth - marginLeft - marginOther; // ~119.5 mm
+  const colWidth   = halfWidth - marginLeft - marginRight; // ~119.5 mm
   const leftX      = marginLeft;
   const rightX     = halfWidth + marginLeft;
-  const topY       = marginOther + 4;
+  const topY       = marginTop + 4;
   const maxY       = pageHeight - marginBottom;
   const availH     = maxY - topY;
   const fs         = { title: 16, section: 10, body: 9, meta: 8, small: 7 };
@@ -1050,7 +1051,7 @@ export function generateCookbookA5PDF(cookbook, recipes) {
   for (let p = 1; p <= totalA4; p++) {
     doc.setPage(p);
     doc.setDrawColor(200); doc.setLineWidth(0.3);
-    doc.line(halfWidth, marginOther, halfWidth, pageHeight - marginBottom);
+    doc.line(halfWidth, marginTop, halfWidth, pageHeight - marginBottom);
   }
 
   // --- Render in duplex order ---
