@@ -530,15 +530,18 @@ export function generateRecipeA5PDF(recipeData) {
   // A4 landscape: 297 × 210 mm (two A5 halves side by side)
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
   doc.setProperties({ title: recipeData.title || t('pdf.recipe') });
+  // PickTrayByPDFSize: tells the printer driver to select A4 landscape automatically
+  doc.viewerPreferences({ PickTrayByPDFSize: true });
   const pageWidth  = doc.internal.pageSize.getWidth();   // 297 mm
   const pageHeight = doc.internal.pageSize.getHeight();  // 210 mm
-  const marginLeft = 25; // wider for hole punch (both sides – left col left edge, right col left edge)
-  const marginOther = 14;
+  const marginLeft  = 15; // wider for hole punch (both sides – left col left edge, right col left edge)
+  const marginOther = 14; // top and right margin
+  const marginBottom = 4; // bottom margin (reduced by 1 cm)
   const halfWidth = pageWidth / 2; // 148.5 mm – physical center / cut line
-  const colWidth = halfWidth - marginLeft - marginOther; // ~109.5 mm per column
+  const colWidth = halfWidth - marginLeft - marginOther; // ~119.5 mm per column
   const leftX  = marginLeft;
-  const rightX = halfWidth + marginLeft; // right col starts 25 mm right of center
-  const maxY   = pageHeight - marginOther;
+  const rightX = halfWidth + marginLeft; // right col starts 15 mm right of center
+  const maxY   = pageHeight - marginBottom;
 
   // A5 font sizes – proportionally smaller than A4 (A5 is ~73% of A4 width)
   const fs = { title: 16, section: 10, body: 9, meta: 8, small: 7 };
@@ -550,7 +553,7 @@ export function generateRecipeA5PDF(recipeData) {
   function drawSeparator() {
     doc.setDrawColor(200);
     doc.setLineWidth(0.3);
-    doc.line(halfWidth, marginOther, halfWidth, pageHeight - marginOther);
+    doc.line(halfWidth, marginOther, halfWidth, pageHeight - marginBottom);
   }
 
   function switchToRightCol() {
@@ -955,19 +958,21 @@ function buildTocA5Pages(doc, tocEntries, colWidth, fs, topY, availH) {
 export function generateCookbookA5PDF(cookbook, recipes) {
   // Layout constants – same as generateRecipeA5PDF
   const pageWidth  = 297, pageHeight = 210;
-  const marginLeft = 25, marginOther = 14;
+  const marginLeft = 15, marginOther = 14, marginBottom = 4;
   const halfWidth  = pageWidth / 2;           // 148.5 mm – cut line
-  const colWidth   = halfWidth - marginLeft - marginOther; // ~109.5 mm
+  const colWidth   = halfWidth - marginLeft - marginOther; // ~119.5 mm
   const leftX      = marginLeft;
   const rightX     = halfWidth + marginLeft;
   const topY       = marginOther + 4;
-  const maxY       = pageHeight - marginOther;
+  const maxY       = pageHeight - marginBottom;
   const availH     = maxY - topY;
   const fs         = { title: 16, section: 10, body: 9, meta: 8, small: 7 };
 
   // Create doc (used for text measurement AND final rendering)
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
   doc.setProperties({ title: cookbook.coverTitle || cookbook.name || t('pdf.cookbook') });
+  // PickTrayByPDFSize: tells the printer driver to select A4 landscape automatically
+  doc.viewerPreferences({ PickTrayByPDFSize: true });
 
   // --- Estimate TOC pages (needed to compute correct recipe page numbers) ---
   const groups = groupByCategory(recipes);
@@ -1045,7 +1050,7 @@ export function generateCookbookA5PDF(cookbook, recipes) {
   for (let p = 1; p <= totalA4; p++) {
     doc.setPage(p);
     doc.setDrawColor(200); doc.setLineWidth(0.3);
-    doc.line(halfWidth, marginOther, halfWidth, pageHeight - marginOther);
+    doc.line(halfWidth, marginOther, halfWidth, pageHeight - marginBottom);
   }
 
   // --- Render in duplex order ---
@@ -1071,7 +1076,7 @@ export function generateCookbookA5PDF(cookbook, recipes) {
   // Duplex mapping: g = floor(j/4), pos = j%4
   //   pos 0,2 → A4 front page (2g+1); pos 1,3 → A4 back page (2g+2)
   //   pos 0,1 → left col (centred); pos 2,3 → right col (centred)
-  const footerY = pageHeight - marginOther / 2 - 1;
+  const footerY = pageHeight - marginBottom / 2 - 1;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(160);
