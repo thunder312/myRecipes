@@ -3164,31 +3164,43 @@ details[open] > .batch__log-heading::before,
    Portions Scaler
    ========================================================================== */
 
-.chip--scaler {
-  display: inline-flex;
+.detail__scaler {
+  display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 6px;
+  gap: var(--space-sm);
+  margin: var(--space-sm) 0 var(--space-md);
 }
 
 .scaler__btn {
-  background: none;
-  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 22px;
   line-height: 1;
-  padding: 0 3px;
   color: var(--color-text);
-  border-radius: var(--radius-sm, 4px);
+  touch-action: manipulation;
+  user-select: none;
 }
 
 .scaler__btn:hover {
-  background: var(--color-surface-hover, rgba(0,0,0,0.08));
+  background: var(--color-surface-hover, rgba(0,0,0,0.06));
+  border-color: var(--color-primary);
+}
+
+.scaler__btn:active {
+  transform: scale(0.93);
 }
 
 .scaler__label {
-  font-size: var(--font-size-sm);
-  min-width: 72px;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  min-width: 100px;
   text-align: center;
 }
 

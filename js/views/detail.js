@@ -123,12 +123,13 @@ function renderDetailView(container, recipe) {
         ${recipe.origin ? `<span class="chip chip--origin">${esc(recipe.origin)}</span>` : ''}
         ${recipe.prepTime ? `<span class="chip chip--time">${t('detail.minutes', recipe.prepTime)}</span>` : ''}
         ${recipe.difficulty ? `<span class="chip chip--difficulty">${esc(displayDiff)}</span>` : ''}
-        <span class="chip chip--scaler" id="scalerChip">
-            <button class="scaler__btn" id="scalerMinus" aria-label="Portionen verringern">−</button>
-            <span class="scaler__label" id="scalerLabel">${t('detail.servingsScaled', recipe.servings || 1)}</span>
-            <button class="scaler__btn" id="scalerPlus" aria-label="Portionen erhöhen">+</button>
-          </span>
         ${recipe.mainIngredient ? `<span class="chip chip--ingredient">${esc(recipe.mainIngredient)}</span>` : ''}
+      </div>
+
+      <div class="detail__scaler">
+        <button class="scaler__btn" id="scalerMinus" aria-label="Portionen verringern">−</button>
+        <span class="scaler__label" id="scalerLabel">${t('detail.servingsScaled', recipe.servings || 1)}</span>
+        <button class="scaler__btn" id="scalerPlus" aria-label="Portionen erhöhen">+</button>
       </div>
 
       ${recipe.description ? `<p class="detail__desc">${esc(recipe.description)}</p>` : ''}
