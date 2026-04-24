@@ -124,6 +124,7 @@ export const de = {
     tags: 'Tags',
     notFound: 'Rezept nicht gefunden',
     backToOverview: 'Zurück zur Übersicht',
+    shoppingListBtn: 'Einkaufszettel',
   },
 
   recipeForm: {
@@ -307,6 +308,32 @@ export const de = {
     backupHint: 'Exportiere oder importiere deine gesamte Rezeptsammlung als JSON-Datei.',
     aboutDesc: 'Persönliche Rezeptsammlung mit KI-gestützter Kategorisierung.',
     aboutDb: 'Deine Daten werden auf dem Server in einer SQLite-Datenbank gespeichert.',
+    pantrySection: 'Vorratskammer-Liste',
+    pantryHint: 'Diese Zutaten gelten als immer vorrätig und werden beim Einkaufszettel vorausgefüllt als nicht benötigt markiert.',
+    pantryAddPlaceholder: 'Neue Zutat (z.B. Salz)',
+    pantryAddBtn: 'Hinzufügen',
+    pantryResetBtn: 'Standardliste wiederherstellen',
+    pantryReset: 'Vorratskammer auf Standard zurückgesetzt.',
+    pantrySaved: 'Vorratskammer gespeichert.',
+    pantryEmpty: 'Noch keine Vorratszutaten eingetragen.',
+  },
+
+  shoppingList: {
+    title: (recipe) => `Einkaufszettel – ${recipe}`,
+    portionsLabel: 'Portionen',
+    ingredientsSection: 'Zutaten aus dem Rezept',
+    pantryHint: 'Grau = wahrscheinlich vorrätig (vorausgefüllt deaktiviert)',
+    extrasSection: 'Weitere Einkäufe',
+    extrasPlaceholder: 'Weitere Einkäufe, kommagetrennt…',
+    btnCopy: 'Text kopieren',
+    btnTxt: 'Als .txt laden',
+    btnPdf: 'Als PDF laden',
+    btnClose: 'Schließen',
+    copied: 'In die Zwischenablage kopiert.',
+    copyFailed: 'Kopieren fehlgeschlagen.',
+    pdfTitle: 'Einkaufszettel',
+    pdfPortions: (n) => `Portionen: ${n}`,
+    pdfExtras: 'Weitere Einkäufe:',
   },
 
   suggest: {

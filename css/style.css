@@ -3161,6 +3161,141 @@ details[open] > .batch__log-heading::before,
 }
 
 /* ==========================================================================
+   Shopping List
+   ========================================================================== */
+
+.detail__shopping {
+  margin-top: var(--space-md);
+}
+
+.shopping-list-modal .modal__body {
+  gap: var(--space-md);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.sl-portions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.sl-portions__label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sl-portions__input {
+  width: 72px;
+}
+
+.sl-section-label {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-top: var(--space-xs);
+}
+
+.sl-pantry-hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-top: calc(-1 * var(--space-xs));
+}
+
+.sl-ingredient-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sl-ingredient {
+  border-radius: var(--radius-sm, 4px);
+  padding: 2px 0;
+}
+
+.sl-ingredient--pantry .sl-ingredient__text {
+  color: var(--color-text-muted);
+}
+
+.sl-ingredient__label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  cursor: pointer;
+}
+
+.sl-ingredient__cb {
+  flex-shrink: 0;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.sl-ingredient__text {
+  font-size: var(--font-size-base);
+}
+
+.sl-extras {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Settings – Pantry tags */
+.pantry-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+  min-height: 32px;
+}
+
+.pantry-tags__empty {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.pantry-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px 3px 10px;
+  background: var(--color-surface-alt, #f3f4f6);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: var(--font-size-sm);
+}
+
+.pantry-tag__remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 0 0 2px;
+}
+
+.pantry-tag__remove:hover {
+  color: var(--color-danger, #dc2626);
+}
+
+.pantry-add {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pantry-add .input {
+  flex: 1;
+  min-width: 160px;
+}
+
+/* ==========================================================================
    Reduced Motion
    ========================================================================== */
 

@@ -4,6 +4,7 @@ import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { validateApiKey, BILLING_URL } from '../api.js';
 import { getAuthToken, getAuthUser, isAdmin } from '../utils/auth.js';
 import { t, getLanguage, setLanguage } from '../i18n.js';
+import { loadPantryItems, savePantryItems, DEFAULT_PANTRY_DE, DEFAULT_PANTRY_EN } from '../shopping-list.js';
 
 export async function render(container) {
   await ensureAuthenticated(container, () => renderSettings(container));
@@ -93,6 +94,17 @@ async function renderSettings(container) {
       </section>
       ` : ''}
 
+      <section class="settings__section" id="pantrySection">
+        <h2>${t('settings.pantrySection')}</h2>
+        <p class="settings__hint">${t('settings.pantryHint')}</p>
+        <div class="pantry-tags" id="pantryTags"></div>
+        <div class="form-group pantry-add">
+          <input type="text" id="pantryInput" class="input" placeholder="${t('settings.pantryAddPlaceholder')}" />
+          <button class="btn btn--secondary" id="btnPantryAdd">${t('settings.pantryAddBtn')}</button>
+        </div>
+        <button class="btn btn--ghost btn--sm" id="btnPantryReset">${t('settings.pantryResetBtn')}</button>
+      </section>
+
       <section class="settings__section">
         <h2>${t('settings.backupSection')}</h2>
         <p class="settings__hint">${t('settings.backupHint')}</p>
@@ -140,6 +152,9 @@ async function renderSettings(container) {
     // Re-render current view (settings) via navigate
     window.dispatchEvent(new CustomEvent('langchange', { detail: lang }));
   });
+
+  // --- Pantry items ---
+  await initPantrySection(container);
 
   // --- API Key (admin only) ---
   if (admin) {
@@ -370,4 +385,69 @@ function renderToastLog(container) {
 function escapeAttr(str) {
   if (!str) return '';
   return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ---------------------------------------------------------------------------
+// Pantry items section
+// ---------------------------------------------------------------------------
+
+async function initPantrySection(container) {
+  let items = await loadPantryItems();
+
+  function renderTags() {
+    const tagsEl = $('#pantryTags', container);
+    if (!tagsEl) return;
+    if (items.length === 0) {
+      tagsEl.innerHTML = `<p class="pantry-tags__empty">${t('settings.pantryEmpty')}</p>`;
+      return;
+    }
+    tagsEl.innerHTML = items.map((item, idx) =>
+      `<span class="pantry-tag">
+        ${escapeAttr(item)}
+        <button class="pantry-tag__remove" data-idx="${idx}" aria-label="Entfernen">&times;</button>
+      </span>`
+    ).join('');
+  }
+
+  renderTags();
+
+  // Remove tag
+  $('#pantryTags', container).addEventListener('click', async (e) => {
+    const btn = e.target.closest('.pantry-tag__remove');
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.idx, 10);
+    items.splice(idx, 1);
+    renderTags();
+    await savePantryItems(items);
+    showToast(t('settings.pantrySaved'), 'success');
+  });
+
+  // Add tag
+  const addBtn = $('#btnPantryAdd', container);
+  const input = $('#pantryInput', container);
+
+  async function addItem() {
+    const val = input.value.trim();
+    if (!val) return;
+    if (!items.map(i => i.toLowerCase()).includes(val.toLowerCase())) {
+      items.push(val);
+      renderTags();
+      await savePantryItems(items);
+      showToast(t('settings.pantrySaved'), 'success');
+    }
+    input.value = '';
+    input.focus();
+  }
+
+  addBtn.addEventListener('click', addItem);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addItem(); } });
+
+  // Reset to defaults
+  $('#btnPantryReset', container).addEventListener('click', async () => {
+    const lang = document.documentElement.lang || 'de';
+    items = lang === 'en' ? [...DEFAULT_PANTRY_EN] : [...DEFAULT_PANTRY_DE];
+    renderTags();
+    await savePantryItems(items);
+    showToast(t('settings.pantryReset'), 'success');
+  });
 }

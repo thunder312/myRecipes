@@ -4,6 +4,7 @@ import { $, createElement, formatDate, formatDateTime, todayISO, showToast, cate
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
 import { isAuthenticated, getAuthUser } from '../utils/auth.js';
 import { t, translateCategory, translateDifficulty } from '../i18n.js';
+import { openShoppingListModal } from '../shopping-list.js';
 
 export async function render(container, recipeId) {
   const id = parseInt(recipeId, 10);
@@ -164,6 +165,16 @@ function renderDetailView(container, recipe) {
         </div>
       </div>
 
+      <div class="detail__shopping">
+        <button class="btn btn--secondary" id="btnShoppingList">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 01-8 0"/>
+          </svg>
+          ${t('detail.shoppingListBtn')}
+        </button>
+      </div>
+
       <!-- Notes Section -->
       <div class="detail__notes">
         <h3>${t('detail.notesSection')}</h3>
@@ -266,6 +277,8 @@ function renderDetailView(container, recipe) {
     triggerDownload(getPdfA5Url(), filenameA5);
   });
   $('#pdfA5Open', container).addEventListener('click', () => openPdfInTab(getPdfA5Url(), filenameA5));
+
+  $('#btnShoppingList', container).addEventListener('click', () => openShoppingListModal(recipe));
 
   // "Cooked today" – PATCH (no ownership required)
   $('#btnCooked', container).addEventListener('click', async () => {

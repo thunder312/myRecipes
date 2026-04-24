@@ -124,6 +124,7 @@ export const en = {
     tags: 'Tags',
     notFound: 'Recipe not found',
     backToOverview: 'Back to overview',
+    shoppingListBtn: 'Shopping List',
   },
 
   recipeForm: {
@@ -307,6 +308,32 @@ export const en = {
     backupHint: 'Export or import your entire recipe collection as a JSON file.',
     aboutDesc: 'Personal recipe collection with AI-powered categorisation.',
     aboutDb: 'Your data is stored on the server in a SQLite database.',
+    pantrySection: 'Pantry List',
+    pantryHint: 'These ingredients are assumed to always be in stock and will be pre-deselected on the shopping list.',
+    pantryAddPlaceholder: 'New item (e.g. Salt)',
+    pantryAddBtn: 'Add',
+    pantryResetBtn: 'Restore defaults',
+    pantryReset: 'Pantry list reset to defaults.',
+    pantrySaved: 'Pantry list saved.',
+    pantryEmpty: 'No pantry items added yet.',
+  },
+
+  shoppingList: {
+    title: (recipe) => `Shopping List – ${recipe}`,
+    portionsLabel: 'Portions',
+    ingredientsSection: 'Ingredients from recipe',
+    pantryHint: 'Grey = likely in stock (pre-deselected)',
+    extrasSection: 'Additional items',
+    extrasPlaceholder: 'Additional items, comma-separated…',
+    btnCopy: 'Copy text',
+    btnTxt: 'Download .txt',
+    btnPdf: 'Download PDF',
+    btnClose: 'Close',
+    copied: 'Copied to clipboard.',
+    copyFailed: 'Copy failed.',
+    pdfTitle: 'Shopping List',
+    pdfPortions: (n) => `Portions: ${n}`,
+    pdfExtras: 'Additional items:',
   },
 
   suggest: {

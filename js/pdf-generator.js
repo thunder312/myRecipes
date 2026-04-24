@@ -514,6 +514,97 @@ export function generateRecipePDF(recipeData) {
   return doc.output('blob');
 }
 
+// ---------------------------------------------------------------------------
+// Shopping list PDF – minimal single-column layout to save paper
+// ---------------------------------------------------------------------------
+
+export function generateShoppingListPDF({ title, portions, items, extras }) {
+  // A6 (105×148 mm) – fits most shopping lists on one page and saves paper
+  const doc = new jsPDF({ unit: 'mm', format: 'a6' });
+  doc.setProperties({ title: t('shoppingList.pdfTitle') + (title ? ` – ${title}` : '') });
+
+  const margin = 10;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const contentWidth = pageWidth - 2 * margin;
+  let y = margin;
+
+  // Title
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  const titleLines = doc.splitTextToSize(t('shoppingList.pdfTitle') + (title ? ` – ${title}` : ''), contentWidth);
+  doc.text(titleLines, margin, y);
+  y += titleLines.length * 5 + 2;
+
+  // Portions
+  if (portions) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text(t('shoppingList.pdfPortions', portions), margin, y);
+    y += 4;
+    doc.setTextColor(0);
+  }
+
+  // Divider
+  doc.setDrawColor(200);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 4;
+
+  // Ingredient items with checkboxes
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  const boxSize = 2.8;
+  const lineHeight = 5.5;
+
+  for (const item of items) {
+    if (y + lineHeight > doc.internal.pageSize.getHeight() - margin) {
+      doc.addPage();
+      y = margin;
+    }
+    // Checkbox outline
+    doc.setDrawColor(80);
+    doc.rect(margin, y - boxSize + 0.5, boxSize, boxSize);
+    // Item text
+    const itemLines = doc.splitTextToSize(item, contentWidth - boxSize - 3);
+    doc.text(itemLines, margin + boxSize + 3, y);
+    y += Math.max(itemLines.length * lineHeight * 0.9, lineHeight);
+  }
+
+  // Extras section
+  if (extras && extras.length) {
+    y += 4;
+    if (y + 10 > doc.internal.pageSize.getHeight() - margin) {
+      doc.addPage();
+      y = margin;
+    }
+    doc.setDrawColor(200);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 4;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text(t('shoppingList.pdfExtras'), margin, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+
+    for (const item of extras) {
+      if (y + lineHeight > doc.internal.pageSize.getHeight() - margin) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.setDrawColor(80);
+      doc.rect(margin, y - boxSize + 0.5, boxSize, boxSize);
+      const itemLines = doc.splitTextToSize(item, contentWidth - boxSize - 3);
+      doc.text(itemLines, margin + boxSize + 3, y);
+      y += Math.max(itemLines.length * lineHeight * 0.9, lineHeight);
+    }
+  }
+
+  // Download
+  const safeTitle = (title || 'einkaufszettel').replace(/[^a-z0-9äöüß]/gi, '_').toLowerCase();
+  doc.save(`${safeTitle}_einkauf.pdf`);
+}
+
 function checkPageBreak(doc, y, neededSpace, margin) {
   const pageHeight = doc.internal.pageSize.getHeight();
   if (y + neededSpace > pageHeight - margin) {
