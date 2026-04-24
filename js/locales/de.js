@@ -125,6 +125,7 @@ export const de = {
     notFound: 'Rezept nicht gefunden',
     backToOverview: 'Zurück zur Übersicht',
     shoppingListBtn: 'Einkaufszettel',
+    servingsScaled: (n) => `${n} Portion${n !== 1 ? 'en' : ''}`,
   },
 
   recipeForm: {

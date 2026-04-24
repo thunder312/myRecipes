@@ -5,6 +5,7 @@ import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
 import { isAuthenticated, getAuthUser } from '../utils/auth.js';
 import { t, translateCategory, translateDifficulty } from '../i18n.js';
 import { openShoppingListModal } from '../shopping-list.js';
+import { scaleIngredient } from '../utils/ingredient-scaler.js';
 
 export async function render(container, recipeId) {
   const id = parseInt(recipeId, 10);
@@ -122,7 +123,11 @@ function renderDetailView(container, recipe) {
         ${recipe.origin ? `<span class="chip chip--origin">${esc(recipe.origin)}</span>` : ''}
         ${recipe.prepTime ? `<span class="chip chip--time">${t('detail.minutes', recipe.prepTime)}</span>` : ''}
         ${recipe.difficulty ? `<span class="chip chip--difficulty">${esc(displayDiff)}</span>` : ''}
-        ${recipe.servings ? `<span class="chip">${t('detail.servings', recipe.servings)}</span>` : ''}
+        <span class="chip chip--scaler" id="scalerChip">
+            <button class="scaler__btn" id="scalerMinus" aria-label="Portionen verringern">−</button>
+            <span class="scaler__label" id="scalerLabel">${t('detail.servingsScaled', recipe.servings || 1)}</span>
+            <button class="scaler__btn" id="scalerPlus" aria-label="Portionen erhöhen">+</button>
+          </span>
         ${recipe.mainIngredient ? `<span class="chip chip--ingredient">${esc(recipe.mainIngredient)}</span>` : ''}
       </div>
 
@@ -143,7 +148,7 @@ function renderDetailView(container, recipe) {
       ${recipe.ingredients?.length ? `
         <div class="detail__ingredients">
           <h3>${t('detail.ingredients')}</h3>
-          <ul>${recipe.ingredients.map(i => `<li>${esc(i)}</li>`).join('')}</ul>
+          <ul id="ingredientList">${recipe.ingredients.map(i => `<li>${esc(i)}</li>`).join('')}</ul>
         </div>
       ` : ''}
 
@@ -278,7 +283,40 @@ function renderDetailView(container, recipe) {
   });
   $('#pdfA5Open', container).addEventListener('click', () => openPdfInTab(getPdfA5Url(), filenameA5));
 
-  $('#btnShoppingList', container).addEventListener('click', () => openShoppingListModal(recipe));
+  // --- Portions scaler ---
+  let currentServings = recipe.servings || 1;
+  const baseServings  = recipe.servings || 1;
+
+  function getScaledIngredients() {
+    const factor = currentServings / baseServings;
+    return (recipe.ingredients || []).map(i => scaleIngredient(i, factor));
+  }
+
+  function updateScaler() {
+    const labelEl = $('#scalerLabel', container);
+    const listEl  = $('#ingredientList', container);
+    if (labelEl) labelEl.textContent = t('detail.servingsScaled', currentServings);
+    if (listEl) {
+      const factor = currentServings / baseServings;
+      listEl.innerHTML = (recipe.ingredients || [])
+        .map(i => `<li>${esc(scaleIngredient(i, factor))}</li>`)
+        .join('');
+    }
+  }
+
+  $('#scalerMinus', container).addEventListener('click', () => {
+    if (currentServings > 1) { currentServings--; updateScaler(); }
+  });
+  $('#scalerPlus', container).addEventListener('click', () => {
+    if (currentServings < 99) { currentServings++; updateScaler(); }
+  });
+
+  $('#btnShoppingList', container).addEventListener('click', () => {
+    const scaledRecipe = recipe.servings
+      ? { ...recipe, ingredients: getScaledIngredients(), servings: currentServings }
+      : recipe;
+    openShoppingListModal(scaledRecipe);
+  });
 
   // "Cooked today" – PATCH (no ownership required)
   $('#btnCooked', container).addEventListener('click', async () => {

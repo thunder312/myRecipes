@@ -3161,6 +3161,38 @@ details[open] > .batch__log-heading::before,
 }
 
 /* ==========================================================================
+   Portions Scaler
+   ========================================================================== */
+
+.chip--scaler {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+}
+
+.scaler__btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 3px;
+  color: var(--color-text);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.scaler__btn:hover {
+  background: var(--color-surface-hover, rgba(0,0,0,0.08));
+}
+
+.scaler__label {
+  font-size: var(--font-size-sm);
+  min-width: 72px;
+  text-align: center;
+}
+
+/* ==========================================================================
    Shopping List
    ========================================================================== */
 
