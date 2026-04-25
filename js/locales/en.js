@@ -126,6 +126,19 @@ export const en = {
     backToOverview: 'Back to overview',
     shoppingListBtn: 'Shopping List',
     servingsScaled: (n) => `${n} portion${n !== 1 ? 's' : ''}`,
+    cookModeBtn: 'Cook Mode',
+  },
+
+  cookMode: {
+    ingredientsBtn: (n) => `Ingredients (${n})`,
+    ingredientsTitle: 'Ingredients',
+    closeIngr: 'Close ingredients',
+    exitBtn: 'Exit',
+    section: 'Section',
+    stepOf: (current, total) => `Step ${current} of ${total}`,
+    prevBtn: 'Back',
+    nextBtn: 'Next',
+    finishBtn: 'Done',
   },
 
   recipeForm: {

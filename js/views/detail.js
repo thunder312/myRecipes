@@ -5,6 +5,7 @@ import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
 import { isAuthenticated, getAuthUser } from '../utils/auth.js';
 import { t, translateCategory, translateDifficulty } from '../i18n.js';
 import { openShoppingListModal } from '../shopping-list.js';
+import { openCookingMode } from '../cooking-mode.js';
 import { scaleIngredient } from '../utils/ingredient-scaler.js';
 
 export async function render(container, recipeId) {
@@ -179,6 +180,13 @@ function renderDetailView(container, recipe) {
           </svg>
           ${t('detail.shoppingListBtn')}
         </button>
+        ${splitIntoSteps(recipe.recipeText || '').length > 0 ? `
+        <button class="btn btn--primary" id="btnCookMode">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <polygon points="5,3 19,12 5,21"/>
+          </svg>
+          ${t('detail.cookModeBtn')}
+        </button>` : ''}
       </div>
 
       <!-- Notes Section -->
@@ -318,6 +326,13 @@ function renderDetailView(container, recipe) {
       : recipe;
     openShoppingListModal(scaledRecipe);
   });
+
+  const cookModeBtn = $('#btnCookMode', container);
+  if (cookModeBtn) {
+    cookModeBtn.addEventListener('click', () => {
+      openCookingMode(recipe, getScaledIngredients());
+    });
+  }
 
   // "Cooked today" – PATCH (no ownership required)
   $('#btnCooked', container).addEventListener('click', async () => {
