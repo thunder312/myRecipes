@@ -316,7 +316,7 @@ function getAllRecipes(userId = null) {
            r.sides, r.tags, r.ingredients, r.description, r.servings, r.difficulty,
            r.recipeText, r.sourceType, r.sourceRef, r.sourceNote, r.createdAt, r.updatedAt,
            r.cookedDates, r.cookedCount, r.notes, r.pdfBlob, r.thumbnailBlob,
-           r.imageMimeType, r.createdBy, u.username AS createdByUsername
+           r.imageMimeType, r.rating, r.createdBy, u.username AS createdByUsername
     FROM recipes r LEFT JOIN users u ON u.id = r.createdBy
     ORDER BY r.createdAt DESC
   `).all();
