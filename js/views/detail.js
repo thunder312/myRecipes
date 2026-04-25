@@ -140,7 +140,12 @@ function renderDetailView(container, recipe) {
         </label>
       </div>` : ''}`}
 
-      <h1 class="detail__title">${esc(recipe.title)}</h1>
+      <div class="detail__title-row">
+        <h1 class="detail__title">${esc(recipe.title)}</h1>
+        <div class="detail__rating" id="ratingWidget" title="Bewertung ändern">
+          <img src="img/rating/${recipe.rating || 0}.webp" alt="Bewertung ${recipe.rating || 0}" class="detail__rating-img" id="ratingImg" />
+        </div>
+      </div>
 
       <div class="detail__meta">
         ${recipe.category ? `<span class="chip ${categoryChipClass(recipe.category)}">${esc(displayCat)}</span>` : ''}
@@ -368,6 +373,15 @@ function renderDetailView(container, recipe) {
   });
   $('#scalerPlus', container).addEventListener('click', () => {
     if (currentServings < 99) { currentServings++; updateScaler(); }
+  });
+
+  // Rating widget – cycles 0→1→2→3→4→5→0 on click, saved globally (no auth required)
+  $('#ratingWidget', container).addEventListener('click', async () => {
+    const next = ((recipe.rating || 0) >= 5) ? 0 : (recipe.rating || 0) + 1;
+    recipe.rating = next;
+    const img = $('#ratingImg', container);
+    if (img) img.src = `img/rating/${next}.webp`;
+    await patchRecipe(recipe.id, { rating: next });
   });
 
   $('#btnShoppingList', container).addEventListener('click', () => {

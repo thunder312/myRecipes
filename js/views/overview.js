@@ -148,6 +148,7 @@ export async function render(container) {
         </div>
         ${recipe.prepTime ? `<div class="recipe-row__time">${t('detail.minutes', recipe.prepTime)}</div>` : '<div class="recipe-row__time"></div>'}
         <div class="recipe-row__cooked">${recipe.cookedCount ? `${recipe.cookedCount}×` : '–'}</div>
+        <div class="recipe-row__rating"><img src="img/rating/${recipe.rating || 0}.webp" alt="" class="recipe-row__rating-img" /></div>
       `;
 
       if (selectMode) {

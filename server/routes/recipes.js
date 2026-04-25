@@ -55,7 +55,7 @@ router.patch('/:id', (req, res) => {
   if (!existing) {
     return res.status(404).json({ error: 'Rezept nicht gefunden' });
   }
-  const { notes, cookedDates, cookedCount } = req.body;
+  const { notes, cookedDates, cookedCount, rating } = req.body;
 
   // Cooked stats are per-user – stored in user_recipe_stats
   if (cookedDates !== undefined || cookedCount !== undefined) {
@@ -67,9 +67,9 @@ router.patch('/:id', (req, res) => {
     );
   }
 
-  // Notes are still stored on the recipe itself
-  if (notes !== undefined) {
-    updateRecipe({ ...existing, notes });
+  // Notes and rating are stored on the recipe itself
+  if (notes !== undefined || rating !== undefined) {
+    updateRecipe({ ...existing, ...(notes !== undefined ? { notes } : {}), ...(rating !== undefined ? { rating } : {}) });
   }
 
   res.json({ success: true });

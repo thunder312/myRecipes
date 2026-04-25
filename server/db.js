@@ -130,6 +130,9 @@ function migrateSchema() {
   if (!cols.includes('imageMimeType')) {
     db.exec("ALTER TABLE recipes ADD COLUMN imageMimeType TEXT");
   }
+  if (!cols.includes('rating')) {
+    db.exec('ALTER TABLE recipes ADD COLUMN rating REAL');
+  }
 
   // Ensure passwordHash column exists in users table (added in multi-user migration)
   const userCols = db.pragma('table_info(users)').map(r => r.name);
