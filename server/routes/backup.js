@@ -3,9 +3,10 @@ const { exportAll, importAll } = require('../db');
 
 const router = Router();
 
-// GET /api/backup/export
+// GET /api/backup/export?includeImages=true
 router.get('/export', (req, res) => {
-  const data = exportAll();
+  const includeImages = req.query.includeImages === 'true';
+  const data = exportAll(includeImages);
   res.json(data);
 });
 

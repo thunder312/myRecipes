@@ -1,4 +1,4 @@
-import { getRecipe, updateRecipe, patchRecipe, deleteRecipe } from '../db.js';
+import { getRecipe, updateRecipe, patchRecipe, deleteRecipe, uploadRecipeImage, deleteRecipeImage } from '../db.js';
 import { generateRecipePDF, generateRecipeA5PDF } from '../pdf-generator.js';
 import { $, createElement, formatDate, formatDateTime, todayISO, showToast, categoryChipClass } from '../utils/helpers.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
@@ -117,6 +117,29 @@ function renderDetailView(container, recipe) {
         </div>
       </div>
 
+      ${recipe.imageBlob ? `
+      <div class="detail__image">
+        <img src="data:${recipe.imageMimeType || 'image/jpeg'};base64,${recipe.imageBlob}" alt="${esc(recipe.title)}" class="detail__image-img" loading="lazy" />
+        ${canEdit ? `<div class="detail__image-actions">
+          <label class="btn btn--ghost btn--sm detail__image-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            ${t('detail.imageChange')}
+            <input type="file" id="imageFileInput" accept="image/*" class="hidden" />
+          </label>
+          <button class="btn btn--ghost btn--sm detail__image-btn" id="btnDeleteImage">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+            ${t('detail.imageDelete')}
+          </button>
+        </div>` : ''}
+      </div>` : `
+      ${canEdit ? `<div class="detail__image detail__image--empty">
+        <label class="btn btn--ghost detail__image-upload-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          ${t('detail.imageUpload')}
+          <input type="file" id="imageFileInput" accept="image/*" class="hidden" />
+        </label>
+      </div>` : ''}`}
+
       <h1 class="detail__title">${esc(recipe.title)}</h1>
 
       <div class="detail__meta">
@@ -164,6 +187,11 @@ function renderDetailView(container, recipe) {
 
       <div class="detail__pdf">
         <h3>${t('detail.pdfSection')}</h3>
+        ${recipe.imageBlob ? `
+        <label class="settings__checkbox-label" style="margin-bottom: var(--space-sm);">
+          <input type="checkbox" id="pdfIncludeImage" />
+          ${t('detail.pdfIncludeImage')}
+        </label>` : ''}
         <div class="pdf-actions">
           <a id="pdfDownload" class="btn btn--secondary">${t('detail.pdfA4Download')}</a>
           <button id="pdfOpen" class="btn btn--primary">${t('detail.pdfA4Open')}</button>
@@ -249,20 +277,42 @@ function renderDetailView(container, recipe) {
     </div>
   `;
 
-  // PDF on demand
+  // PDF on demand – cache invalidated when "include image" checkbox changes
   let pdfUrl = null;
+  let pdfA5Url = null;
+  let lastIncludeImage = false;
+
+  function getIncludeImage() {
+    return !!$('#pdfIncludeImage', container)?.checked;
+  }
+
+  function invalidatePdfCache() {
+    if (pdfUrl) { URL.revokeObjectURL(pdfUrl); pdfUrl = null; }
+    if (pdfA5Url) { URL.revokeObjectURL(pdfA5Url); pdfA5Url = null; }
+  }
+
+  const pdfCheckbox = $('#pdfIncludeImage', container);
+  if (pdfCheckbox) {
+    pdfCheckbox.addEventListener('change', invalidatePdfCache);
+  }
+
   function getPdfUrl() {
-    if (!pdfUrl) {
-      const blob = generateRecipePDF(recipe);
+    const inc = getIncludeImage();
+    if (!pdfUrl || inc !== lastIncludeImage) {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      lastIncludeImage = inc;
+      const blob = generateRecipePDF(recipe, { includeImage: inc });
       pdfUrl = URL.createObjectURL(blob);
     }
     return pdfUrl;
   }
 
-  let pdfA5Url = null;
   function getPdfA5Url() {
-    if (!pdfA5Url) {
-      const blob = generateRecipeA5PDF(recipe);
+    const inc = getIncludeImage();
+    if (!pdfA5Url || inc !== lastIncludeImage) {
+      if (pdfA5Url) URL.revokeObjectURL(pdfA5Url);
+      lastIncludeImage = inc;
+      const blob = generateRecipeA5PDF(recipe, { includeImage: inc });
       pdfA5Url = URL.createObjectURL(blob);
     }
     return pdfA5Url;
@@ -371,6 +421,43 @@ function renderDetailView(container, recipe) {
     });
   });
 
+  // Image upload/delete (authorized users only)
+  if (canEdit) {
+    const imageFileInput = $('#imageFileInput', container);
+    if (imageFileInput) {
+      imageFileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+          const base64 = await compressImageForStorage(file);
+          await uploadRecipeImage(recipe.id, base64, 'image/jpeg');
+          showToast(t('detail.imageSaved'), 'success');
+          recipe.imageBlob = base64;
+          recipe.imageMimeType = 'image/jpeg';
+          renderDetailView(container, recipe);
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+
+    const btnDeleteImage = $('#btnDeleteImage', container);
+    if (btnDeleteImage) {
+      btnDeleteImage.addEventListener('click', async () => {
+        if (!confirm(t('detail.imageDeleteConfirm'))) return;
+        try {
+          await deleteRecipeImage(recipe.id);
+          showToast(t('detail.imageDeleted'), 'info');
+          recipe.imageBlob = null;
+          recipe.imageMimeType = null;
+          renderDetailView(container, recipe);
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+  }
+
   // Edit button
   if (canEdit) {
     $('#btnEdit', container).addEventListener('click', () => {
@@ -386,6 +473,29 @@ function renderDetailView(container, recipe) {
       }
     });
   }
+}
+
+async function compressImageForStorage(file) {
+  const MAX_PX = 1200;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, MAX_PX / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        resolve(dataUrl.split(',')[1]);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 function renderEditView(container, recipe) {

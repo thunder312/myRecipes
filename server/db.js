@@ -124,6 +124,12 @@ function migrateSchema() {
   if (!cols.includes('createdBy')) {
     db.exec('ALTER TABLE recipes ADD COLUMN createdBy INTEGER REFERENCES users(id) ON DELETE SET NULL');
   }
+  if (!cols.includes('imageBlob')) {
+    db.exec('ALTER TABLE recipes ADD COLUMN imageBlob BLOB');
+  }
+  if (!cols.includes('imageMimeType')) {
+    db.exec("ALTER TABLE recipes ADD COLUMN imageMimeType TEXT");
+  }
 
   // Ensure passwordHash column exists in users table (added in multi-user migration)
   const userCols = db.pragma('table_info(users)').map(r => r.name);
@@ -243,6 +249,11 @@ function serializeRecipe(recipe) {
   } else if (!Buffer.isBuffer(row.thumbnailBlob)) {
     row.thumbnailBlob = null;
   }
+  if (typeof row.imageBlob === 'string' && row.imageBlob.length > 0) {
+    row.imageBlob = Buffer.from(row.imageBlob, 'base64');
+  } else if (!Buffer.isBuffer(row.imageBlob)) {
+    row.imageBlob = null;
+  }
   return row;
 }
 
@@ -268,6 +279,13 @@ function deserializeRecipe(row) {
   } else {
     recipe.thumbnailBlob = null;
   }
+  if ('imageBlob' in recipe) {
+    if (Buffer.isBuffer(recipe.imageBlob)) {
+      recipe.imageBlob = recipe.imageBlob.toString('base64');
+    } else {
+      recipe.imageBlob = null;
+    }
+  }
   return recipe;
 }
 
@@ -289,8 +307,13 @@ function mergeUserStats(recipe, userId) {
 }
 
 function getAllRecipes(userId = null) {
+  // Exclude imageBlob from list to keep response small; fetched individually in getRecipe
   const rows = getDB().prepare(`
-    SELECT r.*, u.username AS createdByUsername
+    SELECT r.id, r.title, r.category, r.origin, r.prepTime, r.mainIngredient,
+           r.sides, r.tags, r.ingredients, r.description, r.servings, r.difficulty,
+           r.recipeText, r.sourceType, r.sourceRef, r.sourceNote, r.createdAt, r.updatedAt,
+           r.cookedDates, r.cookedCount, r.notes, r.pdfBlob, r.thumbnailBlob,
+           r.imageMimeType, r.createdBy, u.username AS createdByUsername
     FROM recipes r LEFT JOIN users u ON u.id = r.createdBy
     ORDER BY r.createdAt DESC
   `).all();
@@ -510,10 +533,19 @@ function setSetting(key, value) {
 
 // --- Backup ---
 
-function exportAll() {
-  const recipes = getAllRecipes();
-  const rows = getDB().prepare('SELECT * FROM settings').all();
-  const settings = rows.map(r => {
+function exportAll(includeImages = false) {
+  // Always fetch full recipes (including imageBlob) for export
+  const rows = getDB().prepare(`
+    SELECT r.*, u.username AS createdByUsername
+    FROM recipes r LEFT JOIN users u ON u.id = r.createdBy
+    ORDER BY r.createdAt DESC
+  `).all();
+  const recipes = rows.map(deserializeRecipe);
+  if (!includeImages) {
+    for (const r of recipes) { r.imageBlob = null; }
+  }
+  const settingRows = getDB().prepare('SELECT * FROM settings').all();
+  const settings = settingRows.map(r => {
     let value = r.value;
     try { value = JSON.parse(value); } catch {}
     return { key: r.key, value };
@@ -540,6 +572,10 @@ function importAll(data) {
         const match = r.thumbnailBlob.match(/^data:[^;]+;base64,(.+)$/);
         r.thumbnailBlob = match ? match[1] : r.thumbnailBlob;
         delete r._thumbnailBlobType;
+      }
+      if (typeof r.imageBlob === 'string' && r.imageBlob.startsWith('data:')) {
+        const match = r.imageBlob.match(/^data:[^;]+;base64,(.+)$/);
+        r.imageBlob = match ? match[1] : null;
       }
       addRecipeRaw(r);
     }

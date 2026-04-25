@@ -67,6 +67,10 @@ function hydrateBlobs(recipe) {
   } else {
     recipe.thumbnailBlob = null;
   }
+  // imageBlob stays as base64 string for direct use in <img src="data:...">
+  if (typeof recipe.imageBlob !== 'string' || !recipe.imageBlob) {
+    recipe.imageBlob = null;
+  }
   return recipe;
 }
 
@@ -256,10 +260,26 @@ export async function deleteSavedQuery(id) {
   await apiFetch(`/suggest-queries/${id}`, { method: 'DELETE' });
 }
 
+// --- Recipe image ---
+
+export async function uploadRecipeImage(id, imageBase64, mimeType) {
+  await apiFetch(`/recipes/${id}/image`, {
+    method: 'PATCH',
+    body: JSON.stringify({ imageBlob: imageBase64, imageMimeType: mimeType }),
+  });
+}
+
+export async function deleteRecipeImage(id) {
+  await apiFetch(`/recipes/${id}/image`, {
+    method: 'PATCH',
+    body: JSON.stringify({ imageBlob: null, imageMimeType: null }),
+  });
+}
+
 // --- Backup ---
 
-export async function exportAll() {
-  const res = await apiFetch('/backup/export');
+export async function exportAll(includeImages = false) {
+  const res = await apiFetch(`/backup/export${includeImages ? '?includeImages=true' : ''}`);
   return res.json();
 }
 

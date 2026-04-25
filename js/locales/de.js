@@ -127,6 +127,13 @@ export const de = {
     shoppingListBtn: 'Einkaufszettel',
     servingsScaled: (n) => `${n} Portion${n !== 1 ? 'en' : ''}`,
     cookModeBtn: 'Koch-Modus',
+    pdfIncludeImage: 'Bild in PDF einbeziehen',
+    imageUpload: 'Bild hinzufügen',
+    imageChange: 'Bild ändern',
+    imageDelete: 'Bild löschen',
+    imageDeleteConfirm: 'Bild wirklich löschen?',
+    imageSaved: 'Bild gespeichert.',
+    imageDeleted: 'Bild gelöscht.',
   },
 
   cookMode: {
@@ -286,6 +293,7 @@ export const de = {
     youLabel: '(du)',
     backupSection: 'Daten-Backup',
     exportBtn: 'Datenbank exportieren',
+    exportIncludeImages: 'Bilder einbeziehen',
     importBtn: 'Datenbank importieren',
     importWarning: 'Achtung: Alle bestehenden Daten werden ersetzt!',
     backupDownloaded: 'Backup heruntergeladen.',

@@ -371,7 +371,7 @@ function addRecipeToDoc(doc, recipeData) {
   }
 }
 
-export function generateRecipePDF(recipeData) {
+export function generateRecipePDF(recipeData, { includeImage = false } = {}) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   doc.setProperties({ title: recipeData.title || t('pdf.recipe') });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -399,6 +399,22 @@ export function generateRecipePDF(recipeData) {
   if (metaParts.length) {
     doc.text(metaParts.join('  |  '), margin, y);
     y += 8;
+  }
+
+  // Recipe image
+  if (includeImage && recipeData.imageBlob) {
+    const imgData = `data:${recipeData.imageMimeType || 'image/jpeg'};base64,${recipeData.imageBlob}`;
+    try {
+      const props = doc.getImageProperties(imgData);
+      const maxW = contentWidth;
+      const maxH = 75;
+      const ratio = props.width / props.height;
+      let imgW = maxW, imgH = imgW / ratio;
+      if (imgH > maxH) { imgH = maxH; imgW = imgH * ratio; }
+      y = checkPageBreak(doc, y, imgH + 4, margin);
+      doc.addImage(imgData, 'JPEG', margin, y, imgW, imgH);
+      y += imgH + 6;
+    } catch { /* skip image on error */ }
   }
 
   // Description
@@ -617,7 +633,7 @@ function checkPageBreak(doc, y, neededSpace, margin) {
 // --- A5 "Zettelkasten" template – A4 landscape, overflow into right column if needed ---
 // Same visual layout as A4, but with proportionally smaller font sizes.
 
-export function generateRecipeA5PDF(recipeData) {
+export function generateRecipeA5PDF(recipeData, { includeImage = false } = {}) {
   // A4 landscape: 297 × 210 mm (two A5 halves side by side)
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
   doc.setProperties({ title: recipeData.title || t('pdf.recipe') });
@@ -696,6 +712,22 @@ export function generateRecipeA5PDF(recipeData) {
 
   doc.setTextColor(0);
   y += 2;
+
+  // Recipe image (A5 column)
+  if (includeImage && recipeData.imageBlob) {
+    const imgData = `data:${recipeData.imageMimeType || 'image/jpeg'};base64,${recipeData.imageBlob}`;
+    try {
+      const props = doc.getImageProperties(imgData);
+      const maxW = colWidth;
+      const maxH = 50;
+      const ratio = props.width / props.height;
+      let imgW = maxW, imgH = imgW / ratio;
+      if (imgH > maxH) { imgH = maxH; imgW = imgH * ratio; }
+      ensureSpace(imgH + 4);
+      doc.addImage(imgData, 'JPEG', x, y, imgW, imgH);
+      y += imgH + 4;
+    } catch { /* skip image on error */ }
+  }
 
   // Description
   if (recipeData.description) {

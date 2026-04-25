@@ -915,6 +915,54 @@ button.nav__profile {
   gap: var(--space-sm);
 }
 
+.detail__image {
+  margin-bottom: var(--space-xl);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-surface);
+  position: relative;
+}
+
+.detail__image-img {
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  display: block;
+}
+
+.detail__image-actions {
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(0,0,0,0.03);
+  border-top: 1px solid var(--color-border);
+}
+
+.detail__image-btn {
+  font-size: var(--font-size-sm);
+}
+
+.detail__image--empty {
+  border: 2px dashed var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+}
+
+.detail__image-upload-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.detail__image-upload-btn:hover {
+  color: var(--color-primary);
+}
+
 .detail__title {
   font-size: var(--font-size-3xl);
   font-weight: 800;
@@ -2233,6 +2281,17 @@ details[open] > .batch__log-heading::before,
   cursor: pointer;
 }
 
+.settings__checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
 /* --- Toast Log --- */
 
 .toast-log {
@@ -2503,6 +2562,14 @@ details[open] > .batch__log-heading::before,
 
   .detail__title {
     font-size: var(--font-size-xl);
+  }
+
+  .detail__image-img {
+    max-height: 260px;
+  }
+
+  .detail__image-actions {
+    flex-wrap: wrap;
   }
 
   .detail__ingredients ul {

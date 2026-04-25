@@ -115,6 +115,10 @@ async function renderSettings(container) {
             <input type="file" id="importFile" accept=".json" class="hidden" />
           </label>` : ''}
         </div>
+        <label class="settings__checkbox-label">
+          <input type="checkbox" id="exportIncludeImages" />
+          ${t('settings.exportIncludeImages')}
+        </label>
       </section>
 
       <section class="settings__section">
@@ -257,7 +261,8 @@ async function renderSettings(container) {
   // --- Export ---
   $('#btnExport', container).addEventListener('click', async () => {
     try {
-      const data = await exportAll();
+      const includeImages = $('#exportIncludeImages', container)?.checked || false;
+      const data = await exportAll(includeImages);
       const json = JSON.stringify(data, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);

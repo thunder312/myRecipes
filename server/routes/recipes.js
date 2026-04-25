@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { getAllRecipes, getRecipe, addRecipe, updateRecipe, deleteRecipe, upsertUserRecipeStats } = require('../db');
+const { getAllRecipes, getRecipe, addRecipe, updateRecipe, deleteRecipe, upsertUserRecipeStats, getDB } = require('../db');
 
 const router = Router();
 
@@ -72,6 +72,25 @@ router.patch('/:id', (req, res) => {
     updateRecipe({ ...existing, notes });
   }
 
+  res.json({ success: true });
+});
+
+// PATCH /api/recipes/:id/image - add, replace, or delete recipe image (requires ownership)
+router.patch('/:id/image', (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const existing = getRecipe(id);
+  if (!existing) {
+    return res.status(404).json({ error: 'Rezept nicht gefunden' });
+  }
+  if (req.user.role !== 'admin' && existing.createdBy && existing.createdBy !== req.user.userId) {
+    return res.status(403).json({ error: 'Keine Berechtigung' });
+  }
+  const { imageBlob, imageMimeType } = req.body;
+  const imgBuffer = (typeof imageBlob === 'string' && imageBlob.length > 0)
+    ? Buffer.from(imageBlob, 'base64')
+    : null;
+  getDB().prepare('UPDATE recipes SET imageBlob = ?, imageMimeType = ?, updatedAt = ? WHERE id = ?')
+    .run(imgBuffer, imageMimeType || null, new Date().toISOString(), id);
   res.json({ success: true });
 });
 

@@ -127,6 +127,13 @@ export const en = {
     shoppingListBtn: 'Shopping List',
     servingsScaled: (n) => `${n} portion${n !== 1 ? 's' : ''}`,
     cookModeBtn: 'Cook Mode',
+    pdfIncludeImage: 'Include photo in PDF',
+    imageUpload: 'Add photo',
+    imageChange: 'Change photo',
+    imageDelete: 'Delete photo',
+    imageDeleteConfirm: 'Really delete this photo?',
+    imageSaved: 'Photo saved.',
+    imageDeleted: 'Photo deleted.',
   },
 
   cookMode: {
@@ -286,6 +293,7 @@ export const en = {
     youLabel: '(you)',
     backupSection: 'Data Backup',
     exportBtn: 'Export database',
+    exportIncludeImages: 'Include photos',
     importBtn: 'Import database',
     importWarning: 'Warning: All existing data will be replaced!',
     backupDownloaded: 'Backup downloaded.',

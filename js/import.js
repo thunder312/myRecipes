@@ -2,6 +2,7 @@ import { analyzeRecipeText, analyzeRecipeImages, analyzeRecipeImage, validateRec
 
 const MAX_IMAGE_BYTES = 4.5 * 1024 * 1024; // stay well under API's 5 MB limit
 const MAX_PDF_IMAGE_PAGES = 20;
+const MAX_DISPLAY_PX = 1200; // max width/height for stored recipe image
 
 const SEARCH_RESULT_SKIP_PATHS = /\/(suche|search|kategorie|category|categories|tag|tags|login|register|account|profil|profile|user|newsletter|shop|forum|video|videos|autor|author)\b/i;
 
@@ -234,16 +235,20 @@ export async function processPDF(file, { multiHint = false } = {}) {
     // Image-based PDF (or garbled OCR layer): render all pages as images
     const pageCount = Math.min(pdf.numPages, MAX_PDF_IMAGE_PAGES);
     const images = [];
+    let firstDisplayImg = null;
 
     for (let i = 1; i <= pageCount; i++) {
       const page = await pdf.getPage(i);
       const raw = await renderPageToBase64(page);
+      if (i === 1) firstDisplayImg = await compressForDisplay(raw, 'image/jpeg');
       const base64 = await enhanceForHandwriting(raw, 'image/jpeg');
       images.push({ base64, mediaType: 'image/jpeg' });
     }
 
     const results = await analyzeRecipeImages(images, { multiHint: multiHint || pageCount > 1 });
-    return applyFilter(tagResults(results, 'pdf', file.name));
+    const tagged = tagResults(results, 'pdf', file.name);
+    if (firstDisplayImg) tagImageData(tagged, firstDisplayImg.base64, firstDisplayImg.mimeType);
+    return applyFilter(tagged);
   }
 
   const results = await analyzeRecipeText(fullText, { multiHint });
@@ -272,16 +277,22 @@ export async function processImage(file, { multiHint = false } = {}) {
     mediaType = 'image/jpeg';
   }
 
+  // Capture display image before handwriting enhancement
+  const displayImg = await compressForDisplay(base64, mediaType);
+
   base64 = await enhanceForHandwriting(base64, mediaType);
   mediaType = 'image/jpeg';
 
   const results = await analyzeRecipeImage(base64, mediaType, { multiHint });
-  return applyFilter(tagResults(results, 'image', file.name));
+  return applyFilter(tagImageData(tagResults(results, 'image', file.name), displayImg.base64, displayImg.mimeType));
 }
 
 export async function processImages(files, { multiHint = false } = {}) {
   const images = [];
-  for (const file of files) {
+  let firstDisplayImg = null;
+
+  for (let fi = 0; fi < files.length; fi++) {
+    const file = files[fi];
     let base64 = await fileToBase64(file);
     let mediaType = detectMediaType(base64) || file.type || 'image/jpeg';
     const byteSize = Math.ceil(base64.length * 3 / 4);
@@ -303,12 +314,19 @@ export async function processImages(files, { multiHint = false } = {}) {
       mediaType = 'image/jpeg';
     }
 
+    // Capture display image from the first file
+    if (fi === 0) {
+      firstDisplayImg = await compressForDisplay(base64, mediaType);
+    }
+
     base64 = await enhanceForHandwriting(base64, mediaType);
     images.push({ base64, mediaType: 'image/jpeg' });
   }
 
   const results = await analyzeRecipeImages(images, { multiHint: multiHint || files.length > 1 });
-  return applyFilter(tagResults(results, 'image', files.map(f => f.name).join(', ')));
+  const tagged = tagResults(results, 'image', files.map(f => f.name).join(', '));
+  if (firstDisplayImg) tagImageData(tagged, firstDisplayImg.base64, firstDisplayImg.mimeType);
+  return applyFilter(tagged);
 }
 
 export async function processText(text, { multiHint = false } = {}) {
@@ -325,6 +343,38 @@ function tagResults(results, sourceType, sourceRef) {
     r.sourceRef = sourceRef;
   }
   return results;
+}
+
+/**
+ * Speichert ein Bild (base64) für die Anzeige auf jedem Ergebnis.
+ */
+function tagImageData(results, imageBlob, imageMimeType) {
+  for (const r of results) {
+    r._imageBlob = imageBlob;
+    r._imageMimeType = imageMimeType;
+  }
+  return results;
+}
+
+/**
+ * Komprimiert ein Bild auf MAX_DISPLAY_PX für die Anzeige (kein Handschrift-Enhance).
+ * Gibt { base64, mimeType } zurück.
+ */
+async function compressForDisplay(base64, mediaType) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, MAX_DISPLAY_PX / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      resolve({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
+    };
+    img.onerror = () => resolve({ base64, mimeType: mediaType });
+    img.src = `data:${mediaType};base64,${base64}`;
+  });
 }
 
 /**

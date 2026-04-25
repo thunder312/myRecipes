@@ -649,6 +649,8 @@ async function renderImportForm(container) {
     delete recipe.importNotes;
 
     recipe.thumbnailBlob = null;
+    recipe.imageBlob = currentData._imageBlob || null;
+    recipe.imageMimeType = currentData._imageMimeType || null;
     const extraCookbookIds = getSelectedImportCookbookIds(container);
 
     try {
@@ -813,6 +815,8 @@ async function renderImportForm(container) {
         };
 
         recipe.thumbnailBlob = null;
+        recipe.imageBlob = r._imageBlob || null;
+        recipe.imageMimeType = r._imageMimeType || null;
 
         await addRecipe(recipe, extraCookbookIds);
         imported.push(recipe.title);
@@ -1039,6 +1043,8 @@ async function processBatchFiles(files, delay) {
           cookedCount: 0
         };
         recipe.thumbnailBlob = null;
+        recipe.imageBlob = analysisResult._imageBlob || null;
+        recipe.imageMimeType = analysisResult._imageMimeType || null;
         const newId = await addRecipe(recipe, batchJob.extraCookbookIds || []);
         batchJob.results.success.push({ file: filePath, title: recipe.title, id: newId });
         batchJob.importedIds.push(newId);
