@@ -14,7 +14,7 @@ async function apiFetch(path, options = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(API + path, { ...options, headers });
+  const res = await fetch(API + path, { ...options, headers, cache: 'no-store' });
 
   // Keep the client-side session alive on every authenticated API call
   if (token && res.ok) {

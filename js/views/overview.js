@@ -1,4 +1,4 @@
-import { getAllRecipes, deleteRecipe, getAllCookbooks, assignRecipesToCookbook, getCookbookMemberships } from '../db.js';
+import { getAllRecipes, deleteRecipe, getAllCookbooks, assignRecipesToCookbook, getCookbookMemberships, patchRecipe } from '../db.js';
 import { $, createElement, formatDate, debounce, showToast, categoryChipClass } from '../utils/helpers.js';
 import { isAuthenticated } from '../utils/auth.js';
 import { t, getCategoryList, translateCategory } from '../i18n.js';
@@ -117,6 +117,33 @@ export async function render(container) {
   const emptyState = $('#emptyState', container);
   let currentFiltered = [];
 
+  grid.addEventListener('click', async (e) => {
+    const row = e.target.closest('.recipe-row');
+    if (!row) return;
+    const id = parseInt(row.dataset.id, 10);
+    if (selectMode) { e.preventDefault(); toggleSelect(id); return; }
+    const ratingBtn = e.target.closest('.recipe-row__rating');
+    if (ratingBtn) {
+      const recipe = recipes.find(r => r.id === id);
+      if (!recipe) return;
+      const prev = recipe.rating || 0;
+      const next = prev >= 5 ? 0 : prev + 1;
+      recipe.rating = next;
+      const img = ratingBtn.querySelector('.recipe-row__rating-img');
+      if (img) img.src = `img/rating/${next}.webp`;
+      try {
+        await patchRecipe(recipe.id, { rating: next });
+      } catch (err) {
+        console.error('[Rating] PATCH failed:', err);
+        recipe.rating = prev;
+        if (img) img.src = `img/rating/${prev}.webp`;
+        showToast(t('common.error'), 'error');
+      }
+      return;
+    }
+    window.location.hash = `#detail/${id}`;
+  });
+
   function renderCards(filtered) {
     currentFiltered = filtered;
     grid.innerHTML = '';
@@ -148,15 +175,10 @@ export async function render(container) {
         </div>
         ${recipe.prepTime ? `<div class="recipe-row__time">${t('detail.minutes', recipe.prepTime)}</div>` : '<div class="recipe-row__time"></div>'}
         <div class="recipe-row__cooked">${recipe.cookedCount ? `${recipe.cookedCount}×` : '–'}</div>
-        <div class="recipe-row__rating"><img src="img/rating/${recipe.rating || 0}.webp" alt="" class="recipe-row__rating-img" /></div>
+        <button class="recipe-row__rating" type="button" title="Bewertung ändern"><img src="img/rating/${recipe.rating || 0}.webp" alt="" class="recipe-row__rating-img" /></button>
       `;
 
-      if (selectMode) {
-        row.addEventListener('click', (e) => { e.preventDefault(); toggleSelect(recipe.id); });
-      } else {
-        row.addEventListener('click', () => { window.location.hash = `#detail/${recipe.id}`; });
-        row.style.cursor = 'pointer';
-      }
+      if (!selectMode) row.style.cursor = 'pointer';
       grid.appendChild(row);
     });
   }

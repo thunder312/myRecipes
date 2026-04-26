@@ -375,13 +375,20 @@ function renderDetailView(container, recipe) {
     if (currentServings < 99) { currentServings++; updateScaler(); }
   });
 
-  // Rating widget – cycles 0→1→2→3→4→5→0 on click, saved globally (no auth required)
+  // Rating widget – cycles 0→1→2→3→4→5→0 on click
   $('#ratingWidget', container).addEventListener('click', async () => {
-    const next = ((recipe.rating || 0) >= 5) ? 0 : (recipe.rating || 0) + 1;
+    const prev = recipe.rating || 0;
+    const next = prev >= 5 ? 0 : prev + 1;
     recipe.rating = next;
     const img = $('#ratingImg', container);
     if (img) img.src = `img/rating/${next}.webp`;
-    await patchRecipe(recipe.id, { rating: next });
+    try {
+      await patchRecipe(recipe.id, { rating: next });
+    } catch {
+      recipe.rating = prev;
+      if (img) img.src = `img/rating/${prev}.webp`;
+      showToast(t('common.error'), 'error');
+    }
   });
 
   $('#btnShoppingList', container).addEventListener('click', () => {

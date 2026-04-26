@@ -6,6 +6,7 @@ const router = Router();
 // GET /api/recipes - all recipes (cooked stats user-specific if authenticated)
 router.get('/', (req, res) => {
   const userId = req.user?.userId || null;
+  res.set('Cache-Control', 'no-store');
   res.json(getAllRecipes(userId));
 });
 
@@ -17,6 +18,7 @@ router.get('/:id', (req, res) => {
   if (!recipe) {
     return res.status(404).json({ error: 'Rezept nicht gefunden' });
   }
+  res.set('Cache-Control', 'no-store');
   res.json(recipe);
 });
 
@@ -67,9 +69,14 @@ router.patch('/:id', (req, res) => {
     );
   }
 
-  // Notes and rating are stored on the recipe itself
-  if (notes !== undefined || rating !== undefined) {
-    updateRecipe({ ...existing, ...(notes !== undefined ? { notes } : {}), ...(rating !== undefined ? { rating } : {}) });
+  // Notes and rating are stored on the recipe itself – use targeted UPDATE to avoid
+  // overwriting unrelated fields (e.g. large imageBlob) via the generic updateRecipe path
+  if (rating !== undefined) {
+    getDB().prepare('UPDATE recipes SET rating = ?, updatedAt = ? WHERE id = ?')
+      .run(rating, new Date().toISOString(), id);
+  }
+  if (notes !== undefined) {
+    updateRecipe({ ...existing, notes });
   }
 
   res.json({ success: true });

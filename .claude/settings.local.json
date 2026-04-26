@@ -68,7 +68,15 @@
       "Bash(find:*)",
       "Bash(df:*)",
       "Bash(cd:*)",
-      "Bash(\"/c/Program Files/PuTTY/plink.exe\" -i \"/c/Users/dertl/.ssh/id_rsa/StratoVServer.ppk\" -hostkey \"24:4a:18:0d:5f:44:3e:89:19:6a:fe:65:5a:17:58:ed\" root@82.165.153.177 \"echo connected && hostname && ls /var/www/ 2>/dev/null; ls /srv/ 2>/dev/null\" 2>&1)"
+      "Bash(\"/c/Program Files/PuTTY/plink.exe\" -i \"/c/Users/dertl/.ssh/id_rsa/StratoVServer.ppk\" -hostkey \"24:4a:18:0d:5f:44:3e:89:19:6a:fe:65:5a:17:58:ed\" root@82.165.153.177 \"echo connected && hostname && ls /var/www/ 2>/dev/null; ls /srv/ 2>/dev/null\" 2>&1)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:3000/api/recipes)",
+      "Bash(curl -s \"http://localhost:3000/api/recipes\")",
+      "Bash(netstat -aon)",
+      "Bash(taskkill /PID 4040 /F)",
+      "PowerShell(Stop-Process *)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "Bash(curl -s \"http://localhost:3000/api/recipes/27\")"
     ]
   }
 }
