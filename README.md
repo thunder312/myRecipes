@@ -21,10 +21,20 @@
 
 ### Rezepte verwalten
 - Übersicht mit Suche, Filterung nach Kategorie, Herkunft, Hauptzutat, Tags
+- Sortierung: alphabetisch, neueste zuerst, zuletzt gekocht, am häufigsten gekocht, **bestbewertet zuerst**
 - Detailansicht mit strukturierten Zubereitungsschritten inkl. **Unter-Überschriften** (z. B. „Soße:", „Nudeln:") als eigene Abschnittstitel
+- Rezeptbilder: Foto hochladen oder beim Import automatisch erfassen – wird in der Detailansicht und im PDF angezeigt
+- **Bewertung** mit Smiley-Icons (0–5), direkt in der Übersicht und in der Detailansicht setzbar
+- **Favoritenmarkierung** (Herz-Icon) pro Benutzer – Filter „Nur Favoriten" in der Übersicht
+- **Rezept duplizieren** – Kopieren-Button erstellt eine Variante als Vorlage
 - Rezept bearbeiten, löschen
 - „Heute gekocht"-Funktion mit Protokoll der Kochdaten
 - Notizen pro Rezept mit Zeitstempel
+
+### Koch-Modus
+- Ablenkungsfreier Schritt-für-Schritt-Modus direkt aus der Detailansicht
+- Bildschirm bleibt automatisch an (WakeLock API)
+- Optimiert für Mobilgeräte
 
 ### PDF-Export
 - **A4** und **A5** (doppelseitig druckbar, schneidbar) für einzelne Rezepte
@@ -32,11 +42,18 @@
 - Unter-Überschriften in Zubereitungsschritten werden im PDF als fette Abschnittstitel gerendert
 - Auf mobilen Geräten wird das PDF direkt im nativen PDF-Viewer des Betriebssystems geöffnet
 
+### Einkaufszettel
+- Direkt aus der Detailansicht öffnen (inkl. Portionen-Skalierung)
+- Vorratsartikel (Salz, Öl, …) werden automatisch abgehakt
+- **KI-Optimierung**: ein Klick normalisiert Mengenangaben für den Supermarkt (z. B. „0,5 Zwiebeln" → „1 Zwiebel", Gewürzmengen werden entfernt)
+- Export als Text, PDF oder direkt in die Zwischenablage
+
 ### KI-Funktionen (Claude von Anthropic)
 - Automatische Extraktion von Titel, Zutaten, Zubereitung, Kategorie, Herkunft, Hauptzutat, Tags, Portionen, Schwierigkeit, Zubereitungszeit
 - Rezeptvorschläge: „Was koche ich heute?" – Freitext-Frage, die KI sucht passende Rezepte aus der eigenen Sammlung
 - Gespeicherte Lieblingsfragen für schnellen Zugriff
 - Erkennung von Handschrift auf Fotos
+- Einkaufszettel-Optimierung (Mengenangaben realistisch für den Einkauf)
 
 ### Kochbücher
 - Rezepte in thematische Kochbücher sortieren (z. B. „Italienisch", „Weihnachten")
@@ -48,6 +65,7 @@
 - Rollen: Administrator und normaler Benutzer
 - Jeder Benutzer kann eigene Rezepte anlegen; Admins verwalten alle
 - Passwort-Verwaltung durch Admin
+- Persönliche Einstellungen pro Benutzer: Sprache (DE/EN) und **Dark Mode** – serverseitig gespeichert, geräteübergreifend
 
 ### Backup & Daten
 - Vollständiger Datenbank-Export und -Import als JSON

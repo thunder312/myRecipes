@@ -21,10 +21,20 @@
 
 ### Managing Recipes
 - Overview with search, filtering by category, origin, main ingredient and tags
+- Sorting: alphabetical, newest first, last cooked, most cooked, **top rated first**
 - Detail view with structured preparation steps including **sub-headings** (e.g. "Sauce:", "Pasta:") rendered as section titles
+- Recipe images: upload a photo or capture one automatically during import – shown in the detail view and in PDFs
+- **Star rating** with smiley icons (0–5), settable directly from the overview or the detail view
+- **Favourites** (heart icon) per user – "Favourites only" filter in the overview
+- **Duplicate recipe** – copy button creates a variant as a starting template
 - Edit and delete recipes
 - "Cooked today" feature with a full history of cooking dates
 - Per-recipe notes with timestamps
+
+### Cooking Mode
+- Distraction-free step-by-step mode, opened directly from the detail view
+- Screen stays on automatically (WakeLock API)
+- Optimised for mobile devices
 
 ### PDF Export
 - **A4** and **A5** (double-sided, cut-to-size) for individual recipes
@@ -32,11 +42,18 @@
 - Sub-headings in preparation steps are rendered as bold section titles in the PDF
 - On mobile devices the PDF is opened directly in the operating system's native PDF viewer
 
+### Shopping List
+- Open directly from the detail view (with portion scaling applied)
+- Pantry staples (salt, oil, …) are pre-deselected automatically
+- **AI optimisation**: one click normalises quantities for the supermarket (e.g. "0.5 onions" → "1 onion", spice amounts are stripped)
+- Export as plain text, PDF or copy to clipboard
+
 ### AI Features (Claude by Anthropic)
 - Automatic extraction of title, ingredients, preparation steps, category, origin, main ingredient, tags, servings, difficulty and preparation time
 - Recipe suggestions: "What should I cook today?" – ask a free-text question and the AI finds matching recipes from your own collection
 - Saved favourite questions for quick access
 - Handwriting recognition on photos
+- Shopping list optimisation (realistic quantities for grocery shopping)
 
 ### Cookbooks
 - Organise recipes into thematic cookbooks (e.g. "Italian", "Christmas")
@@ -48,6 +65,7 @@
 - Roles: Administrator and regular user
 - Each user can create their own recipes; admins manage all
 - Password management by admin
+- Personal preferences per user: language (DE/EN) and **dark mode** – stored server-side, synced across devices
 
 ### Backup & Data
 - Full database export and import as JSON
