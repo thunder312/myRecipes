@@ -147,6 +147,9 @@ function migrateSchema() {
   if (!userCols.includes('language')) {
     db.exec("ALTER TABLE users ADD COLUMN language TEXT NOT NULL DEFAULT 'de'");
   }
+  if (!userCols.includes('theme')) {
+    db.exec("ALTER TABLE users ADD COLUMN theme TEXT NOT NULL DEFAULT 'light'");
+  }
 
   // Add userId to cookbooks (links a cookbook to its owner)
   const cbCols = db.pragma('table_info(cookbooks)').map(r => r.name);
@@ -681,6 +684,15 @@ function setUserLanguage(id, lang) {
   getDB().prepare('UPDATE users SET language = ? WHERE id = ?').run(lang, id);
 }
 
+function getUserTheme(id) {
+  const row = getDB().prepare('SELECT theme FROM users WHERE id = ?').get(id);
+  return row ? (row.theme || 'light') : 'light';
+}
+
+function setUserTheme(id, theme) {
+  getDB().prepare('UPDATE users SET theme = ? WHERE id = ?').run(theme, id);
+}
+
 function updateUsername(id, newUsername) {
   const existing = getUserByUsername(newUsername);
   if (existing && existing.id !== id) throw new Error('Benutzername bereits vergeben.');
@@ -757,6 +769,8 @@ module.exports = {
   deleteUser,
   getUserLanguage,
   setUserLanguage,
+  getUserTheme,
+  setUserTheme,
   getAllSavedQueries,
   addSavedQuery,
   deleteSavedQuery,

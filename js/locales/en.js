@@ -26,6 +26,8 @@ export const en = {
     logout: 'Sign Out',
     profile: 'My Profile',
     myProfile: 'My Profile',
+    themeDark: 'Dark Mode',
+    themeLight: 'Light Mode',
   },
 
   profile: {

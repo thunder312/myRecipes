@@ -113,6 +113,12 @@ function renderLogin(container, onSuccess) {
           setLanguage(data.language, { save: true, notify: false });
         }
 
+        // Apply saved theme from server
+        if (data.theme) {
+          document.documentElement.setAttribute('data-theme', data.theme);
+          localStorage.setItem('theme', data.theme);
+        }
+
         setAuthenticated(data.token, data.username, data.role);
         onSuccess();
       } catch (err) {

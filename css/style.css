@@ -85,6 +85,66 @@
 }
 
 /* ==========================================================================
+   Dark Theme
+   ========================================================================== */
+
+[data-theme="dark"] {
+  --color-primary-light: rgba(249, 115, 22, 0.14);
+
+  --color-bg: #0f172a;
+  --color-bg-warm: #111827;
+  --color-surface: #1e293b;
+  --color-surface-raised: #253348;
+  --color-surface-overlay: rgba(15, 23, 42, 0.92);
+
+  --color-text: #e2e8f0;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+
+  --color-border: #334155;
+  --color-border-light: #1e293b;
+
+  --color-success-light: rgba(16, 185, 129, 0.14);
+  --color-warning-light: rgba(245, 158, 11, 0.14);
+  --color-error-light: rgba(239, 68, 68, 0.14);
+  --color-info-light: rgba(59, 130, 246, 0.14);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow:    0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 16px -4px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 20px 40px -8px rgba(0, 0, 0, 0.6), 0 8px 16px -4px rgba(0, 0, 0, 0.4);
+}
+
+/* Hard-coded hover/active backgrounds */
+[data-theme="dark"] .recipe-row__rating:hover,
+[data-theme="dark"] .recipe-row__favorite:hover,
+[data-theme="dark"] .detail__favorite:hover { background: rgba(255, 255, 255, 0.07); }
+[data-theme="dark"] .recipe-row__rating:active { background: rgba(255, 255, 255, 0.12); }
+
+/* Category chips – muted dark variants */
+[data-theme="dark"] .chip--cat-vorspeise    { background: rgba(219,234,254,.15); color: #93c5fd; }
+[data-theme="dark"] .chip--cat-hauptspeise  { background: rgba(254,226,226,.15); color: #fca5a5; }
+[data-theme="dark"] .chip--cat-nachspeise   { background: rgba(252,231,243,.15); color: #f9a8d4; }
+[data-theme="dark"] .chip--cat-fingerfood   { background: rgba(254,243,199,.15); color: #fcd34d; }
+[data-theme="dark"] .chip--cat-suppe        { background: rgba(209,250,229,.15); color: #6ee7b7; }
+[data-theme="dark"] .chip--cat-salat        { background: rgba(220,252,231,.15); color: #86efac; }
+[data-theme="dark"] .chip--cat-beilage      { background: rgba(224,231,255,.15); color: #a5b4fc; }
+[data-theme="dark"] .chip--cat-getraenk     { background: rgba(207,250,254,.15); color: #67e8f9; }
+[data-theme="dark"] .chip--cat-snack        { background: rgba(255,237,213,.15); color: #fdba74; }
+[data-theme="dark"] .chip--cat-brot         { background: rgba(254,249,195,.15); color: #fde047; }
+[data-theme="dark"] .chip--cat-gewuerz      { background: rgba(237,233,254,.15); color: #c4b5fd; }
+[data-theme="dark"] .chip--cat-kuchen       { background: rgba(253,242,248,.15); color: #f0abfc; }
+[data-theme="dark"] .chip--cat-sosse        { background: rgba(254,242,242,.15); color: #fca5a5; }
+[data-theme="dark"] .chip--cat-sauerkonserven { background: rgba(236,253,245,.15); color: #6ee7b7; }
+[data-theme="dark"] .chip--cat-wurst        { background: rgba(245,243,255,.15); color: #c4b5fd; }
+
+/* Input/select borders */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea { border-color: var(--color-border); }
+
+/* ==========================================================================
    Reset & Base
    ========================================================================== */
 
@@ -273,6 +333,35 @@ h1, h2, h3, h4 {
 .nav__logout:hover .nav__icon {
   transform: scale(1.1);
 }
+
+.nav__theme {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 0.7rem var(--space-md);
+  margin: 0 var(--space-md) var(--space-xs);
+  border: none;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-weight: 500;
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  transition: all var(--duration) var(--ease);
+  width: calc(100% - 2 * var(--space-md));
+}
+
+.nav__theme:hover {
+  background: var(--color-border-light);
+  color: var(--color-text);
+}
+
+/* Show sun in dark mode, moon in light mode */
+.nav__theme-icon--light { display: none; }
+.nav__theme-icon--dark  { display: block; }
+[data-theme="dark"] .nav__theme-icon--light { display: block; }
+[data-theme="dark"] .nav__theme-icon--dark  { display: none; }
 
 /* nav__profile inherits all styling from nav__link; only reset button defaults */
 button.nav__profile {

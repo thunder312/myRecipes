@@ -220,6 +220,35 @@ function init() {
     profileBtn.addEventListener('click', openProfileModal);
   }
 
+  // Theme toggle
+  const themeBtn = $('#btnTheme');
+  if (themeBtn) {
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+      const labelEl = themeBtn.querySelector('.nav__theme-label');
+      if (labelEl) labelEl.textContent = theme === 'dark' ? t('nav.themeLight') : t('nav.themeDark');
+    }
+    async function saveThemeToServer(theme) {
+      const { getAuthToken } = await import('./utils/auth.js');
+      const token = getAuthToken();
+      if (!token) return;
+      fetch('/api/auth/theme', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ theme }),
+      }).catch(() => {});
+    }
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    applyTheme(savedTheme);
+    themeBtn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      if (isAuthenticated()) saveThemeToServer(next);
+    });
+  }
+
   // Re-render current view when language changes
   window.addEventListener('langchange', () => {
     updateNavLabels();

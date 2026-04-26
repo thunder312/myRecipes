@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { getUserByUsername, updateUserPassword, updateUsername, getUser, verifyPassword, getUserLanguage, setUserLanguage } = require('../db');
+const { getUserByUsername, updateUserPassword, updateUsername, getUser, verifyPassword, getUserLanguage, setUserLanguage, getUserTheme, setUserTheme } = require('../db');
 
 const router = Router();
 
@@ -33,7 +33,8 @@ router.post('/login', (req, res) => {
   const { createToken } = req.app.get('auth');
   const token = createToken(user.id, user.username, user.role);
   const language = getUserLanguage(user.id);
-  res.json({ success: true, token, username: user.username, role: user.role, language });
+  const theme = getUserTheme(user.id);
+  res.json({ success: true, token, username: user.username, role: user.role, language, theme });
 });
 
 // POST /api/auth/logout
@@ -105,6 +106,19 @@ router.patch('/language', (req, res) => {
   const { language } = req.body;
   if (!['de', 'en'].includes(language)) return res.status(400).json({ error: 'Invalid language' });
   setUserLanguage(tokenData.userId, language);
+  res.json({ success: true });
+});
+
+// PATCH /api/auth/theme – save preferred theme for authenticated user
+router.patch('/theme', (req, res) => {
+  const { validateTokenWithData } = req.app.get('auth');
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const tokenData = validateTokenWithData(token);
+  if (!tokenData) return res.status(401).json({ error: 'Nicht authentifiziert' });
+  const { theme } = req.body;
+  if (!['light', 'dark'].includes(theme)) return res.status(400).json({ error: 'Invalid theme' });
+  setUserTheme(tokenData.userId, theme);
   res.json({ success: true });
 });
 

@@ -26,6 +26,8 @@ export const de = {
     logout: 'Abmelden',
     profile: 'Mein Profil',
     myProfile: 'Mein Profil',
+    themeDark: 'Dark Mode',
+    themeLight: 'Light Mode',
   },
 
   profile: {
