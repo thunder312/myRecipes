@@ -410,6 +410,7 @@ function updateRecipe(recipe) {
   const id = data.id;
   delete data.id;
   delete data.createdByUsername; // virtual JOIN field, not a column
+  delete data.favorite;          // user_recipe_stats field, not a recipes column
 
   const columns = Object.keys(data);
   const setClause = columns.map(c => `${c} = ?`).join(', ');

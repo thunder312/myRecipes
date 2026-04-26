@@ -1,4 +1,4 @@
-import { getRecipe, updateRecipe, patchRecipe, deleteRecipe, uploadRecipeImage, deleteRecipeImage, setFavorite } from '../db.js';
+import { getRecipe, addRecipe, updateRecipe, patchRecipe, deleteRecipe, uploadRecipeImage, deleteRecipeImage, setFavorite } from '../db.js';
 import { generateRecipePDF, generateRecipeA5PDF } from '../pdf-generator.js';
 import { $, createElement, formatDate, formatDateTime, todayISO, showToast, categoryChipClass } from '../utils/helpers.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
@@ -112,6 +112,7 @@ function renderDetailView(container, recipe) {
         <a href="#overview" class="btn btn--ghost">${t('detail.back')}</a>
         <div class="detail__actions">
           ${canEdit ? `<button class="btn btn--secondary" id="btnEdit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> ${t('detail.editBtn')}</button>` : ''}
+          ${loggedIn ? `<button class="btn btn--ghost" id="btnDuplicate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> ${t('detail.duplicateBtn')}</button>` : ''}
           <button class="btn btn--primary" id="btnCooked">${t('detail.cookedToday')}</button>
           ${canEdit ? `<button class="btn btn--danger" id="btnDelete">${t('detail.deleteBtn')}</button>` : ''}
         </div>
@@ -513,6 +514,25 @@ function renderDetailView(container, recipe) {
         await deleteRecipe(recipe.id);
         showToast(t('detail.recipeDeleted'), 'info');
         window.location.hash = '#overview';
+      }
+    });
+  }
+
+  // Duplicate button (any logged-in user)
+  if (loggedIn) {
+    $('#btnDuplicate', container).addEventListener('click', async () => {
+      const btn = $('#btnDuplicate', container);
+      btn.disabled = true;
+      try {
+        const { id: _id, createdAt: _ca, updatedAt: _ua, createdBy: _cb, createdByUsername: _cbu,
+                cookedDates: _cd, cookedCount: _cc, favorite: _fav, rating: _r, ...fields } = recipe;
+        const newId = await addRecipe({ ...fields, title: `Kopie – ${recipe.title}` });
+        showToast(t('detail.duplicated', recipe.title), 'success');
+        window.location.hash = `#detail/${newId}`;
+      } catch (err) {
+        console.error('[Duplicate]', err);
+        showToast(t('common.error'), 'error');
+        btn.disabled = false;
       }
     });
   }

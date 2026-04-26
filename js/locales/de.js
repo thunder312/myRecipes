@@ -81,6 +81,8 @@ export const de = {
   detail: {
     back: '← Zurück',
     editBtn: 'Bearbeiten',
+    duplicateBtn: 'Duplizieren',
+    duplicated: (title) => `Kopie von „${title}" erstellt.`,
     cookedToday: 'Heute gekocht',
     deleteBtn: 'Löschen',
     saveBtn: 'Speichern',

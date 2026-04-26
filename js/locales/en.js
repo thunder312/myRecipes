@@ -81,6 +81,8 @@ export const en = {
   detail: {
     back: '← Back',
     editBtn: 'Edit',
+    duplicateBtn: 'Duplicate',
+    duplicated: (title) => `Copy of "${title}" created.`,
     cookedToday: 'Cooked today',
     deleteBtn: 'Delete',
     saveBtn: 'Save',
