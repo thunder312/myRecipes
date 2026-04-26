@@ -456,3 +456,42 @@ export async function suggestRecipes(question, recipes) {
     throw new Error(t('apiErrors.parseError'));
   }
 }
+
+export async function normalizeShoppingList(ingredients) {
+  const apiKey = await getApiKey();
+  const response = await fetchWithTimeout(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: `Du bist ein Einkaufszettel-Helfer. Normalisiere die folgende Zutatenliste für einen realistischen Supermarkt-Einkaufszettel:
+- Runde ungewöhnliche Brüche/Kommazahlen auf sinnvolle Kaufmengen (z.B. "0,5 Zwiebeln" → "1 Zwiebel", "¼ Zitrone" → "1 Zitrone", "1,5 Dosen" → "2 Dosen")
+- Behalte realistische Gewichts-/Volumenangaben (z.B. "500g Hackfleisch" bleibt)
+- Entferne bei Gewürzen und Basiszutaten die exakte Menge und behalte nur den Produktnamen (z.B. "2 TL Paprikapulver" → "Paprikapulver")
+- Antworte NUR mit einem JSON-Array exakt gleicher Länge wie die Eingabe, ohne weiteren Text
+
+Eingabe:
+${JSON.stringify(ingredients)}`,
+      }],
+    }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    handleApiError(response, err);
+  }
+  const data = await response.json();
+  const text = data.content?.[0]?.text || '';
+  const match = text.match(/\[[\s\S]*\]/);
+  if (!match) throw new Error(t('apiErrors.parseError'));
+  const result = JSON.parse(match[0]);
+  if (!Array.isArray(result) || result.length !== ingredients.length) throw new Error(t('apiErrors.parseError'));
+  return result;
+}

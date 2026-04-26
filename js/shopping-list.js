@@ -2,6 +2,7 @@ import { getSetting, setSetting } from './db.js';
 import { showToast } from './utils/helpers.js';
 import { t } from './i18n.js';
 import { generateShoppingListPDF } from './pdf-generator.js';
+import { normalizeShoppingList } from './api.js';
 
 // ---------------------------------------------------------------------------
 // Default pantry items (always-in-stock staples)
@@ -69,10 +70,9 @@ function isSpiceUnit(ingredientStr) {
 // Build plain-text shopping list
 // ---------------------------------------------------------------------------
 
-function buildText(title, portions, checkedIngredients, extras) {
+function buildText(title, checkedIngredients, extras) {
   const lines = [];
   lines.push(t('shoppingList.title', title));
-  if (portions) lines.push(t('shoppingList.pdfPortions', portions));
   lines.push('');
   checkedIngredients.forEach(i => lines.push(`• ${i}`));
   if (extras.length) {
@@ -130,13 +130,13 @@ export async function openShoppingListModal(recipe) {
       </div>
       <div class="modal__body">
 
-        <div class="sl-portions">
-          <label for="slPortions" class="sl-portions__label">${escHtml(t('shoppingList.portionsLabel'))}:</label>
-          <input type="number" id="slPortions" class="input sl-portions__input" min="1" max="99"
-            value="${recipe.servings || 1}" placeholder="1" />
+        <div class="sl-section-label sl-section-label--with-action">
+          <span>${escHtml(t('shoppingList.ingredientsSection'))}</span>
+          <button class="btn btn--ghost btn--sm sl-ai-btn" id="slBtnAi" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            ${escHtml(t('shoppingList.btnAiOptimize'))}
+          </button>
         </div>
-
-        <div class="sl-section-label">${escHtml(t('shoppingList.ingredientsSection'))}</div>
         <p class="sl-pantry-hint">${escHtml(t('shoppingList.pantryHint'))}</p>
         <ul class="sl-ingredient-list" id="slIngredients">
           ${ingredients.map((ing, idx) => `
@@ -173,11 +173,6 @@ export async function openShoppingListModal(recipe) {
       .map(cb => ingredients[parseInt(cb.dataset.idx, 10)].displayText);
   }
 
-  function getPortions() {
-    const v = parseInt(modal.querySelector('#slPortions').value, 10);
-    return v > 0 ? v : null;
-  }
-
   function parseExtras() {
     return modal.querySelector('#slExtras').value
       .split(/[,\n]/)
@@ -186,7 +181,7 @@ export async function openShoppingListModal(recipe) {
   }
 
   function getText() {
-    return buildText(recipe.title || '', getPortions(), getCheckedIngredients(), parseExtras());
+    return buildText(recipe.title || '', getCheckedIngredients(), parseExtras());
   }
 
   function close() {
@@ -213,14 +208,31 @@ export async function openShoppingListModal(recipe) {
   });
 
   modal.querySelector('#slBtnPdf').addEventListener('click', () => {
-    const portions = getPortions();
-    const extras = parseExtras();
     generateShoppingListPDF({
       title: recipe.title || '',
-      portions,
       items: getCheckedIngredients(),
-      extras,
+      extras: parseExtras(),
     });
+  });
+
+  modal.querySelector('#slBtnAi').addEventListener('click', async () => {
+    const btn = modal.querySelector('#slBtnAi');
+    btn.disabled = true;
+    btn.textContent = escHtml(t('shoppingList.aiOptimizing'));
+    try {
+      const currentTexts = ingredients.map(i => i.displayText);
+      const normalized = await normalizeShoppingList(currentTexts);
+      normalized.forEach((text, idx) => { ingredients[idx].displayText = text; });
+      modal.querySelectorAll('.sl-ingredient__text').forEach((el, idx) => {
+        el.textContent = ingredients[idx].displayText;
+      });
+      showToast(t('shoppingList.aiOptimized'), 'success');
+    } catch (err) {
+      showToast(err.message || t('shoppingList.aiOptimizeError'), 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> ${escHtml(t('shoppingList.btnAiOptimize'))}`;
+    }
   });
 }
 

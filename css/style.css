@@ -3435,21 +3435,6 @@ details[open] > .batch__log-heading::before,
   overflow-y: auto;
 }
 
-.sl-portions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-.sl-portions__label {
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.sl-portions__input {
-  width: 72px;
-}
-
 .sl-section-label {
   font-weight: 600;
   font-size: var(--font-size-sm);
@@ -3457,6 +3442,23 @@ details[open] > .batch__log-heading::before,
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
   margin-top: var(--space-xs);
+}
+
+.sl-section-label--with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sl-ai-btn {
+  font-size: var(--font-size-xs);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 4px 10px;
+  height: auto;
 }
 
 .sl-pantry-hint {
