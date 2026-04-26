@@ -60,6 +60,7 @@ export const de = {
     sortAlpha: 'Alphabetisch',
     sortLastCooked: 'Zuletzt gekocht',
     sortMostCooked: 'Am häufigsten gekocht',
+    sortTopRated: 'Bestbewertet zuerst',
     selectBtn: 'Auswählen',
     cancelBtn: 'Abbrechen',
     selectAll: 'Alle auswählen',

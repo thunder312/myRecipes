@@ -34,6 +34,7 @@ export async function render(container) {
     { value: 'newest', label: t('overview.sortNewest') },
     { value: 'lastCooked', label: t('overview.sortLastCooked') },
     { value: 'mostCooked', label: t('overview.sortMostCooked') },
+    { value: 'topRated', label: t('overview.sortTopRated') },
   ];
   const categoryList = getCategoryList();
   const allCatLabel = t('overview.allCategories');
@@ -252,6 +253,10 @@ export async function render(container) {
           return bDate.localeCompare(aDate);
         }
         case 'mostCooked': return (b.cookedCount || 0) - (a.cookedCount || 0);
+        case 'topRated': {
+          const diff = (b.rating || 0) - (a.rating || 0);
+          return diff !== 0 ? diff : (a.title || '').localeCompare(b.title || '');
+        }
         default: return (b.createdAt || '').localeCompare(a.createdAt || '');
       }
     });
