@@ -128,6 +128,13 @@ export async function deleteRecipe(id) {
   await apiFetch(`/recipes/${id}`, { method: 'DELETE' });
 }
 
+export async function setFavorite(id, value) {
+  await apiFetch(`/recipes/${id}/favorite`, {
+    method: 'PATCH',
+    body: JSON.stringify({ favorite: value }),
+  });
+}
+
 // --- Cookbooks ---
 
 export async function getAllCookbooks() {

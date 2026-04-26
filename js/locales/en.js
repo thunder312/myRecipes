@@ -61,6 +61,7 @@ export const en = {
     sortLastCooked: 'Last cooked',
     sortMostCooked: 'Most cooked',
     sortTopRated: 'Top rated first',
+    favoritesOnly: 'Favorites only',
     selectBtn: 'Select',
     cancelBtn: 'Cancel',
     selectAll: 'Select all',

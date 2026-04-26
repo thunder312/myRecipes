@@ -135,6 +135,11 @@ function migrateSchema() {
   }
 
   // Ensure passwordHash column exists in users table (added in multi-user migration)
+  const statsColsCheck = db.pragma('table_info(user_recipe_stats)').map(r => r.name);
+  if (!statsColsCheck.includes('favorite')) {
+    db.exec('ALTER TABLE user_recipe_stats ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0');
+  }
+
   const userCols = db.pragma('table_info(users)').map(r => r.name);
   if (!userCols.includes('passwordHash')) {
     db.exec('ALTER TABLE users ADD COLUMN passwordHash TEXT NOT NULL DEFAULT \'\'');
@@ -297,14 +302,16 @@ function deserializeRecipe(row) {
 function mergeUserStats(recipe, userId) {
   if (!recipe || !userId) return recipe;
   const stats = getDB().prepare(
-    'SELECT cookedDates, cookedCount FROM user_recipe_stats WHERE userId = ? AND recipeId = ?'
+    'SELECT cookedDates, cookedCount, favorite FROM user_recipe_stats WHERE userId = ? AND recipeId = ?'
   ).get(userId, recipe.id);
   if (stats) {
     recipe.cookedDates = JSON.parse(stats.cookedDates || '[]');
     recipe.cookedCount = stats.cookedCount || 0;
+    recipe.favorite = stats.favorite ? 1 : 0;
   } else {
     recipe.cookedDates = [];
     recipe.cookedCount = 0;
+    recipe.favorite = 0;
   }
   return recipe;
 }
@@ -344,6 +351,14 @@ function upsertUserRecipeStats(userId, recipeId, cookedDates, cookedCount) {
       cookedDates = excluded.cookedDates,
       cookedCount = excluded.cookedCount
   `).run(userId, recipeId, JSON.stringify(cookedDates), cookedCount);
+}
+
+function setFavorite(userId, recipeId, value) {
+  getDB().prepare(`
+    INSERT INTO user_recipe_stats (userId, recipeId, cookedDates, cookedCount, favorite)
+    VALUES (?, ?, '[]', 0, ?)
+    ON CONFLICT(userId, recipeId) DO UPDATE SET favorite = excluded.favorite
+  `).run(userId, recipeId, value ? 1 : 0);
 }
 
 function addRecipe(recipe, extraCookbookIds = [], userId = null) {
@@ -745,4 +760,5 @@ module.exports = {
   addSavedQuery,
   deleteSavedQuery,
   upsertUserRecipeStats,
+  setFavorite,
 };

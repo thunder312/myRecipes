@@ -1,4 +1,4 @@
-import { getAllRecipes, deleteRecipe, getAllCookbooks, assignRecipesToCookbook, getCookbookMemberships, patchRecipe } from '../db.js';
+import { getAllRecipes, deleteRecipe, getAllCookbooks, assignRecipesToCookbook, getCookbookMemberships, patchRecipe, setFavorite } from '../db.js';
 import { $, createElement, formatDate, debounce, showToast, categoryChipClass } from '../utils/helpers.js';
 import { isAuthenticated } from '../utils/auth.js';
 import { t, getCategoryList, translateCategory } from '../i18n.js';
@@ -10,6 +10,7 @@ let filterState = {
   origin: '__all',
   cookbookId: 0,
   sort: 'alpha',
+  favoritesOnly: false,
 };
 
 export async function render(container) {
@@ -68,6 +69,10 @@ export async function render(container) {
         <select id="sortSelect" class="select">
           ${sortOptions.map(s => `<option value="${s.value}"${filterState.sort === s.value ? ' selected' : ''}>${s.label}</option>`).join('')}
         </select>
+        ${canEdit ? `<button id="favoritesToggle" class="btn btn--ghost overview__fav-toggle${filterState.favoritesOnly ? ' overview__fav-toggle--active' : ''}" title="${t('overview.favoritesOnly')}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="${filterState.favoritesOnly ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          ${t('overview.favoritesOnly')}
+        </button>` : ''}
       </div>
       <div class="category-chips-bar" id="categoryChipsBar">${buildCategoryChips()}</div>
       <div class="recipe-list" id="recipeGrid"></div>
@@ -123,6 +128,25 @@ export async function render(container) {
     if (!row) return;
     const id = parseInt(row.dataset.id, 10);
     if (selectMode) { e.preventDefault(); toggleSelect(id); return; }
+    const favBtn = e.target.closest('.recipe-row__favorite');
+    if (favBtn) {
+      const recipe = recipes.find(r => r.id === id);
+      if (!recipe) return;
+      const newVal = recipe.favorite ? 0 : 1;
+      recipe.favorite = newVal;
+      favBtn.classList.toggle('recipe-row__favorite--active', !!newVal);
+      favBtn.querySelector('svg').setAttribute('fill', newVal ? 'currentColor' : 'none');
+      try {
+        await setFavorite(recipe.id, newVal);
+      } catch (err) {
+        console.error('[Favorite] PATCH failed:', err);
+        recipe.favorite = newVal ? 0 : 1;
+        favBtn.classList.toggle('recipe-row__favorite--active', !newVal);
+        favBtn.querySelector('svg').setAttribute('fill', newVal ? 'none' : 'currentColor');
+        showToast(t('common.error'), 'error');
+      }
+      return;
+    }
     const ratingBtn = e.target.closest('.recipe-row__rating');
     if (ratingBtn) {
       const recipe = recipes.find(r => r.id === id);
@@ -162,7 +186,7 @@ export async function render(container) {
 
     filtered.forEach(recipe => {
       const row = document.createElement('div');
-      row.className = 'recipe-row' + (selectMode ? ' recipe-row--selectable' : '') + (selected.has(recipe.id) ? ' recipe-row--selected' : '');
+      row.className = 'recipe-row' + (canEdit ? ' recipe-row--with-fav' : '') + (selectMode ? ' recipe-row--selectable' : '') + (selected.has(recipe.id) ? ' recipe-row--selected' : '');
       row.dataset.id = recipe.id;
 
       const displayCat = translateCategory(recipe.category);
@@ -177,6 +201,9 @@ export async function render(container) {
         ${recipe.prepTime ? `<div class="recipe-row__time">${t('detail.minutes', recipe.prepTime)}</div>` : '<div class="recipe-row__time"></div>'}
         <div class="recipe-row__cooked">${recipe.cookedCount ? `${recipe.cookedCount}×` : '–'}</div>
         <button class="recipe-row__rating" type="button" title="Bewertung ändern"><img src="img/rating/${recipe.rating || 0}.webp" alt="" class="recipe-row__rating-img" /></button>
+        ${canEdit ? `<button class="recipe-row__favorite${recipe.favorite ? ' recipe-row__favorite--active' : ''}" type="button" data-id="${recipe.id}" title="${t('overview.favoritesOnly')}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="${recipe.favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>` : ''}
       `;
 
       if (!selectMode) row.style.cursor = 'pointer';
@@ -237,6 +264,7 @@ export async function render(container) {
       if (filterState.category !== null && translateCategory(r.category) !== filterState.category) return false;
       if (origin !== '__all' && r.origin !== origin) return false;
       if (cookbookId !== 0 && !recipeCookbookMap.get(r.id)?.has(cookbookId)) return false;
+      if (filterState.favoritesOnly && !r.favorite) return false;
       if (search) {
         const haystack = [r.title, r.description, r.mainIngredient, ...(r.tags || []), ...(r.ingredients || [])].join(' ').toLowerCase();
         if (!haystack.includes(search)) return false;
@@ -269,6 +297,14 @@ export async function render(container) {
   $('#originFilter', container).addEventListener('change', applyFilters);
   $('#cookbookFilter', container).addEventListener('change', applyFilters);
   $('#sortSelect', container).addEventListener('change', applyFilters);
+
+  $('#favoritesToggle', container)?.addEventListener('click', () => {
+    filterState.favoritesOnly = !filterState.favoritesOnly;
+    const btn = $('#favoritesToggle', container);
+    btn.classList.toggle('overview__fav-toggle--active', filterState.favoritesOnly);
+    btn.querySelector('svg').setAttribute('fill', filterState.favoritesOnly ? 'currentColor' : 'none');
+    applyFilters();
+  });
 
   // Category chip clicks
   $('#categoryChipsBar', container).addEventListener('click', e => {

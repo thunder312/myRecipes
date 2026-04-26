@@ -1,4 +1,4 @@
-import { getRecipe, updateRecipe, patchRecipe, deleteRecipe, uploadRecipeImage, deleteRecipeImage } from '../db.js';
+import { getRecipe, updateRecipe, patchRecipe, deleteRecipe, uploadRecipeImage, deleteRecipeImage, setFavorite } from '../db.js';
 import { generateRecipePDF, generateRecipeA5PDF } from '../pdf-generator.js';
 import { $, createElement, formatDate, formatDateTime, todayISO, showToast, categoryChipClass } from '../utils/helpers.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
@@ -142,8 +142,13 @@ function renderDetailView(container, recipe) {
 
       <div class="detail__title-row">
         <h1 class="detail__title">${esc(recipe.title)}</h1>
-        <div class="detail__rating" id="ratingWidget" title="Bewertung ändern">
-          <img src="img/rating/${recipe.rating || 0}.webp" alt="Bewertung ${recipe.rating || 0}" class="detail__rating-img" id="ratingImg" />
+        <div class="detail__title-actions">
+          ${canEdit ? `<button class="detail__favorite${recipe.favorite ? ' detail__favorite--active' : ''}" id="favoriteBtn" type="button">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="${recipe.favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </button>` : ''}
+          <div class="detail__rating" id="ratingWidget" title="Bewertung ändern">
+            <img src="img/rating/${recipe.rating || 0}.webp" alt="Bewertung ${recipe.rating || 0}" class="detail__rating-img" id="ratingImg" />
+          </div>
         </div>
       </div>
 
@@ -373,6 +378,23 @@ function renderDetailView(container, recipe) {
   });
   $('#scalerPlus', container).addEventListener('click', () => {
     if (currentServings < 99) { currentServings++; updateScaler(); }
+  });
+
+  // Favorite toggle
+  $('#favoriteBtn', container)?.addEventListener('click', async () => {
+    const newVal = recipe.favorite ? 0 : 1;
+    recipe.favorite = newVal;
+    const btn = $('#favoriteBtn', container);
+    btn.classList.toggle('detail__favorite--active', !!newVal);
+    btn.querySelector('svg').setAttribute('fill', newVal ? 'currentColor' : 'none');
+    try {
+      await setFavorite(recipe.id, newVal);
+    } catch {
+      recipe.favorite = newVal ? 0 : 1;
+      btn.classList.toggle('detail__favorite--active', !newVal);
+      btn.querySelector('svg').setAttribute('fill', newVal ? 'none' : 'currentColor');
+      showToast(t('common.error'), 'error');
+    }
   });
 
   // Rating widget – cycles 0→1→2→3→4→5→0 on click

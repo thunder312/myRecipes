@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { getAllRecipes, getRecipe, addRecipe, updateRecipe, deleteRecipe, upsertUserRecipeStats, getDB } = require('../db');
+const { getAllRecipes, getRecipe, addRecipe, updateRecipe, deleteRecipe, upsertUserRecipeStats, setFavorite, getDB } = require('../db');
 
 const router = Router();
 
@@ -79,6 +79,15 @@ router.patch('/:id', (req, res) => {
     updateRecipe({ ...existing, notes });
   }
 
+  res.json({ success: true });
+});
+
+// PATCH /api/recipes/:id/favorite - toggle favorite for the current user
+router.patch('/:id/favorite', (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!getRecipe(id)) return res.status(404).json({ error: 'Rezept nicht gefunden' });
+  const value = req.body.favorite ? 1 : 0;
+  setFavorite(req.user.userId, id, value);
   res.json({ success: true });
 });
 

@@ -720,6 +720,23 @@ button.nav__profile {
   background-color: var(--color-bg);
 }
 
+.overview__fav-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.overview__fav-toggle:hover {
+  color: #e0445a;
+}
+
+.overview__fav-toggle--active {
+  color: #e0445a;
+  border-color: #e0445a;
+}
+
 .category-chips-bar {
   display: flex;
   flex-wrap: wrap;
@@ -842,12 +859,47 @@ button.nav__profile {
   object-fit: contain;
 }
 
+.recipe-row__favorite {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, color 0.15s;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-text-muted);
+}
+
+.recipe-row__favorite:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #e0445a;
+}
+
+.recipe-row__favorite--active {
+  color: #e0445a;
+}
+
+/* Grid with favorite column */
+.recipe-row--with-fav {
+  grid-template-columns: 1fr auto auto auto auto auto;
+}
+
 /* Bulk select mode */
 
 .recipe-row--selectable {
   grid-template-columns: auto 1fr auto auto auto auto;
   cursor: pointer;
   user-select: none;
+}
+
+.recipe-row--selectable.recipe-row--with-fav {
+  grid-template-columns: auto 1fr auto auto auto auto auto;
 }
 
 .recipe-row--selectable:hover {
@@ -1015,6 +1067,37 @@ button.nav__profile {
   flex-wrap: wrap;
   gap: var(--space-sm);
   margin-bottom: var(--space-lg);
+}
+
+.detail__title-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.detail__favorite {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+
+.detail__favorite:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #e0445a;
+}
+
+.detail__favorite--active {
+  color: #e0445a;
 }
 
 .detail__rating {
