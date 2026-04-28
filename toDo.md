@@ -15,8 +15,8 @@ editierbar, erweiterbar und exportierbar als Text und PDF.
 
 ## Mobil
 ### Bugs
-- [] Buttons in mobiler Sicht korrigieren.
-- [] Herz in mobiler Sicht korrigieren
+- [ ] Buttons in mobiler Sicht korrigieren.
+- [ ] Herz in mobiler Sicht korrigieren
 
 ## Handschrift trainieren:
 
