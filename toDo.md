@@ -11,6 +11,12 @@ editierbar, erweiterbar und exportierbar als Text und PDF.
   6 Zustände: „–" unbewertet = neutraler Smiley, 1 = weinend, 2 = traurig, 3 = lachend,
   4 = lachend mit sichtbaren Zähnen, 5 = Herzaugen. Jeder Smiley hält eine Tafel mit
   der entsprechenden Zahl. DB-Spalte `rating REAL` ist bereits vorhanden.
+- [] Wochen-Kochplan unter "Was koche ich?"
+
+## Mobil
+### Bugs
+- [] Buttons in mobiler Sicht korrigieren.
+- [] Herz in mobiler Sicht korrigieren
 
 ## Handschrift trainieren:
 
