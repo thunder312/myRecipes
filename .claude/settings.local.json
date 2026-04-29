@@ -76,7 +76,10 @@
       "Bash(taskkill /PID 4040 /F)",
       "PowerShell(Stop-Process *)",
       "PowerShell(Get-NetTCPConnection *)",
-      "Bash(curl -s \"http://localhost:3000/api/recipes/27\")"
+      "Bash(curl -s \"http://localhost:3000/api/recipes/27\")",
+      "Bash(git -C \"D:/Dropbox/Entwicklung/HTML5/myRecipes\" status)",
+      "Bash(git -C \"D:/Dropbox/Entwicklung/HTML5/myRecipes\" diff --stat)",
+      "Bash(git *)"
     ]
   }
 }

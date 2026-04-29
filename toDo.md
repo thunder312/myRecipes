@@ -12,13 +12,13 @@ editierbar, erweiterbar und exportierbar als Text und PDF.
   4 = lachend mit sichtbaren Zähnen, 5 = Herzaugen. Jeder Smiley hält eine Tafel mit
   der entsprechenden Zahl. DB-Spalte `rating REAL` ist bereits vorhanden.
 
-  ^------------------------------ andere Emoticons benutzt ------------------------^
+   ^------------------------------ andere Emoticons benutzt ------------------------^
 - [ ] Wochen-Kochplan unter "Was koche ich?"
 
 ## Mobil
 ### Bugs
-- [ ]
-- [ ] Herz in mobiler Sicht korrigieren
+- [x] Buttons in mobiler Sicht korrigieren.
+- [x] Herz in mobiler Sicht korrigieren
 
 ## Handschrift trainieren:
 
