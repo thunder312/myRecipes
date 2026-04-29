@@ -1,7 +1,8 @@
 import { getWeekShoppingList, saveWeekShoppingList, deleteWeekShoppingList, getWeekPlan, getAllStores, getProductTags, setProductTag, getAllRecipes } from '../db.js';
 import { $, showToast, debounce } from '../utils/helpers.js';
 import { t, tRaw } from '../i18n.js';
-import { normalizeShoppingList } from '../api.js';
+import { normalizeShoppingList, resolveSlashIngredients } from '../api.js';
+import { loadPantryItems } from '../shopping-list.js';
 import { jsPDF } from 'jspdf';
 
 export async function render(container) {
@@ -40,7 +41,7 @@ export async function render(container) {
     return;
   }
 
-  let items = list.items || [];
+  let items = (list.items || []).sort((a, b) => sortKey(a.name).localeCompare(sortKey(b.name), 'de'));
   let extras = (list.extras || []).join(', ');
 
   // Determine planned recipe titles from plan
@@ -61,15 +62,16 @@ export async function render(container) {
     } catch { /* ignore */ }
   }, 800);
 
+  function getExportItems() {
+    const sorted = [...items].sort((a, b) => sortKey(a.name).localeCompare(sortKey(b.name), 'de'));
+    if (activeStoreFilter === 'none') return sorted.filter(i => !i.storeId);
+    if (activeStoreFilter) return sorted.filter(i => i.storeId === activeStoreFilter);
+    return sorted;
+  }
+
   function renderView() {
     const checkedCount = items.filter(i => i.checked).length;
-
-    // Filter items by active store
-    const visibleItems = activeStoreFilter === 'none'
-      ? items.filter(i => !i.storeId)
-      : activeStoreFilter
-        ? items.filter(i => i.storeId === activeStoreFilter)
-        : items;
+    const visibleItems = getExportItems();
 
     container.innerHTML = `
       <div class="week-shopping">
@@ -98,6 +100,12 @@ export async function render(container) {
           <button class="chip chip--filter${activeStoreFilter === 'none' ? ' chip--filter-active' : ''}" data-filter="none">${t('weekShopping.filterUnsorted')}</button>
         </div>
 
+        <!-- AI optimize button -->
+        <button class="btn btn--ghost btn--sm" id="btnWslAi">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/></svg>
+          ${t('weekShopping.aiOptimize')}
+        </button>
+
         <!-- Ingredient list -->
         <div class="week-shopping__list" id="wslList">
           ${visibleItems.length === 0
@@ -105,12 +113,6 @@ export async function render(container) {
             : visibleItems.map(item => renderItem(item, stores)).join('')
           }
         </div>
-
-        <!-- AI optimize button -->
-        <button class="btn btn--ghost btn--sm" id="btnWslAi">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-          ${t('weekShopping.aiOptimize')}
-        </button>
 
         <!-- Extras -->
         <div class="week-shopping__extras">
@@ -208,9 +210,41 @@ export async function render(container) {
       btn.disabled = true;
       btn.textContent = t('weekShopping.aiOptimizing');
       try {
-        const names = items.map(i => i.name);
-        const normalized = await normalizeShoppingList(names);
-        normalized.forEach((text, idx) => { if (items[idx]) items[idx].name = text; });
+        // Step 1 – resolve "/" items (e.g. "Champignons/Austernpilze" → two separate items)
+        const slashIdxs = items.reduce((acc, item, i) => { if (item.name.includes('/')) acc.push(i); return acc; }, []);
+        if (slashIdxs.length > 0) {
+          const resolved = await resolveSlashIngredients(slashIdxs.map(i => items[i].name));
+          // process in reverse so splicing doesn't shift indices
+          for (let ri = slashIdxs.length - 1; ri >= 0; ri--) {
+            const parts = resolved[ri];
+            if (!Array.isArray(parts)) continue; // keep as-is
+            const original = items.splice(slashIdxs[ri], 1)[0];
+            for (const partName of parts) {
+              const name = partName.trim();
+              if (!name) continue;
+              const existing = items.find(it => it.name.toLowerCase() === name.toLowerCase());
+              if (existing) {
+                // merge recipe sources
+                (original.recipes || []).forEach(r => { if (!existing.recipes?.includes(r)) existing.recipes?.push(r); });
+              } else {
+                items.push({ id: `${Date.now()}-${Math.random()}`, name, amount: original.amount || '', recipes: [...(original.recipes || [])], checked: false, storeId: original.storeId || null });
+              }
+            }
+          }
+        }
+
+        // Step 2 – normalize names and apply pantry
+        const pantry = await loadPantryItems();
+        const inputs = items.map(i => [i.amount, i.name].filter(Boolean).join(' '));
+        const normalized = await normalizeShoppingList(inputs);
+        normalized.forEach((text, idx) => {
+          if (!items[idx]) return;
+          items[idx].name = text;
+          items[idx].amount = '';
+          const lower = text.toLowerCase();
+          if (pantry.some(p => lower.includes(p.toLowerCase()))) items[idx].checked = true;
+        });
+        items.sort((a, b) => sortKey(a.name).localeCompare(sortKey(b.name), 'de'));
         saveDebounced();
         renderView();
         showToast(t('weekShopping.aiOptimized'), 'success');
@@ -235,7 +269,7 @@ export async function render(container) {
       const blob = new Blob([buildText()], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = 'wochen-einkauf.txt';
+      a.href = url; a.download = exportFilename('txt');
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
     });
@@ -256,20 +290,22 @@ export async function render(container) {
     });
   }
 
+  function exportFilename(ext) {
+    const activeStore = activeStoreFilter && activeStoreFilter !== 'none' ? storeMap.get(activeStoreFilter) : null;
+    const slug = activeStore ? '-' + activeStore.name.toLowerCase().replace(/\s+/g, '-') : '';
+    return `wochen-einkauf${slug}.${ext}`;
+  }
+
   function buildText() {
+    const exportItems = getExportItems();
     const lines = [t('weekShopping.pdfTitle'), ''];
     if (plannedMeals.length) {
       plannedMeals.forEach(m => lines.push(`  ${m}`));
       lines.push('');
     }
-    const unchecked = items.filter(i => !i.checked);
-    const checked = items.filter(i => i.checked);
-    unchecked.forEach(i => {
+    exportItems.filter(i => !i.checked).forEach(i => {
       const store = i.storeId ? storeMap.get(i.storeId) : null;
       lines.push(`☐ ${i.amount ? i.amount + ' ' : ''}${i.name}${store ? ' [' + store.name + ']' : ''}`);
-    });
-    checked.forEach(i => {
-      lines.push(`☑ ${i.amount ? i.amount + ' ' : ''}${i.name} (erledigt)`);
     });
     const extrasArr = extras.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
     if (extrasArr.length) {
@@ -318,11 +354,13 @@ export async function render(container) {
     const boxSize = 2.8;
     const lh = 5.5;
 
-    const grouped = groupByStore(items, storeMap);
+    const grouped = groupByStore(getExportItems().filter(i => !i.checked), storeMap);
     for (const [storeName, storeItems] of grouped) {
       if (storeName !== '__all') {
+        const allChecked = storeItems.every(i => i.checked);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7);
+        doc.setTextColor(allChecked ? 150 : 0);
         doc.text(storeName.toUpperCase(), margin, y);
         nl(4.5);
         doc.setFont('helvetica', 'normal');
@@ -379,7 +417,16 @@ export async function render(container) {
       }
     }
 
-    doc.save('wochen-einkauf.pdf');
+    doc.save(exportFilename('pdf'));
+  }
+
+  function sortKey(name) {
+    // Strip leading numbers/fractions and the immediately following word (unit or piece count)
+    // so "250 g Austernpilze" → "austernpilze", "1 Lauch" → "lauch"
+    return name
+      .replace(/^[\d\s.,/½¼¾⅓⅔⅛⅜⅝⅞-]+\S*\s*/, '')
+      .trim()
+      .toLowerCase();
   }
 
   function groupByStore(items, storeMap) {

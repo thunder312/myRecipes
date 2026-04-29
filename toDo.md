@@ -13,7 +13,11 @@ editierbar, erweiterbar und exportierbar als Text und PDF.
   der entsprechenden Zahl. DB-Spalte `rating REAL` ist bereits vorhanden.
 
    ^------------------------------ andere Emoticons benutzt ------------------------^
-- [ ] Wochen-Kochplan unter "Was koche ich?"
+- [x] Wochen-Kochplan unter "Was koche ich?"
+  - [x] alphabetisch sortieren
+  - [x] filter in Export berücksichtigen
+  - [x] <- zum Wochenplan soll zu Wochenplan gehen nicht zu "was koch ich"-tAB
+  - [x] ausgestrichene machen Kategorie grau
 
 ## Mobil
 ### Bugs

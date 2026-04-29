@@ -495,3 +495,55 @@ ${JSON.stringify(ingredients)}`,
   if (!Array.isArray(result) || result.length !== ingredients.length) throw new Error(t('apiErrors.parseError'));
   return result;
 }
+
+/**
+ * For ingredients containing "/", determines whether the "/" separates
+ * alternative/multiple real ingredients (→ split) or appears in another context
+ * (fraction like "1/2", unit like "EL/TL" → keep).
+ *
+ * Returns an array of the same length as `names`. Each element is either:
+ *   - a string  → keep original
+ *   - string[]  → split into these separate ingredient names
+ */
+export async function resolveSlashIngredients(names) {
+  const apiKey = await getApiKey();
+  const response = await fetchWithTimeout(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: `Du bist ein Einkaufszettel-Assistent. Analysiere folgende Zutatentexte, die "/" enthalten.
+
+Entscheide für jeden Text:
+- Trennt "/" zwei separate Zutaten? → gib die einzelnen Produktnamen als Array zurück (ohne Mengenangaben)
+  Beispiele: "Champignons/Austernpilze" → ["Champignons","Austernpilze"], "Hähnchen/Pute" → ["Hähnchen","Pute"]
+- Steht "/" für etwas anderes (Bruch, Einheit, Notiz)? → gib den Original-String zurück
+  Beispiele: "1/2 Zwiebel" → "1/2 Zwiebel", "EL/TL Öl" → "EL/TL Öl"
+
+Antworte NUR mit einem JSON-Array exakt gleicher Länge wie die Eingabe. Jedes Element ist entweder ein String oder ein Array von Strings.
+
+Eingabe:
+${JSON.stringify(names)}`,
+      }],
+    }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    handleApiError(response, err);
+  }
+  const data = await response.json();
+  const text = data.content?.[0]?.text || '';
+  const match = text.match(/\[[\s\S]*\]/);
+  if (!match) throw new Error(t('apiErrors.parseError'));
+  const result = JSON.parse(match[0]);
+  if (!Array.isArray(result) || result.length !== names.length) throw new Error(t('apiErrors.parseError'));
+  return result;
+}

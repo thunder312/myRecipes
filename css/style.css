@@ -4362,8 +4362,14 @@ details[open] > .batch__log-heading::before,
   }
   .wsl-item {
     grid-template-columns: auto 1fr;
+    grid-template-areas: "cb body" "cb sel";
   }
+  .wsl-item__cb   { grid-area: cb; align-self: start; margin-top: 3px; }
+  .wsl-item__body { grid-area: body; }
   .wsl-item__store-select {
-    display: none;
+    grid-area: sel;
+    display: block;
+    max-width: 100%;
+    width: fit-content;
   }
 }
