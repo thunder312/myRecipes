@@ -38,6 +38,12 @@ export function t(key, ...args) {
   return String(val);
 }
 
+/** Like t(), but returns the raw value (array, object, …) without stringifying. */
+export function tRaw(key) {
+  const locale = LOCALES[_lang] || LOCALES.de;
+  return key.split('.').reduce((obj, k) => obj?.[k], locale);
+}
+
 // --- Category helpers ---
 
 const DE_CATS = de.categories;

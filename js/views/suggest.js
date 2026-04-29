@@ -3,7 +3,7 @@ import { getSetting } from '../db.js';
 import { suggestRecipes } from '../api.js';
 import { $, createElement, showToast, categoryChipClass, debounce } from '../utils/helpers.js';
 import { isAuthenticated, isAdmin } from '../utils/auth.js';
-import { t, translateCategory } from '../i18n.js';
+import { t, tRaw, translateCategory } from '../i18n.js';
 import { aggregateIngredients } from '../utils/ingredient-aggregator.js';
 
 const STORE_COLORS = [
@@ -189,7 +189,7 @@ export async function render(container) {
     shoppingListExists = !!existingList;
   } catch { /* ignore */ }
 
-  const days = t('suggest.days');
+  const days = tRaw('suggest.days') || ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
   const btnGoToList = $('#btnGoToList', container);
   if (shoppingListExists) btnGoToList.classList.remove('hidden');
 

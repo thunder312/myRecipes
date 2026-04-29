@@ -1,7 +1,7 @@
 import { getWeekShoppingList, saveWeekShoppingList, deleteWeekShoppingList, getWeekPlan, getAllStores, getProductTags, setProductTag, getAllRecipes } from '../db.js';
 import { $, showToast, debounce } from '../utils/helpers.js';
 import { isAuthenticated } from '../utils/auth.js';
-import { t } from '../i18n.js';
+import { t, tRaw } from '../i18n.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { normalizeShoppingList } from '../api.js';
 import { jsPDF } from 'jspdf';
@@ -50,7 +50,7 @@ export async function render(container) {
   // Determine planned recipe titles from plan
   const planSlots = Array.isArray(plan?.slots) ? plan.slots : [];
   const recipeMap = new Map(allRecipes.map(r => [r.id, r]));
-  const days = t('suggest.days');
+  const days = tRaw('suggest.days') || ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
   const plannedMeals = planSlots
     .map((id, i) => id ? `${days[i]}: ${recipeMap.get(id)?.title || ''}` : null)
     .filter(Boolean);
