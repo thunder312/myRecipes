@@ -1,6 +1,6 @@
 import { getAllRecipes, getSavedQueries, addSavedQuery, deleteSavedQuery, getWeekPlan, saveWeekPlan, getWeekShoppingList, saveWeekShoppingList } from '../db.js';
 import { getSetting } from '../db.js';
-import { suggestRecipes } from '../api.js';
+import { suggestRecipes, resolveSlashIngredients } from '../api.js';
 import { $, createElement, showToast, categoryChipClass, debounce } from '../utils/helpers.js';
 import { isAuthenticated, isAdmin } from '../utils/auth.js';
 import { t, tRaw, translateCategory } from '../i18n.js';
@@ -411,7 +411,31 @@ export async function render(container, initialTab) {
     if (planned.length === 0) { showToast(t('suggest.noDaySelected'), 'warning'); return; }
 
     const recipePlans = planned.map(s => ({ recipe: recipeById(s.recipeId) })).filter(p => p.recipe);
-    const items = aggregateIngredients(recipePlans);
+    let items = aggregateIngredients(recipePlans);
+
+    // Resolve "A/B/C" ingredient names into separate items
+    try {
+      const slashIdxs = items.reduce((acc, item, i) => { if (item.name.includes('/')) acc.push(i); return acc; }, []);
+      if (slashIdxs.length > 0) {
+        const resolved = await resolveSlashIngredients(slashIdxs.map(i => items[i].name));
+        for (let ri = slashIdxs.length - 1; ri >= 0; ri--) {
+          const parts = resolved[ri];
+          if (!Array.isArray(parts)) continue;
+          const original = items.splice(slashIdxs[ri], 1)[0];
+          for (const partName of parts) {
+            const name = partName.trim();
+            if (!name) continue;
+            const existing = items.find(it => it.name.toLowerCase() === name.toLowerCase());
+            if (existing) {
+              (original.recipes || []).forEach(r => { if (!existing.recipes?.includes(r)) existing.recipes?.push(r); });
+            } else {
+              items.push({ id: `${Date.now()}-${Math.random()}`, name, amount: original.amount || '',
+                recipes: [...(original.recipes || [])], checked: false, storeId: original.storeId || null });
+            }
+          }
+        }
+      }
+    } catch { /* ignore – slash resolution is best-effort */ }
 
     // Apply existing product tag suggestions if available
     try {
