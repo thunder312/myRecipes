@@ -1,14 +1,10 @@
 import { getWeekShoppingList, saveWeekShoppingList, deleteWeekShoppingList, getWeekPlan, getAllStores, getProductTags, setProductTag, getAllRecipes } from '../db.js';
 import { $, showToast, debounce } from '../utils/helpers.js';
-import { isAuthenticated } from '../utils/auth.js';
 import { t, tRaw } from '../i18n.js';
-import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { normalizeShoppingList } from '../api.js';
 import { jsPDF } from 'jspdf';
 
 export async function render(container) {
-  await ensureAuthenticated(container, () => render(container));
-  if (!isAuthenticated()) return;
 
   // Load data in parallel
   let list = null, stores = [], productTags = [], plan = null, allRecipes = [];
@@ -79,7 +75,7 @@ export async function render(container) {
       <div class="week-shopping">
         <div class="week-shopping__header">
           <h1>${t('weekShopping.title')}</h1>
-          <a href="#suggest" class="btn btn--ghost btn--sm">${t('weekShopping.backToplan')}</a>
+          <a href="#suggest/week" class="btn btn--ghost btn--sm">${t('weekShopping.backToplan')}</a>
         </div>
 
         ${plannedMeals.length ? `

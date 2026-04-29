@@ -16,7 +16,7 @@ router.post('/', (req, res) => {
   const { name, color } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name erforderlich' });
   try {
-    const id = addStore(name, color, req.user.id);
+    const id = addStore(name, color, req.user.userId);
     res.json({ id, name: name.trim(), color: color || '#6b7280' });
   } catch (err) {
     if (err.message && err.message.includes('UNIQUE')) {
@@ -51,7 +51,7 @@ router.put('/product-tags', (req, res) => {
   if (!productName) return res.status(400).json({ error: 'productName erforderlich' });
   if (!storeId) return res.status(400).json({ error: 'storeId erforderlich' });
   try {
-    setProductTag(productName, parseInt(storeId, 10), req.user.id);
+    setProductTag(productName, parseInt(storeId, 10), req.user.userId);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

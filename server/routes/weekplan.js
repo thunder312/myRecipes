@@ -9,7 +9,7 @@ const {
 // GET /api/weekplan
 router.get('/', (req, res) => {
   try {
-    res.json(getWeekPlan(req.user.id));
+    res.json(getWeekPlan(req.user.userId));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -20,7 +20,7 @@ router.put('/', (req, res) => {
   const { slots } = req.body;
   if (!Array.isArray(slots)) return res.status(400).json({ error: 'slots must be an array' });
   try {
-    saveWeekPlan(req.user.id, slots);
+    saveWeekPlan(req.user.userId, slots);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -30,7 +30,7 @@ router.put('/', (req, res) => {
 // GET /api/weekplan/shopping-list
 router.get('/shopping-list', (req, res) => {
   try {
-    res.json(getWeekShoppingList(req.user.id) || null);
+    res.json(getWeekShoppingList(req.user.userId) || null);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -41,7 +41,7 @@ router.put('/shopping-list', (req, res) => {
   const { items, extras } = req.body;
   if (!Array.isArray(items)) return res.status(400).json({ error: 'items must be an array' });
   try {
-    saveWeekShoppingList(req.user.id, items, extras || []);
+    saveWeekShoppingList(req.user.userId, items, extras || []);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -51,7 +51,7 @@ router.put('/shopping-list', (req, res) => {
 // DELETE /api/weekplan/shopping-list
 router.delete('/shopping-list', (req, res) => {
   try {
-    deleteWeekShoppingList(req.user.id);
+    deleteWeekShoppingList(req.user.userId);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

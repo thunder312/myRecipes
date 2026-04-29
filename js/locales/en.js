@@ -407,6 +407,8 @@ export const en = {
     recipePickerSearch: 'Search recipe…',
     recipePickerEmpty: 'No recipes found.',
     planSaved: 'Plan saved.',
+    aiSuggestModalTitle: (day) => `AI Suggestion for ${day}`,
+    aiSuggestAccept: 'Use this recipe',
   },
 
   weekShopping: {
@@ -517,6 +519,7 @@ export const en = {
   common: {
     error: 'Error',
     close: 'Close',
+    cancel: 'Cancel',
   },
 
   apiErrors: {

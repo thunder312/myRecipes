@@ -11,7 +11,7 @@ const STORE_COLORS = [
   '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899',
 ];
 
-export async function render(container) {
+export async function render(container, initialTab) {
   const loggedIn = isAuthenticated();
   const admin = isAdmin();
 
@@ -57,14 +57,20 @@ export async function render(container) {
   `;
 
   // --- Tab switching ---
+  function activateTab(tabName) {
+    container.querySelectorAll('.suggest__tab').forEach(t => t.classList.remove('suggest__tab--active'));
+    container.querySelectorAll('.suggest__panel').forEach(p => p.classList.remove('suggest__panel--active'));
+    const tab = container.querySelector(`.suggest__tab[data-tab="${tabName}"]`);
+    if (tab) tab.classList.add('suggest__tab--active');
+    const panel = $('#panel' + tabName.charAt(0).toUpperCase() + tabName.slice(1), container);
+    if (panel) panel.classList.add('suggest__panel--active');
+  }
+
   container.querySelectorAll('.suggest__tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      container.querySelectorAll('.suggest__tab').forEach(t => t.classList.remove('suggest__tab--active'));
-      container.querySelectorAll('.suggest__panel').forEach(p => p.classList.remove('suggest__panel--active'));
-      tab.classList.add('suggest__tab--active');
-      $('#panel' + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1), container).classList.add('suggest__panel--active');
-    });
+    tab.addEventListener('click', () => activateTab(tab.dataset.tab));
   });
+
+  if (initialTab) activateTab(initialTab);
 
   // =========================================================================
   // Tab: Tagesvorschlag (existing logic)
@@ -212,9 +218,15 @@ export async function render(container) {
           ${filled ? esc(recipe.title) : t('suggest.dayEmpty')}
         </div>
         <div class="week-plan__actions">
-          <button class="btn btn--ghost btn--sm week-plan__btn" data-action="pick" data-day="${i}">${t('suggest.pickRecipe')}</button>
-          <button class="btn btn--ghost btn--sm week-plan__btn" data-action="ai" data-day="${i}">${t('suggest.aiSuggest')}</button>
-          ${filled ? `<button class="btn btn--ghost btn--sm week-plan__remove" data-action="remove" data-day="${i}" title="${t('suggest.removeDay')}">×</button>` : ''}
+          <button class="week-plan__icon-btn" data-action="pick" data-day="${i}" title="${t('suggest.pickRecipe')}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </button>
+          <button class="week-plan__icon-btn" data-action="ai" data-day="${i}" title="${t('suggest.aiSuggest')}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/></svg>
+          </button>
+          ${filled ? `<button class="week-plan__icon-btn week-plan__icon-btn--remove" data-action="remove" data-day="${i}" title="${t('suggest.removeDay')}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>` : ''}
         </div>
       `;
       grid.appendChild(card);
@@ -240,7 +252,11 @@ export async function render(container) {
     } else if (action === 'pick') {
       openRecipePicker(day);
     } else if (action === 'ai') {
-      await runAiSuggest(day, btn);
+      try {
+        await runAiSuggest(day, btn);
+      } catch (err) {
+        showToast(err?.message || String(err) || t('common.error'), 'error');
+      }
     }
   });
 
@@ -325,18 +341,68 @@ export async function render(container) {
       const dayName = days[dayIndex];
       const suggestions = await suggestRecipes(`Was soll ich am ${dayName} kochen?`, candidates);
       if (suggestions && suggestions.length > 0) {
-        slots[dayIndex] = suggestions[0].id;
-        renderWeekGrid();
-        await persistSlots();
+        const top = suggestions[0];
+        const recipe = allRecipes.find(r => r.id === top.id || String(r.id) === String(top.id));
+        if (!recipe) { showToast(t('suggest.noMatch'), 'warning'); return; }
+        btn.disabled = false;
+        btn.textContent = originalText;
+        await showAiSuggestionModal(dayName, recipe, top.matchReasons || [], () => {
+          slots[dayIndex] = recipe.id;
+          renderWeekGrid();
+          persistSlots();
+        });
       } else {
         showToast(t('suggest.noMatch'), 'warning');
       }
     } catch (err) {
-      showToast(err.message, 'error');
+      showToast(err?.message || String(err) || t('common.error'), 'error');
     } finally {
       btn.disabled = false;
       btn.textContent = originalText;
     }
+  }
+
+  function showAiSuggestionModal(dayName, recipe, reasons, onAccept) {
+    return new Promise(resolve => {
+      const existing = document.getElementById('aiSuggestModal');
+      if (existing) existing.remove();
+
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      modal.id = 'aiSuggestModal';
+      modal.innerHTML = `
+        <div class="modal__backdrop"></div>
+        <div class="modal__box">
+          <div class="modal__header">
+            <h2>${t('suggest.aiSuggestModalTitle', dayName)}</h2>
+            <button class="modal__close" id="aiSuggestClose" aria-label="${t('common.close')}">&times;</button>
+          </div>
+          <div class="modal__body">
+            <p class="ai-suggest-modal__recipe">${esc(recipe.title)}</p>
+            ${reasons.length ? `
+              <ul class="ai-suggest-modal__reasons">
+                ${reasons.map(r => `<li>${esc(r)}</li>`).join('')}
+              </ul>
+            ` : ''}
+          </div>
+          <div class="modal__footer">
+            <button class="btn btn--ghost" id="aiSuggestCancel">${t('common.cancel')}</button>
+            <button class="btn btn--primary" id="aiSuggestAccept">${t('suggest.aiSuggestAccept')}</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      const close = () => { modal.remove(); resolve(); };
+      modal.querySelector('#aiSuggestClose').addEventListener('click', close);
+      modal.querySelector('.modal__backdrop').addEventListener('click', close);
+      modal.querySelector('#aiSuggestCancel').addEventListener('click', close);
+      modal.querySelector('#aiSuggestAccept').addEventListener('click', () => {
+        modal.remove();
+        onAccept();
+        resolve();
+      });
+    });
   }
 
   // Generate shopping list
