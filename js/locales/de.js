@@ -142,6 +142,14 @@ export const de = {
     imageDeleted: 'Bild gelöscht.',
   },
 
+  shopMode: {
+    title: 'Einkaufen',
+    openBtn: 'Einkaufen',
+    exitBtn: 'Beenden',
+    progress: (checked, total) => `${checked} von ${total} erledigt`,
+    noStore: 'Ohne Supermarkt',
+  },
+
   cookMode: {
     ingredientsBtn: (n) => `Zutaten (${n})`,
     ingredientsTitle: 'Zutaten',

@@ -4,6 +4,7 @@ import { t, tRaw } from '../i18n.js';
 import { normalizeShoppingList, resolveSlashIngredients } from '../api.js';
 import { loadPantryItems } from '../shopping-list.js';
 import { jsPDF } from 'jspdf';
+import { openShoppingMode } from '../shopping-mode.js';
 
 export async function render(container) {
 
@@ -121,6 +122,15 @@ export async function render(container) {
           <textarea id="wslExtras" class="input input--textarea sl-extras" rows="3" placeholder="${t('weekShopping.extrasPlaceholder')}">${esc(extras)}</textarea>
         </div>
 
+        <!-- Shop mode button -->
+        <button class="btn btn--primary btn--shop-mode" id="btnShopMode">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+          </svg>
+          ${t('shopMode.openBtn')}
+        </button>
+
         <!-- Actions -->
         <div class="week-shopping__export-options">
           <label class="wsl-export-toggle">
@@ -160,6 +170,11 @@ export async function render(container) {
   }
 
   function bindEvents() {
+    // Shop mode
+    $('#btnShopMode', container)?.addEventListener('click', () => {
+      openShoppingMode(items, storeMap, (_id, _checked) => saveDebounced());
+    });
+
     // Meal plan in export toggle
     const chkMeals = container.querySelector('#chkShowMeals');
     if (chkMeals) chkMeals.addEventListener('change', () => { showMealsInExport = chkMeals.checked; });
