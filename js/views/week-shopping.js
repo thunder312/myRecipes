@@ -244,6 +244,7 @@ export async function render(container) {
           items[idx].name = name;
           if (matchesPantry(name, pantry)) items[idx].checked = true;
         });
+        items = deduplicateItems(items);
         items.sort((a, b) => sortKey(a.name).localeCompare(sortKey(b.name), 'de'));
         saveDebounced();
         renderView();
@@ -436,6 +437,39 @@ export async function render(container) {
     );
     if (m) return { amount: m[1].trim(), name: m[2].trim() };
     return { amount: '', name: text };
+  }
+
+  // Merge two amount strings: "2" + "2" → "4", "500g" + "300g" → "800g", fallback: "a + b"
+  function mergeAmounts(a1, a2) {
+    if (!a1) return a2 || '';
+    if (!a2) return a1;
+    const parse = s => { const m = s.match(/^([\d,.]+)\s*(.*)/); return m ? { num: parseFloat(m[1].replace(',', '.')), unit: m[2].trim() } : null; };
+    const p1 = parse(a1); const p2 = parse(a2);
+    if (p1 && p2 && p1.unit.toLowerCase() === p2.unit.toLowerCase()) {
+      const sum = p1.num + p2.num;
+      const str = Number.isInteger(sum) ? String(sum) : sum.toFixed(1).replace('.', ',');
+      return p1.unit ? `${str} ${p1.unit}` : str;
+    }
+    return `${a1} + ${a2}`;
+  }
+
+  // After normalization, merge items that now share the same name
+  function deduplicateItems(arr) {
+    const seen = new Map();
+    const result = [];
+    for (const item of arr) {
+      const key = item.name.toLowerCase().trim();
+      if (seen.has(key)) {
+        const ex = result[seen.get(key)];
+        ex.amount = mergeAmounts(ex.amount, item.amount);
+        (item.recipes || []).forEach(r => { if (!ex.recipes) ex.recipes = []; if (!ex.recipes.includes(r)) ex.recipes.push(r); });
+        if (item.checked) ex.checked = true;
+      } else {
+        seen.set(key, result.length);
+        result.push({ ...item, recipes: [...(item.recipes || [])] });
+      }
+    }
+    return result;
   }
 
   // Pantry match: short items (< 4 chars) only match at word boundaries
