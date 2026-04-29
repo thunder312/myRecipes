@@ -516,6 +516,7 @@ async function initPantrySection(container) {
   let items = await loadPantryItems();
 
   function renderTags() {
+    items.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
     const tagsEl = $('#pantryTags', container);
     if (!tagsEl) return;
     if (items.length === 0) {
