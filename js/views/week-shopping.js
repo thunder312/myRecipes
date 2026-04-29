@@ -321,99 +321,99 @@ export async function render(container) {
     const margin = 10;
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
-    const contentW = pageW - 2 * margin;
+    const colGap = 5;
+    const colW = (pageW - 2 * margin - colGap) / 2;
+    const boxSize = 2.5;
+    const lh = 5;
     let y = margin;
+    let col = 0;         // 0 = left column, 1 = right column
+    let yColStart = margin;
 
-    const nl = (h = 5.5) => {
-      y += h;
-      if (y > pageH - margin) { doc.addPage(); y = margin; }
-    };
+    const xOf = () => margin + col * (colW + colGap);
 
-    // Title
+    function nextColumn() {
+      if (col === 0) {
+        col = 1;
+        y = yColStart;
+      } else {
+        doc.addPage();
+        col = 0;
+        y = margin;
+        yColStart = margin;
+      }
+    }
+
+    // ---- Header: full page width ----
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.text(t('weekShopping.pdfTitle'), margin, y);
-    nl(6);
+    y += 6;
 
-    // Meals
     if (plannedMeals.length) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
       doc.setTextColor(120);
-      plannedMeals.forEach(m => { doc.text(m, margin, y); nl(4); });
+      plannedMeals.forEach(m => { doc.text(m, margin, y); y += 4; });
       doc.setTextColor(0);
     }
 
-    // Divider
     doc.setDrawColor(200);
     doc.line(margin, y, pageW - margin, y);
-    nl(4);
+    y += 4;
+    yColStart = y;  // columns begin here
 
-    // Items
-    doc.setFontSize(9);
-    const boxSize = 2.8;
-    const lh = 5.5;
+    // ---- Items: 2-column ----
+    doc.setFontSize(8);
 
     const grouped = groupByStore(getExportItems().filter(i => !i.checked), storeMap);
     for (const [storeName, storeItems] of grouped) {
       if (storeName !== '__all') {
-        const allChecked = storeItems.every(i => i.checked);
+        // Store heading: keep heading and at least one item together
+        const headH = 4.5;
+        if (y + headH + lh > pageH - margin) nextColumn();
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7);
-        doc.setTextColor(allChecked ? 150 : 0);
-        doc.text(storeName.toUpperCase(), margin, y);
-        nl(4.5);
+        doc.setFontSize(6.5);
+        doc.setTextColor(0);
+        doc.text(storeName.toUpperCase(), xOf(), y);
+        y += headH;
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
+        doc.setFontSize(8);
       }
       for (const item of storeItems) {
         const label = (item.amount ? item.amount + ' ' : '') + item.name;
-        const lines = doc.splitTextToSize(label, contentW - boxSize - 3);
-        if (item.checked) {
-          doc.setTextColor(150);
-          doc.setDrawColor(150);
-        } else {
-          doc.setTextColor(0);
-          doc.setDrawColor(80);
-        }
-        if (!item.checked) {
-          doc.rect(margin, y - boxSize + 0.5, boxSize, boxSize);
-        } else {
-          // Strikethrough box (checked)
-          doc.rect(margin, y - boxSize + 0.5, boxSize, boxSize);
-          doc.line(margin, y - boxSize + 0.5, margin + boxSize, y + 0.5);
-        }
-        doc.text(lines, margin + boxSize + 3, y);
-        if (item.checked) {
-          // Strike through text
-          const tw = doc.getTextWidth(label.length > 30 ? label.slice(0, 30) + '…' : label);
-          doc.line(margin + boxSize + 3, y - 1.5, margin + boxSize + 3 + Math.min(tw, contentW - boxSize - 3), y - 1.5);
-        }
-        y += Math.max(lines.length * lh * 0.9, lh);
-        if (y > pageH - margin) { doc.addPage(); y = margin; }
+        const lines = doc.splitTextToSize(label, colW - boxSize - 2);
+        const itemH = Math.max(lines.length * lh * 0.9, lh);
+        if (y + itemH > pageH - margin) nextColumn();
+        const x = xOf();
+        doc.setTextColor(0);
+        doc.setDrawColor(80);
+        doc.rect(x, y - boxSize + 0.5, boxSize, boxSize);
+        doc.text(lines, x + boxSize + 2, y);
+        y += itemH;
       }
     }
 
-    // Extras
+    // ---- Extras: continue in columns ----
     const extrasArr = extras.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
     if (extrasArr.length) {
-      doc.setTextColor(0);
-      doc.setDrawColor(200);
-      doc.line(margin, y, pageW - margin, y);
-      nl(4);
+      const headH = 5;
+      if (y + headH + lh > pageH - margin) nextColumn();
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.text(t('weekShopping.pdfExtras'), margin, y);
-      nl(5);
+      doc.setFontSize(7);
+      doc.setTextColor(0);
+      doc.text(t('weekShopping.pdfExtras'), xOf(), y);
+      y += headH;
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
+      doc.setFontSize(8);
       doc.setDrawColor(80);
       for (const e of extrasArr) {
-        const lines = doc.splitTextToSize(e, contentW - boxSize - 3);
-        doc.rect(margin, y - boxSize + 0.5, boxSize, boxSize);
-        doc.text(lines, margin + boxSize + 3, y);
-        y += Math.max(lines.length * lh * 0.9, lh);
-        if (y > pageH - margin) { doc.addPage(); y = margin; }
+        const lines = doc.splitTextToSize(e, colW - boxSize - 2);
+        const itemH = Math.max(lines.length * lh * 0.9, lh);
+        if (y + itemH > pageH - margin) nextColumn();
+        const x = xOf();
+        doc.rect(x, y - boxSize + 0.5, boxSize, boxSize);
+        doc.text(lines, x + boxSize + 2, y);
+        y += itemH;
       }
     }
 
