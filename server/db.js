@@ -97,6 +97,39 @@ function initSchema() {
       cookedCount INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (userId, recipeId)
     );
+
+    CREATE TABLE IF NOT EXISTS week_plan (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL UNIQUE,
+      slots TEXT NOT NULL DEFAULT '[]',
+      updatedAt TEXT NOT NULL,
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS week_shopping_list (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL UNIQUE,
+      items TEXT NOT NULL DEFAULT '[]',
+      extras TEXT NOT NULL DEFAULT '[]',
+      updatedAt TEXT NOT NULL,
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS stores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      color TEXT NOT NULL DEFAULT '#6b7280',
+      createdBy INTEGER,
+      createdAt TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS store_product_tags (
+      productName TEXT PRIMARY KEY,
+      storeId INTEGER NOT NULL,
+      updatedBy INTEGER,
+      updatedAt TEXT NOT NULL,
+      FOREIGN KEY (storeId) REFERENCES stores(id) ON DELETE CASCADE
+    );
   `);
 }
 
@@ -718,6 +751,73 @@ function deleteUser(id) {
   d.prepare('DELETE FROM users WHERE id = ?').run(id);
 }
 
+// --- Week Plan ---
+
+function getWeekPlan(userId) {
+  const row = getDB().prepare('SELECT * FROM week_plan WHERE userId = ?').get(userId);
+  if (!row) return { slots: [] };
+  return { ...row, slots: JSON.parse(row.slots || '[]') };
+}
+
+function saveWeekPlan(userId, slots) {
+  const now = new Date().toISOString();
+  getDB().prepare(`
+    INSERT INTO week_plan (userId, slots, updatedAt) VALUES (?, ?, ?)
+    ON CONFLICT(userId) DO UPDATE SET slots = excluded.slots, updatedAt = excluded.updatedAt
+  `).run(userId, JSON.stringify(slots), now);
+}
+
+function getWeekShoppingList(userId) {
+  const row = getDB().prepare('SELECT * FROM week_shopping_list WHERE userId = ?').get(userId);
+  if (!row) return null;
+  return { ...row, items: JSON.parse(row.items || '[]'), extras: JSON.parse(row.extras || '[]') };
+}
+
+function saveWeekShoppingList(userId, items, extras) {
+  const now = new Date().toISOString();
+  getDB().prepare(`
+    INSERT INTO week_shopping_list (userId, items, extras, updatedAt) VALUES (?, ?, ?, ?)
+    ON CONFLICT(userId) DO UPDATE SET items = excluded.items, extras = excluded.extras, updatedAt = excluded.updatedAt
+  `).run(userId, JSON.stringify(items), JSON.stringify(extras || []), now);
+}
+
+function deleteWeekShoppingList(userId) {
+  getDB().prepare('DELETE FROM week_shopping_list WHERE userId = ?').run(userId);
+}
+
+// --- Stores ---
+
+function getAllStores() {
+  return getDB().prepare('SELECT * FROM stores ORDER BY name ASC').all();
+}
+
+function addStore(name, color, userId) {
+  const result = getDB().prepare(
+    'INSERT INTO stores (name, color, createdBy, createdAt) VALUES (?, ?, ?, ?)'
+  ).run(name.trim(), color || '#6b7280', userId, new Date().toISOString());
+  return result.lastInsertRowid;
+}
+
+function deleteStore(id) {
+  getDB().prepare('DELETE FROM stores WHERE id = ?').run(id);
+}
+
+function getProductTags() {
+  return getDB().prepare('SELECT * FROM store_product_tags ORDER BY productName ASC').all();
+}
+
+function setProductTag(productName, storeId, userId) {
+  const now = new Date().toISOString();
+  getDB().prepare(`
+    INSERT INTO store_product_tags (productName, storeId, updatedBy, updatedAt) VALUES (?, ?, ?, ?)
+    ON CONFLICT(productName) DO UPDATE SET storeId = excluded.storeId, updatedBy = excluded.updatedBy, updatedAt = excluded.updatedAt
+  `).run(productName.toLowerCase().trim(), storeId, userId, now);
+}
+
+function deleteProductTag(productName) {
+  getDB().prepare('DELETE FROM store_product_tags WHERE productName = ?').run(productName.toLowerCase().trim());
+}
+
 // --- Saved Queries ---
 
 function getAllSavedQueries() {
@@ -776,4 +876,15 @@ module.exports = {
   deleteSavedQuery,
   upsertUserRecipeStats,
   setFavorite,
+  getWeekPlan,
+  saveWeekPlan,
+  getWeekShoppingList,
+  saveWeekShoppingList,
+  deleteWeekShoppingList,
+  getAllStores,
+  addStore,
+  deleteStore,
+  getProductTags,
+  setProductTag,
+  deleteProductTag,
 };

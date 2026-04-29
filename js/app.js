@@ -10,6 +10,7 @@ const routes = {
   import: () => import('./views/import-view.js'),
   settings: () => import('./views/settings.js'),
   cookbooks: () => import('./views/cookbooks.js'),
+  'week-shopping': () => import('./views/week-shopping.js'),
 };
 
 let currentView = null;

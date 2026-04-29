@@ -11,6 +11,8 @@ const cookbooksRouter = require('./routes/cookbooks');
 const usersRouter = require('./routes/users');
 const fetchUrlRouter = require('./routes/fetch-url');
 const suggestQueriesRouter = require('./routes/suggest-queries');
+const weekplanRouter = require('./routes/weekplan');
+const storesRouter = require('./routes/stores');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -123,6 +125,11 @@ app.use('/api/suggest-queries', (req, res, next) => {
   if (req.method === 'DELETE') return requireAdmin(req, res, next);
   requireAuth(req, res, next);
 }, suggestQueriesRouter);
+app.use('/api/weekplan', requireAuth, weekplanRouter);
+app.use('/api/stores', (req, res, next) => {
+  if (req.method === 'GET') return next();
+  requireAuth(req, res, next);
+}, storesRouter);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

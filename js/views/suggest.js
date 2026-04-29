@@ -1,9 +1,15 @@
-import { getAllRecipes, getSavedQueries, addSavedQuery, deleteSavedQuery } from '../db.js';
+import { getAllRecipes, getSavedQueries, addSavedQuery, deleteSavedQuery, getWeekPlan, saveWeekPlan, getWeekShoppingList, saveWeekShoppingList } from '../db.js';
 import { getSetting } from '../db.js';
 import { suggestRecipes } from '../api.js';
-import { $, createElement, showToast, categoryChipClass } from '../utils/helpers.js';
+import { $, createElement, showToast, categoryChipClass, debounce } from '../utils/helpers.js';
 import { isAuthenticated, isAdmin } from '../utils/auth.js';
 import { t, translateCategory } from '../i18n.js';
+import { aggregateIngredients } from '../utils/ingredient-aggregator.js';
+
+const STORE_COLORS = [
+  '#e11d48', '#f97316', '#eab308', '#22c55e',
+  '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899',
+];
 
 export async function render(container) {
   const loggedIn = isAuthenticated();
@@ -11,29 +17,58 @@ export async function render(container) {
 
   container.innerHTML = `
     <div class="suggest">
-      <h1>${t('suggest.title')}</h1>
-      <p class="suggest__intro">${t('suggest.intro')}</p>
+      <div class="suggest__tabs">
+        <button class="suggest__tab suggest__tab--active" data-tab="daily">${t('suggest.tabSuggest')}</button>
+        <button class="suggest__tab" data-tab="week">${t('suggest.tabWeekPlan')}</button>
+      </div>
 
-      <div class="suggest__input-group">
-        <textarea id="questionInput" class="input input--textarea" rows="2" placeholder="${t('suggest.placeholder')}"></textarea>
-        <div class="suggest__filters">
-          <label class="suggest__filter-check"><input type="checkbox" id="filterHauptgericht" checked /> ${t('suggest.filterMain')}</label>
-          <label class="suggest__filter-check"><input type="checkbox" id="filterSalat" checked /> ${t('suggest.filterSalad')}</label>
-          ${loggedIn ? `<label class="suggest__filter-check suggest__filter-save"><input type="checkbox" id="saveQuery" /> ${t('suggest.filterSave')}</label>` : ''}
+      <!-- Tab: Tagesvorschlag -->
+      <div class="suggest__panel suggest__panel--active" id="panelDaily">
+        <h1>${t('suggest.title')}</h1>
+        <p class="suggest__intro">${t('suggest.intro')}</p>
+        <div class="suggest__input-group">
+          <textarea id="questionInput" class="input input--textarea" rows="2" placeholder="${t('suggest.placeholder')}"></textarea>
+          <div class="suggest__filters">
+            <label class="suggest__filter-check"><input type="checkbox" id="filterHauptgericht" checked /> ${t('suggest.filterMain')}</label>
+            <label class="suggest__filter-check"><input type="checkbox" id="filterSalat" checked /> ${t('suggest.filterSalad')}</label>
+            ${loggedIn ? `<label class="suggest__filter-check suggest__filter-save"><input type="checkbox" id="saveQuery" /> ${t('suggest.filterSave')}</label>` : ''}
+          </div>
+          <button class="btn btn--primary" id="btnAsk">${t('suggest.askBtn')}</button>
         </div>
-        <button class="btn btn--primary" id="btnAsk">${t('suggest.askBtn')}</button>
+        <div class="suggest__chips" id="savedChips"></div>
+        <div class="suggest__loading hidden" id="loading">
+          <div class="spinner"></div>
+          <p>${t('suggest.loading')}</p>
+        </div>
+        <div class="suggest__results hidden" id="results"></div>
       </div>
 
-      <div class="suggest__chips" id="savedChips"></div>
-
-      <div class="suggest__loading hidden" id="loading">
-        <div class="spinner"></div>
-        <p>${t('suggest.loading')}</p>
+      <!-- Tab: Wochenplan -->
+      <div class="suggest__panel" id="panelWeek">
+        <h1>${t('suggest.weekPlanTitle')}</h1>
+        <p class="suggest__intro">${t('suggest.weekPlanIntro')}</p>
+        <div class="week-plan" id="weekPlanGrid"></div>
+        <div class="week-plan__footer">
+          <button class="btn btn--primary" id="btnGenerateList">${t('suggest.generateList')}</button>
+          <a href="#week-shopping" class="btn btn--secondary hidden" id="btnGoToList">${t('suggest.listExists')}</a>
+        </div>
       </div>
-
-      <div class="suggest__results hidden" id="results"></div>
     </div>
   `;
+
+  // --- Tab switching ---
+  container.querySelectorAll('.suggest__tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      container.querySelectorAll('.suggest__tab').forEach(t => t.classList.remove('suggest__tab--active'));
+      container.querySelectorAll('.suggest__panel').forEach(p => p.classList.remove('suggest__panel--active'));
+      tab.classList.add('suggest__tab--active');
+      $('#panel' + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1), container).classList.add('suggest__panel--active');
+    });
+  });
+
+  // =========================================================================
+  // Tab: Tagesvorschlag (existing logic)
+  // =========================================================================
 
   const questionInput = $('#questionInput', container);
   const btnAsk = $('#btnAsk', container);
@@ -45,11 +80,9 @@ export async function render(container) {
     savedChips.innerHTML = '';
     let queries = [];
     try { queries = await getSavedQueries(); } catch { /* ignore */ }
-
     queries.forEach(q => {
       const chip = createElement('button', { className: 'chip chip--clickable', textContent: q.question });
       chip.addEventListener('click', () => { questionInput.value = q.question; performSearch(); });
-
       if (admin) {
         const del = createElement('button', { className: 'chip__delete', innerHTML: '&times;' });
         del.addEventListener('click', async (e) => { e.stopPropagation(); await deleteSavedQuery(q.id); renderChips(); });
@@ -58,7 +91,6 @@ export async function render(container) {
       savedChips.appendChild(chip);
     });
   }
-
   await renderChips();
 
   btnAsk.addEventListener('click', performSearch);
@@ -67,45 +99,33 @@ export async function render(container) {
   async function performSearch() {
     const question = questionInput.value.trim();
     if (!question) { showToast(t('suggest.noQuestion'), 'warning'); return; }
-
     const apiKey = await getSetting('apiKey');
     if (!apiKey) { showToast(t('suggest.noApiKey'), 'warning'); return; }
-
     const allRecipes = await getAllRecipes();
     if (allRecipes.length === 0) { showToast(t('suggest.noRecipes'), 'warning'); return; }
-
     const hauptOnly = $('#filterHauptgericht', container).checked;
     const includeSalat = $('#filterSalat', container).checked;
-
     let recipes = allRecipes;
     if (hauptOnly) {
-      // Match both DE and EN category names
-      const mainDE = 'Hauptspeise', mainEN = 'Main Course';
-      const salatDE = 'Salat', salatEN = 'Salad';
       recipes = allRecipes.filter(r => {
         const cat = r.category || '';
-        if (cat === mainDE || cat === mainEN) return true;
-        if (includeSalat && (cat === salatDE || cat === salatEN)) return true;
+        if (cat === 'Hauptspeise' || cat === 'Main Course') return true;
+        if (includeSalat && (cat === 'Salat' || cat === 'Salad')) return true;
         return false;
       });
-
       if (recipes.length === 0) { showToast(t('suggest.noCategory'), 'warning'); return; }
     }
-
     loading.classList.remove('hidden');
     results.classList.add('hidden');
     btnAsk.disabled = true;
-
     try {
       const suggestions = await suggestRecipes(question, recipes);
-
       const saveCheckbox = $('#saveQuery', container);
       if (saveCheckbox && saveCheckbox.checked) {
         await addSavedQuery(question);
         saveCheckbox.checked = false;
         await renderChips();
       }
-
       renderResults(suggestions, allRecipes);
     } catch (err) {
       showToast(err.message, 'error');
@@ -118,21 +138,16 @@ export async function render(container) {
   function renderResults(suggestions, allRecipes) {
     results.innerHTML = '';
     results.classList.remove('hidden');
-
     if (!suggestions || suggestions.length === 0) {
       results.innerHTML = `<p class="suggest__no-results">${t('suggest.noMatch')}</p>`;
       return;
     }
-
     const heading = createElement('h2', { textContent: t('suggest.results', suggestions.length) });
     results.appendChild(heading);
-
     suggestions.forEach((suggestion, index) => {
       const recipe = allRecipes.find(r => r.id === suggestion.id);
       if (!recipe) return;
-
       const displayCat = translateCategory(recipe.category);
-
       const card = createElement('div', { className: 'suggest-card' }, [
         createElement('div', { className: 'suggest-card__rank', textContent: `#${index + 1}` }),
         createElement('div', { className: 'suggest-card__body' }, [
@@ -154,4 +169,207 @@ export async function render(container) {
       results.appendChild(card);
     });
   }
+
+  // =========================================================================
+  // Tab: Wochenplan
+  // =========================================================================
+
+  let allRecipes = [];
+  let slots = [null, null, null, null, null, null, null]; // Mon–Sun, each is recipeId or null
+  let shoppingListExists = false;
+
+  try {
+    [allRecipes] = await Promise.all([getAllRecipes()]);
+    const plan = await getWeekPlan();
+    // plan.slots is an array of recipeIds (or null), length may vary
+    if (Array.isArray(plan.slots)) {
+      plan.slots.forEach((id, i) => { if (i < 7) slots[i] = id || null; });
+    }
+    const existingList = await getWeekShoppingList();
+    shoppingListExists = !!existingList;
+  } catch { /* ignore */ }
+
+  const days = t('suggest.days');
+  const btnGoToList = $('#btnGoToList', container);
+  if (shoppingListExists) btnGoToList.classList.remove('hidden');
+
+  function recipeById(id) {
+    return allRecipes.find(r => r.id === id) || null;
+  }
+
+  function renderWeekGrid() {
+    const grid = $('#weekPlanGrid', container);
+    grid.innerHTML = '';
+    days.forEach((dayName, i) => {
+      const recipe = recipeById(slots[i]);
+      const filled = !!recipe;
+      const card = document.createElement('div');
+      card.className = 'week-plan__day' + (filled ? ' week-plan__day--filled' : '');
+      card.dataset.day = i;
+      card.innerHTML = `
+        <div class="week-plan__day-name">${dayName}</div>
+        <div class="week-plan__recipe-name${filled ? '' : ' week-plan__recipe-name--empty'}">
+          ${filled ? esc(recipe.title) : t('suggest.dayEmpty')}
+        </div>
+        <div class="week-plan__actions">
+          <button class="btn btn--ghost btn--sm week-plan__btn" data-action="pick" data-day="${i}">${t('suggest.pickRecipe')}</button>
+          <button class="btn btn--ghost btn--sm week-plan__btn" data-action="ai" data-day="${i}">${t('suggest.aiSuggest')}</button>
+          ${filled ? `<button class="btn btn--ghost btn--sm week-plan__remove" data-action="remove" data-day="${i}" title="${t('suggest.removeDay')}">×</button>` : ''}
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+  renderWeekGrid();
+
+  async function persistSlots() {
+    try { await saveWeekPlan([...slots]); } catch { /* ignore */ }
+  }
+
+  // Delegate click events on the week grid
+  $('#weekPlanGrid', container).addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const day = parseInt(btn.dataset.day, 10);
+    const action = btn.dataset.action;
+
+    if (action === 'remove') {
+      slots[day] = null;
+      renderWeekGrid();
+      await persistSlots();
+    } else if (action === 'pick') {
+      openRecipePicker(day);
+    } else if (action === 'ai') {
+      await runAiSuggest(day, btn);
+    }
+  });
+
+  function openRecipePicker(dayIndex) {
+    const existing = document.getElementById('recipePickerModal');
+    if (existing) existing.remove();
+
+    const alreadyUsed = new Set(slots.filter(Boolean));
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'recipePickerModal';
+    modal.innerHTML = `
+      <div class="modal__backdrop"></div>
+      <div class="modal__box">
+        <div class="modal__header">
+          <h2>${t('suggest.recipePickerTitle')}</h2>
+          <button class="modal__close" id="pickerClose" aria-label="${t('common.close')}">&times;</button>
+        </div>
+        <div class="modal__body">
+          <div class="recipe-picker">
+            <div class="recipe-picker__search">
+              <input type="text" class="input" id="pickerSearch" placeholder="${t('suggest.recipePickerSearch')}" />
+            </div>
+            <div class="recipe-picker__list" id="pickerList"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    function renderPickerList(query) {
+      const list = modal.querySelector('#pickerList');
+      const filtered = allRecipes.filter(r =>
+        !query || r.title.toLowerCase().includes(query.toLowerCase())
+      );
+      if (filtered.length === 0) {
+        list.innerHTML = `<p class="suggest__no-results">${t('suggest.recipePickerEmpty')}</p>`;
+        return;
+      }
+      list.innerHTML = '';
+      filtered.forEach(r => {
+        const used = alreadyUsed.has(r.id);
+        const item = document.createElement('button');
+        item.className = 'recipe-picker__item' + (used ? ' recipe-picker__item--used' : '');
+        item.innerHTML = `
+          <span class="recipe-picker__item-name">${esc(r.title)}</span>
+          ${r.category ? `<span class="chip ${categoryChipClass(r.category)} chip--xs">${esc(translateCategory(r.category))}</span>` : ''}
+          ${used ? '<span class="chip chip--neutral chip--xs">✓</span>' : ''}
+        `;
+        item.addEventListener('click', async () => {
+          slots[dayIndex] = r.id;
+          modal.remove();
+          renderWeekGrid();
+          await persistSlots();
+        });
+        list.appendChild(item);
+      });
+    }
+
+    renderPickerList('');
+    modal.querySelector('#pickerSearch').addEventListener('input', (e) => renderPickerList(e.target.value));
+    modal.querySelector('#pickerClose').addEventListener('click', () => modal.remove());
+    modal.querySelector('.modal__backdrop').addEventListener('click', () => modal.remove());
+    modal.querySelector('#pickerSearch').focus();
+  }
+
+  async function runAiSuggest(dayIndex, btn) {
+    const apiKey = await getSetting('apiKey');
+    if (!apiKey) { showToast(t('suggest.noApiKey'), 'warning'); return; }
+    if (allRecipes.length === 0) { showToast(t('suggest.noRecipes'), 'warning'); return; }
+
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = t('suggest.aiSuggestLoading');
+
+    const usedIds = new Set(slots.filter(Boolean));
+    const candidates = allRecipes.filter(r => !usedIds.has(r.id));
+    if (candidates.length === 0) { showToast(t('suggest.noMatch'), 'warning'); btn.disabled = false; btn.textContent = originalText; return; }
+
+    try {
+      const dayName = days[dayIndex];
+      const suggestions = await suggestRecipes(`Was soll ich am ${dayName} kochen?`, candidates);
+      if (suggestions && suggestions.length > 0) {
+        slots[dayIndex] = suggestions[0].id;
+        renderWeekGrid();
+        await persistSlots();
+      } else {
+        showToast(t('suggest.noMatch'), 'warning');
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+
+  // Generate shopping list
+  $('#btnGenerateList', container).addEventListener('click', async () => {
+    const planned = slots.map((id, i) => ({ recipeId: id, day: i })).filter(s => s.recipeId);
+    if (planned.length === 0) { showToast(t('suggest.noDaySelected'), 'warning'); return; }
+
+    const recipePlans = planned.map(s => ({ recipe: recipeById(s.recipeId) })).filter(p => p.recipe);
+    const items = aggregateIngredients(recipePlans);
+
+    // Apply existing product tag suggestions if available
+    try {
+      const { getAllStores, getProductTags } = await import('../db.js');
+      const [stores, tags] = await Promise.all([getAllStores(), getProductTags()]);
+      const tagMap = new Map(tags.map(t => [t.productName, t.storeId]));
+      items.forEach(item => {
+        const key = item.name.toLowerCase().trim();
+        if (tagMap.has(key)) item.storeId = tagMap.get(key);
+      });
+    } catch { /* ignore – product tags are optional */ }
+
+    try {
+      await saveWeekShoppingList(items, []);
+      showToast(t('suggest.listGenerated'), 'success');
+      btnGoToList.classList.remove('hidden');
+      shoppingListExists = true;
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

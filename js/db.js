@@ -283,6 +283,65 @@ export async function deleteRecipeImage(id) {
   });
 }
 
+// --- Week Plan ---
+
+export async function getWeekPlan() {
+  const res = await apiFetch('/weekplan');
+  return res.json();
+}
+
+export async function saveWeekPlan(slots) {
+  await apiFetch('/weekplan', { method: 'PUT', body: JSON.stringify({ slots }) });
+}
+
+export async function getWeekShoppingList() {
+  const res = await apiFetch('/weekplan/shopping-list');
+  return res.json();
+}
+
+export async function saveWeekShoppingList(items, extras) {
+  await apiFetch('/weekplan/shopping-list', {
+    method: 'PUT',
+    body: JSON.stringify({ items, extras }),
+  });
+}
+
+export async function deleteWeekShoppingList() {
+  await apiFetch('/weekplan/shopping-list', { method: 'DELETE' });
+}
+
+// --- Stores ---
+
+export async function getAllStores() {
+  const res = await apiFetch('/stores');
+  return res.json();
+}
+
+export async function addStore(name, color) {
+  const res = await apiFetch('/stores', { method: 'POST', body: JSON.stringify({ name, color }) });
+  return res.json();
+}
+
+export async function deleteStore(id) {
+  await apiFetch(`/stores/${id}`, { method: 'DELETE' });
+}
+
+export async function getProductTags() {
+  const res = await apiFetch('/stores/product-tags');
+  return res.json();
+}
+
+export async function setProductTag(productName, storeId) {
+  await apiFetch('/stores/product-tags', {
+    method: 'PUT',
+    body: JSON.stringify({ productName, storeId }),
+  });
+}
+
+export async function deleteProductTag(productName) {
+  await apiFetch(`/stores/product-tags/${encodeURIComponent(productName)}`, { method: 'DELETE' });
+}
+
 // --- Backup ---
 
 export async function exportAll(includeImages = false) {

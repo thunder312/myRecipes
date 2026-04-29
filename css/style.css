@@ -3922,3 +3922,414 @@ details[open] > .batch__log-heading::before,
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ==========================================================================
+   Suggest – Tab Navigation
+   ========================================================================== */
+
+.suggest__tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--color-border-light);
+  border-radius: var(--radius);
+  padding: 3px;
+  margin-bottom: var(--space-xl);
+  width: fit-content;
+}
+
+.suggest__tab {
+  padding: 0.45rem 1.2rem;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--color-text-secondary);
+  transition: background var(--duration) var(--ease), color var(--duration) var(--ease);
+}
+
+.suggest__tab--active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.suggest__panel { display: none; }
+.suggest__panel--active { display: block; }
+
+/* ==========================================================================
+   Week Plan Grid
+   ========================================================================== */
+
+.week-plan {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.week-plan__day {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  transition: border-color var(--duration) var(--ease);
+}
+
+.week-plan__day--filled {
+  border-color: var(--color-primary);
+}
+
+.week-plan__day-name {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.week-plan__day--filled .week-plan__day-name {
+  color: var(--color-primary);
+}
+
+.week-plan__recipe-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  min-height: 2.8em;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.week-plan__recipe-name--empty {
+  color: var(--color-text-muted);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.week-plan__actions {
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.week-plan__btn {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.68rem;
+  padding: 0.25rem 0.4rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.week-plan__remove {
+  padding: 0.25rem 0.5rem;
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.week-plan__footer {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border-light);
+}
+
+/* Recipe Picker Modal */
+.recipe-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  max-height: 55vh;
+}
+
+.recipe-picker__search {
+  flex-shrink: 0;
+}
+
+.recipe-picker__list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--color-border-light);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.recipe-picker__item {
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: var(--color-surface);
+  transition: background var(--duration) var(--ease);
+  border: none;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--color-text);
+}
+
+.recipe-picker__item:hover {
+  background: var(--color-primary-light);
+}
+
+.recipe-picker__item--used {
+  opacity: 0.65;
+}
+
+.recipe-picker__item-name {
+  font-weight: 500;
+  font-size: var(--font-size-sm);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip--xs {
+  font-size: 0.6rem;
+  padding: 0.1rem 0.4rem;
+}
+
+/* ==========================================================================
+   Week Shopping List View
+   ========================================================================== */
+
+.week-shopping {
+  max-width: var(--content-max-width);
+}
+
+.week-shopping__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-lg);
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.week-shopping__meals-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-xs);
+}
+
+.week-shopping__meals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-lg);
+}
+
+.week-shopping__checked-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.week-shopping__store-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--color-border-light);
+  align-items: center;
+}
+
+.week-shopping__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--color-border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--space-md);
+}
+
+.week-shopping__empty {
+  padding: var(--space-lg);
+  text-align: center;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+}
+
+.wsl-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  transition: opacity var(--duration) var(--ease);
+  border-left: 3px solid transparent;
+}
+
+.wsl-item--checked {
+  opacity: 0.5;
+}
+
+.wsl-item__cb {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.wsl-item__body {
+  min-width: 0;
+}
+
+.wsl-item__name {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wsl-item--checked .wsl-item__name {
+  text-decoration: line-through;
+  color: var(--color-text-muted);
+}
+
+.wsl-item__amount {
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.wsl-item__recipes {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wsl-item__store-select {
+  font-size: var(--font-size-xs);
+  padding: 3px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  max-width: 110px;
+}
+
+.store-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 4px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.week-shopping__extras {
+  margin-bottom: var(--space-xl);
+}
+
+.week-shopping__actions {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.week-shopping__delete {
+  margin-left: auto;
+}
+
+/* ==========================================================================
+   Stores – Settings Section
+   ========================================================================== */
+
+.stores-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.store-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius);
+}
+
+.store-row__color {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid rgba(0,0,0,0.08);
+}
+
+.store-row__name {
+  flex: 1;
+  font-weight: 500;
+  font-size: var(--font-size-sm);
+}
+
+.store-add-form {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.store-add-form__color-input {
+  width: 42px;
+  height: 38px;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: none;
+  flex-shrink: 0;
+}
+
+/* Mobile adaptations */
+@media (max-width: 768px) {
+  .suggest__tabs {
+    width: 100%;
+  }
+  .suggest__tab {
+    flex: 1;
+    text-align: center;
+  }
+  .week-plan {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .wsl-item {
+    grid-template-columns: auto 1fr;
+  }
+  .wsl-item__store-select {
+    display: none;
+  }
+}

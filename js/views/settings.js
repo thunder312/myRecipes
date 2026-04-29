@@ -1,4 +1,4 @@
-import { getSetting, setSetting, exportAll, importAll, getAllUsers, createUser, resetUserPassword, deleteUser, changeUserRole } from '../db.js';
+import { getSetting, setSetting, exportAll, importAll, getAllUsers, createUser, resetUserPassword, deleteUser, changeUserRole, getAllStores, addStore, deleteStore } from '../db.js';
 import { $, showToast, getToastLog, clearToastLog } from '../utils/helpers.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { validateApiKey, BILLING_URL } from '../api.js';
@@ -103,6 +103,17 @@ async function renderSettings(container) {
       </section>
       ` : ''}
 
+      <section class="settings__section" id="storesSection">
+        <h2>${t('stores.section')}</h2>
+        <p class="settings__hint">${t('stores.hint')}</p>
+        <div class="stores-list" id="storesList"></div>
+        <div class="store-add-form">
+          <input type="color" class="store-add-form__color-input" id="storeColor" value="#3b82f6" title="Farbe wählen" />
+          <input type="text" class="input" id="storeName" placeholder="${t('stores.namePlaceholder')}" style="flex:1" />
+          <button class="btn btn--secondary" id="btnAddStore">${t('stores.addBtn')}</button>
+        </div>
+      </section>
+
       <section class="settings__section" id="pantrySection">
         <h2>${t('settings.pantrySection')}</h2>
         <p class="settings__hint">${t('settings.pantryHint')}</p>
@@ -188,6 +199,9 @@ async function renderSettings(container) {
     } catch { /* ignore */ }
     showToast(t('settings.themeSaved'), 'success');
   });
+
+  // --- Stores ---
+  await initStoresSection(container);
 
   // --- Pantry items ---
   await initPantrySection(container);
@@ -422,6 +436,76 @@ function renderToastLog(container) {
 function escapeAttr(str) {
   if (!str) return '';
   return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ---------------------------------------------------------------------------
+// Stores section
+// ---------------------------------------------------------------------------
+
+async function initStoresSection(container) {
+  let stores = [];
+  try { stores = await getAllStores(); } catch { /* ignore */ }
+
+  function renderStores() {
+    const list = $('#storesList', container);
+    if (!list) return;
+    if (stores.length === 0) {
+      list.innerHTML = `<p class="pantry-tags__empty">${t('stores.empty')}</p>`;
+      return;
+    }
+    list.innerHTML = stores.map(s => `
+      <div class="store-row" data-store-id="${s.id}">
+        <div class="store-row__color" style="background:${escapeAttr(s.color)}"></div>
+        <span class="store-row__name">${escapeAttr(s.name)}</span>
+        <button class="btn btn--ghost btn--sm btn--danger-text" data-action="delete-store" data-id="${s.id}" data-name="${escapeAttr(s.name)}" title="${t('settings.deleteUserBtn')}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        </button>
+      </div>
+    `).join('');
+  }
+
+  renderStores();
+
+  // Delete store
+  $('#storesList', container)?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action="delete-store"]');
+    if (!btn) return;
+    const name = btn.dataset.name;
+    if (!confirm(t('stores.deleteConfirm', name))) return;
+    try {
+      await deleteStore(parseInt(btn.dataset.id, 10));
+      stores = stores.filter(s => s.id !== parseInt(btn.dataset.id, 10));
+      renderStores();
+      showToast(t('stores.deleted', name), 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  // Add store
+  $('#btnAddStore', container)?.addEventListener('click', async () => {
+    const nameInput = $('#storeName', container);
+    const colorInput = $('#storeColor', container);
+    const name = nameInput?.value.trim();
+    if (!name) { showToast(t('stores.nameRequired'), 'warning'); return; }
+    try {
+      const result = await addStore(name, colorInput?.value || '#6b7280');
+      stores.push({ id: result.id, name, color: colorInput?.value || '#6b7280' });
+      renderStores();
+      if (nameInput) nameInput.value = '';
+      showToast(t('stores.created', name), 'success');
+    } catch (err) {
+      if (err.message && err.message.includes('existiert bereits')) {
+        showToast(t('stores.alreadyExists'), 'warning');
+      } else {
+        showToast(err.message, 'error');
+      }
+    }
+  });
+
+  $('#storeName', container)?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); $('#btnAddStore', container)?.click(); }
+  });
 }
 
 // ---------------------------------------------------------------------------
