@@ -334,34 +334,6 @@ h1, h2, h3, h4 {
   transform: scale(1.1);
 }
 
-.nav__theme {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  padding: 0.7rem var(--space-md);
-  margin: 0 var(--space-md) var(--space-xs);
-  border: none;
-  border-radius: var(--radius);
-  background: none;
-  color: var(--color-text-secondary);
-  font: inherit;
-  font-weight: 500;
-  font-size: var(--font-size-base);
-  cursor: pointer;
-  transition: all var(--duration) var(--ease);
-  width: calc(100% - 2 * var(--space-md));
-}
-
-.nav__theme:hover {
-  background: var(--color-border-light);
-  color: var(--color-text);
-}
-
-/* Show sun in dark mode, moon in light mode */
-.nav__theme-icon--light { display: none; }
-.nav__theme-icon--dark  { display: block; }
-[data-theme="dark"] .nav__theme-icon--light { display: block; }
-[data-theme="dark"] .nav__theme-icon--dark  { display: none; }
 
 /* nav__profile inherits all styling from nav__link; only reset button defaults */
 button.nav__profile {
@@ -2775,6 +2747,10 @@ details[open] > .batch__log-heading::before,
   .recipe-row__time,
   .recipe-row__cooked {
     display: none;
+  }
+
+  .recipe-row--with-fav {
+    grid-template-columns: 1fr auto auto;
   }
 
   /* Detail */

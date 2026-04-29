@@ -44,6 +44,15 @@ async function renderSettings(container) {
       </section>
 
       <section class="settings__section">
+        <h2>${t('settings.themeSection')}</h2>
+        <p class="settings__hint">${t('settings.themeHint')}</p>
+        <div class="lang-toggle" id="themeToggle">
+          <button class="btn btn--sm ${(localStorage.getItem('theme') || 'light') !== 'dark' ? 'btn--primary' : 'btn--ghost'}" data-theme-val="light">${t('nav.themeLight')}</button>
+          <button class="btn btn--sm ${(localStorage.getItem('theme') || 'light') === 'dark' ? 'btn--primary' : 'btn--ghost'}" data-theme-val="dark">${t('nav.themeDark')}</button>
+        </div>
+      </section>
+
+      <section class="settings__section">
         <h2>${t('settings.passwordSection')}</h2>
         <p class="settings__hint">${t('settings.passwordHint')}</p>
         <div class="form-group">
@@ -155,6 +164,29 @@ async function renderSettings(container) {
     showToast(t('settings.langSaved'), 'success');
     // Re-render current view (settings) via navigate
     window.dispatchEvent(new CustomEvent('langchange', { detail: lang }));
+  });
+
+  // --- Theme toggle ---
+  $('#themeToggle', container)?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-theme-val]');
+    if (!btn) return;
+    const theme = btn.dataset.themeVal;
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+    $('#themeToggle', container).querySelectorAll('button').forEach(b => {
+      b.className = `btn btn--sm ${b === btn ? 'btn--primary' : 'btn--ghost'}`;
+    });
+    try {
+      const token = getAuthToken();
+      if (token) {
+        await fetch('/api/auth/theme', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ theme }),
+        });
+      }
+    } catch { /* ignore */ }
+    showToast(t('settings.themeSaved'), 'success');
   });
 
   // --- Pantry items ---
