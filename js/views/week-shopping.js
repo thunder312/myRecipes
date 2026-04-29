@@ -54,6 +54,7 @@ export async function render(container) {
 
   // Current store filter
   let activeStoreFilter = null; // null = all
+  let showMealsInExport = false; // default: hide meal plan in export
 
   const saveDebounced = debounce(async () => {
     try {
@@ -121,6 +122,12 @@ export async function render(container) {
         </div>
 
         <!-- Actions -->
+        <div class="week-shopping__export-options">
+          <label class="wsl-export-toggle">
+            <input type="checkbox" id="chkShowMeals" ${showMealsInExport ? 'checked' : ''} />
+            ${t('weekShopping.exportMeals')}
+          </label>
+        </div>
         <div class="week-shopping__actions">
           <button class="btn btn--ghost" id="btnWslCopy">${t('weekShopping.copyBtn')}</button>
           <button class="btn btn--secondary" id="btnWslTxt">${t('weekShopping.txtBtn')}</button>
@@ -153,6 +160,10 @@ export async function render(container) {
   }
 
   function bindEvents() {
+    // Meal plan in export toggle
+    const chkMeals = container.querySelector('#chkShowMeals');
+    if (chkMeals) chkMeals.addEventListener('change', () => { showMealsInExport = chkMeals.checked; });
+
     // Store filter
     container.querySelectorAll('[data-filter]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -300,7 +311,7 @@ export async function render(container) {
   function buildText() {
     const exportItems = getExportItems();
     const lines = [t('weekShopping.pdfTitle'), ''];
-    if (plannedMeals.length) {
+    if (showMealsInExport && plannedMeals.length) {
       plannedMeals.forEach(m => lines.push(`  ${m}`));
       lines.push('');
     }
@@ -350,7 +361,7 @@ export async function render(container) {
     doc.text(t('weekShopping.pdfTitle'), margin, y);
     y += 6;
 
-    if (plannedMeals.length) {
+    if (showMealsInExport && plannedMeals.length) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
       doc.setTextColor(120);

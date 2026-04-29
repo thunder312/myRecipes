@@ -426,6 +426,7 @@ export const en = {
     aiOptimizing: 'Optimizing…',
     aiOptimized: 'Shopping list optimized.',
     aiOptimizeError: 'AI optimization failed.',
+    exportMeals: 'Show meal plan in export',
     copyBtn: 'Copy text',
     txtBtn: 'Download .txt',
     pdfBtn: 'Download PDF',

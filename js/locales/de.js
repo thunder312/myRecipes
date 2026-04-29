@@ -426,6 +426,7 @@ export const de = {
     aiOptimizing: 'Optimiere…',
     aiOptimized: 'Einkaufszettel wurde optimiert.',
     aiOptimizeError: 'KI-Optimierung fehlgeschlagen.',
+    exportMeals: 'Speiseplan im Export anzeigen',
     copyBtn: 'Text kopieren',
     txtBtn: 'Als .txt laden',
     pdfBtn: 'Als PDF laden',
