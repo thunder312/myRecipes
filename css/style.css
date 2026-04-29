@@ -3593,6 +3593,15 @@ details[open] > .batch__log-heading::before,
   font-size: var(--font-size-base);
 }
 
+.sl-ingredient:has(.sl-ingredient__cb:checked) {
+  opacity: 0.72;
+}
+
+.sl-ingredient:has(.sl-ingredient__cb:checked) .sl-ingredient__text {
+  text-decoration: line-through;
+  color: var(--color-text-secondary);
+}
+
 .sl-extras {
   resize: vertical;
   min-height: 80px;
@@ -4215,7 +4224,7 @@ details[open] > .batch__log-heading::before,
 }
 
 .wsl-item--checked {
-  opacity: 0.5;
+  opacity: 0.72;
 }
 
 .wsl-item__cb {
@@ -4240,7 +4249,7 @@ details[open] > .batch__log-heading::before,
 
 .wsl-item--checked .wsl-item__name {
   text-decoration: line-through;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
 }
 
 .wsl-item__amount {
