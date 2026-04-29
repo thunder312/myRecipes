@@ -34,12 +34,6 @@ async function navigate() {
     return;
   }
 
-  // Block settings for non-admins
-  if (viewName === 'settings' && !isAdmin()) {
-    window.location.hash = '#overview';
-    showToast(t('settings.settingsAdminOnly'), 'error');
-    return;
-  }
 
   const loader = routes[viewName];
   if (!loader) {
@@ -91,7 +85,7 @@ function updateNavForUser() {
   if (profileBtn) profileBtn.classList.toggle('hidden', !loggedIn);
 
   const settingsLink = $('#navSettings');
-  if (settingsLink) settingsLink.classList.toggle('hidden', !admin);
+  if (settingsLink) settingsLink.classList.toggle('hidden', !loggedIn);
 }
 
 function openProfileModal() {
