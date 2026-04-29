@@ -239,10 +239,10 @@ export async function render(container) {
         const normalized = await normalizeShoppingList(inputs);
         normalized.forEach((text, idx) => {
           if (!items[idx]) return;
-          items[idx].name = text;
-          items[idx].amount = '';
-          const lower = text.toLowerCase();
-          if (pantry.some(p => lower.includes(p.toLowerCase()))) items[idx].checked = true;
+          const { amount, name } = splitAmountAndName(text);
+          items[idx].amount = amount;
+          items[idx].name = name;
+          if (matchesPantry(name, pantry)) items[idx].checked = true;
         });
         items.sort((a, b) => sortKey(a.name).localeCompare(sortKey(b.name), 'de'));
         saveDebounced();
@@ -427,6 +427,30 @@ export async function render(container) {
       .replace(/^[\d\s.,/½¼¾⅓⅔⅛⅜⅝⅞-]+\S*\s*/, '')
       .trim()
       .toLowerCase();
+  }
+
+  // Splits "500g Hackfleisch" → { amount: "500g", name: "Hackfleisch" }
+  function splitAmountAndName(text) {
+    const m = text.match(
+      /^([\d½¼¾⅓⅔⅛⅜⅝⅞][,./\d]*(?:\s*(?:g|kg|ml|l|cl|EL|TL|Stück|Stk\.?|Dosen?|Gläser|Glas|Pkg\.?|Packungen?|Bund|Zehen?|Scheiben?|Köpfe?|Becher|Flaschen?|Tassen?|Prisen?|Beutel|Stangen?|Zweige?))?)(\s+.+)/i
+    );
+    if (m) return { amount: m[1].trim(), name: m[2].trim() };
+    return { amount: '', name: text };
+  }
+
+  // Pantry match: short items (< 4 chars) only match at word boundaries
+  // to avoid "ei" matching "Schweinefilet" etc.
+  function matchesPantry(text, pantry) {
+    const lower = text.toLowerCase();
+    return pantry.some(p => {
+      const pl = p.toLowerCase();
+      if (pl.length < 4) {
+        // Word-level: exact word, word-start (for plurals), or compound-end
+        const words = lower.split(/\s+/);
+        return lower.endsWith(pl) || words.some(w => w === pl || w.startsWith(pl));
+      }
+      return lower.includes(pl);
+    });
   }
 
   function groupByStore(items, storeMap) {
