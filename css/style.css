@@ -15,6 +15,7 @@
   --color-bg-warm: #fffbf5;
   --color-surface: #ffffff;
   --color-surface-raised: #ffffff;
+  --color-surface-alt: #f3f4f6;
   --color-surface-overlay: rgba(255, 255, 255, 0.85);
 
   /* Text */
@@ -95,6 +96,7 @@
   --color-bg-warm: #111827;
   --color-surface: #1e293b;
   --color-surface-raised: #253348;
+  --color-surface-alt: #2d3f55;
   --color-surface-overlay: rgba(15, 23, 42, 0.92);
 
   --color-text: #e2e8f0;
@@ -3626,10 +3628,11 @@ details[open] > .batch__log-heading::before,
   align-items: center;
   gap: 4px;
   padding: 3px 10px 3px 10px;
-  background: var(--color-surface-alt, #f3f4f6);
+  background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
   border-radius: 999px;
   font-size: var(--font-size-sm);
+  color: var(--color-text);
 }
 
 .pantry-tag__remove {
