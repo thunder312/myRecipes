@@ -29,6 +29,7 @@ function esc(str) {
 }
 
 let wakeLock = null;
+let isOpen = false;
 
 async function acquireWakeLock() {
   if ('wakeLock' in navigator) {
@@ -69,8 +70,10 @@ async function releaseLandscape(overlay) {
 }
 
 export function openCookingMode(recipe, scaledIngredients) {
+  if (isOpen) return;
   const pages = buildPages(recipe.recipeText || '');
   if (!pages.length) return;
+  isOpen = true;
 
   let currentPage = 0;
   const totalSteps = pages.filter(p => p.type === 'step').length;
@@ -213,6 +216,7 @@ export function openCookingMode(recipe, scaledIngredients) {
   }
 
   function close() {
+    isOpen = false;
     releaseWakeLock();
     releaseLandscape(overlay);
     document.body.style.overflow = '';
