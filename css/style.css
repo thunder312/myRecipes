@@ -3939,6 +3939,53 @@ details[open] > .batch__log-heading::before,
   justify-content: center;
   padding: var(--space-xl) var(--space-lg);
   overflow: hidden;
+  position: relative;
+}
+
+/* Large invisible tap zones on left/right of step area for touch navigation */
+.cook-mode__side-btn {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 18%;
+  min-width: 56px;
+  max-width: 100px;
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  color: rgba(255, 255, 255, 0.12);
+  transition: color var(--duration) var(--ease);
+  z-index: 2;
+  padding: 0;
+}
+
+.cook-mode__side-btn--prev {
+  left: 0;
+  justify-content: flex-start;
+  padding-left: var(--space-sm);
+}
+
+.cook-mode__side-btn--next {
+  right: 0;
+  justify-content: flex-end;
+  padding-right: var(--space-sm);
+}
+
+.cook-mode__side-btn:hover:not(:disabled) {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.cook-mode__side-btn:active:not(:disabled) {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.cook-mode__side-btn:disabled,
+.cook-mode__side-btn--hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .cook-mode__step-inner {
@@ -4098,11 +4145,21 @@ details[open] > .batch__log-heading::before,
     display: none;
   }
   .cook-mode__nav-btn {
-    min-width: 52px;
-    padding: 12px 14px;
+    min-width: 64px;
+    min-height: 60px;
+    padding: 14px 18px;
+    font-size: var(--font-size-lg);
+  }
+  .cook-mode__nav-btn svg {
+    width: 28px;
+    height: 28px;
+  }
+  .cook-mode__nav {
+    min-height: 80px;
+    padding: var(--space-sm) var(--space-md);
   }
   .cook-mode__step-area {
-    padding: var(--space-lg) var(--space-md);
+    padding: var(--space-md) var(--space-sm);
   }
   .cook-mode__ingr-btn span,
   .cook-mode__exit-btn span {
@@ -4112,6 +4169,23 @@ details[open] > .batch__log-heading::before,
   .cook-mode__exit-btn {
     padding: 8px 10px;
   }
+  /* Side tap buttons: always show subtle arrows on mobile */
+  .cook-mode__side-btn {
+    color: rgba(255, 255, 255, 0.18);
+    width: 22%;
+  }
+}
+
+/* CSS landscape rotation – applied by JS when orientation lock is not available */
+.cook-mode--landscape {
+  width: 100vh !important;
+  height: 100vw !important;
+  top: calc((100vh - 100vw) / 2) !important;
+  left: calc((100vw - 100vh) / 2) !important;
+  right: unset !important;
+  bottom: unset !important;
+  transform: rotate(90deg);
+  transform-origin: center center;
 }
 
 /* ==========================================================================

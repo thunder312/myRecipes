@@ -40,6 +40,34 @@ function releaseWakeLock() {
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
 }
 
+// Try to go fullscreen and lock landscape on mobile.
+// Falls back to CSS rotation class if orientation lock isn't available.
+async function tryLandscape(overlay) {
+  if (window.innerWidth > 900) return; // desktop – no change needed
+
+  try {
+    if (overlay.requestFullscreen) {
+      await overlay.requestFullscreen({ navigationUI: 'hide' });
+    }
+    if (screen.orientation?.lock) {
+      await screen.orientation.lock('landscape');
+      return; // native landscape locked – no CSS rotation needed
+    }
+  } catch (_) {}
+
+  // Fullscreen without lock (iOS) or no fullscreen support:
+  // apply CSS rotation so the UI looks landscape regardless of device orientation
+  if (window.innerHeight > window.innerWidth) {
+    overlay.classList.add('cook-mode--landscape');
+  }
+}
+
+async function releaseLandscape(overlay) {
+  overlay.classList.remove('cook-mode--landscape');
+  try { if (screen.orientation?.unlock) screen.orientation.unlock(); } catch (_) {}
+  try { if (document.fullscreenElement) await document.exitFullscreen(); } catch (_) {}
+}
+
 export function openCookingMode(recipe, scaledIngredients) {
   const pages = buildPages(recipe.recipeText || '');
   if (!pages.length) return;
@@ -84,7 +112,17 @@ export function openCookingMode(recipe, scaledIngredients) {
     </div>
 
     <div class="cook-mode__step-area">
+      <button class="cook-mode__side-btn cook-mode__side-btn--prev" id="cmSidePrev" tabindex="-1" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <polyline points="15,18 9,12 15,6"/>
+        </svg>
+      </button>
       <div class="cook-mode__step-inner" id="cmStepInner"></div>
+      <button class="cook-mode__side-btn cook-mode__side-btn--next" id="cmSideNext" tabindex="-1" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <polyline points="9,18 15,12 9,6"/>
+        </svg>
+      </button>
     </div>
 
     <div class="cook-mode__nav">
@@ -107,6 +145,7 @@ export function openCookingMode(recipe, scaledIngredients) {
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
   acquireWakeLock();
+  tryLandscape(overlay);
 
   function stepNumber(upTo) {
     let n = 0;
@@ -120,6 +159,8 @@ export function openCookingMode(recipe, scaledIngredients) {
     const progressText = $('#cmProgressText', overlay);
     const dots = $('#cmDots', overlay);
     const prevBtn = $('#cmPrev', overlay);
+    const sidePrev = $('#cmSidePrev', overlay);
+    const sideNext = $('#cmSideNext', overlay);
     const nextLabel = $('#cmNextLabel', overlay);
     const nextIcon = $('#cmNextIcon', overlay);
     const nextBtn = $('#cmNext', overlay);
@@ -141,14 +182,19 @@ export function openCookingMode(recipe, scaledIngredients) {
       progressText.textContent = t('cookMode.stepOf', num, totalSteps);
     }
 
-    prevBtn.disabled = currentPage === 0;
-
+    const isFirst = currentPage === 0;
     const isLast = currentPage === pages.length - 1;
+
+    prevBtn.disabled = isFirst;
+    sidePrev.disabled = isFirst;
+    sidePrev.classList.toggle('cook-mode__side-btn--hidden', isFirst);
+
     nextLabel.textContent = isLast ? t('cookMode.finishBtn') : t('cookMode.nextBtn');
     nextIcon.innerHTML = isLast
       ? '<polyline points="20,6 9,17 4,12"/>'
       : '<polyline points="9,18 15,12 9,6"/>';
     nextBtn.classList.toggle('cook-mode__nav-btn--finish', isLast);
+    sideNext.classList.toggle('cook-mode__side-btn--hidden', false);
 
     if (pages.length <= 14) {
       dots.innerHTML = pages.map((_, i) =>
@@ -168,6 +214,7 @@ export function openCookingMode(recipe, scaledIngredients) {
 
   function close() {
     releaseWakeLock();
+    releaseLandscape(overlay);
     document.body.style.overflow = '';
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -184,6 +231,12 @@ export function openCookingMode(recipe, scaledIngredients) {
 
   $('#cmPrev', overlay).addEventListener('click', () => goTo(currentPage - 1));
   $('#cmNext', overlay).addEventListener('click', () => {
+    if (currentPage === pages.length - 1) close();
+    else goTo(currentPage + 1);
+  });
+
+  $('#cmSidePrev', overlay).addEventListener('click', () => goTo(currentPage - 1));
+  $('#cmSideNext', overlay).addEventListener('click', () => {
     if (currentPage === pages.length - 1) close();
     else goTo(currentPage + 1);
   });
@@ -210,6 +263,7 @@ export function openCookingMode(recipe, scaledIngredients) {
   document.addEventListener('keydown', onKey);
   document.addEventListener('visibilitychange', onVisibilityChange);
 
+  // Swipe kept as secondary navigation (horizontal swipe only)
   let touchStartX = 0, touchStartY = 0;
   overlay.addEventListener('touchstart', e => {
     touchStartX = e.touches[0].clientX;
@@ -218,7 +272,7 @@ export function openCookingMode(recipe, scaledIngredients) {
   overlay.addEventListener('touchend', e => {
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) {
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       if (dx < 0) goTo(currentPage + 1);
       else goTo(currentPage - 1);
     }
