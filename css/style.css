@@ -3854,26 +3854,21 @@ details[open] > .batch__log-heading::before,
   flex-shrink: 0;
 }
 
-.cook-mode__ingr-btn,
-.cook-mode__exit-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: var(--radius-full);
+/* Dark-theme overrides – the buttons use standard .btn .btn--ghost as base */
+.cook-mode .cook-mode__ingr-btn,
+.cook-mode .cook-mode__exit-btn {
+  color: rgba(250, 250, 250, 0.85);
+  border-color: rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.07);
-  color: #fafafa;
-  font-size: var(--font-size-sm);
-  font-family: var(--font);
-  cursor: pointer;
-  transition: background var(--duration) var(--ease);
-  white-space: nowrap;
 }
 
-.cook-mode__ingr-btn:hover,
-.cook-mode__exit-btn:hover {
-  background: rgba(255, 255, 255, 0.14);
+.cook-mode .cook-mode__ingr-btn:hover,
+.cook-mode .cook-mode__exit-btn:hover {
+  color: #fafafa;
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: none;
+  transform: none;
 }
 
 .cook-mode__progress-text {
@@ -4167,7 +4162,7 @@ details[open] > .batch__log-heading::before,
   }
   .cook-mode__ingr-btn,
   .cook-mode__exit-btn {
-    padding: 8px 10px;
+    padding: 0.5rem 0.65rem;
   }
   /* Side tap buttons: always show subtle arrows on mobile */
   .cook-mode__side-btn {
