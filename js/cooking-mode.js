@@ -52,19 +52,11 @@ async function tryLandscape(overlay) {
     }
     if (screen.orientation?.lock) {
       await screen.orientation.lock('landscape');
-      return; // native landscape locked – no CSS rotation needed
     }
   } catch (_) {}
-
-  // Fullscreen without lock (iOS) or no fullscreen support:
-  // apply CSS rotation so the UI looks landscape regardless of device orientation
-  if (window.innerHeight > window.innerWidth) {
-    overlay.classList.add('cook-mode--landscape');
-  }
 }
 
 async function releaseLandscape(overlay) {
-  overlay.classList.remove('cook-mode--landscape');
   try { if (screen.orientation?.unlock) screen.orientation.unlock(); } catch (_) {}
   try { if (document.fullscreenElement) await document.exitFullscreen(); } catch (_) {}
 }

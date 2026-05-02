@@ -4171,18 +4171,6 @@ details[open] > .batch__log-heading::before,
   }
 }
 
-/* CSS landscape rotation – applied by JS when orientation lock is not available */
-.cook-mode--landscape {
-  width: 100vh !important;
-  height: 100vw !important;
-  top: calc((100vh - 100vw) / 2) !important;
-  left: calc((100vw - 100vh) / 2) !important;
-  right: unset !important;
-  bottom: unset !important;
-  transform: rotate(90deg);
-  transform-origin: center center;
-}
-
 /* ==========================================================================
    Reduced Motion
    ========================================================================== */
