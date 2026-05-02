@@ -140,6 +140,9 @@ export const de = {
     imageDeleteConfirm: 'Bild wirklich löschen?',
     imageSaved: 'Bild gespeichert.',
     imageDeleted: 'Bild gelöscht.',
+    imageUrlBtn: 'Von URL',
+    imageUrlPlaceholder: 'Bild-URL eingeben...',
+    imageUrlLoad: 'Laden',
   },
 
   shopMode: {

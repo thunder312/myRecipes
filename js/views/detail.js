@@ -1,4 +1,4 @@
-import { getRecipe, addRecipe, updateRecipe, patchRecipe, deleteRecipe, uploadRecipeImage, deleteRecipeImage, setFavorite } from '../db.js';
+import { getRecipe, addRecipe, updateRecipe, patchRecipe, deleteRecipe, uploadRecipeImage, deleteRecipeImage, setFavorite, fetchImageByUrl } from '../db.js';
 import { generateRecipePDF, generateRecipeA5PDF } from '../pdf-generator.js';
 import { $, createElement, formatDate, formatDateTime, todayISO, showToast, categoryChipClass } from '../utils/helpers.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
@@ -127,10 +127,18 @@ function renderDetailView(container, recipe) {
             ${t('detail.imageChange')}
             <input type="file" id="imageFileInput" accept="image/*" class="hidden" />
           </label>
+          <button class="btn btn--ghost btn--sm detail__image-btn" id="btnImageFromUrl">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+            ${t('detail.imageUrlBtn')}
+          </button>
           <button class="btn btn--ghost btn--sm detail__image-btn" id="btnDeleteImage">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
             ${t('detail.imageDelete')}
           </button>
+        </div>
+        <div class="detail__image-url-row hidden" id="imageUrlRow">
+          <input type="url" id="imageUrlInput" placeholder="${t('detail.imageUrlPlaceholder')}" class="input" />
+          <button class="btn btn--primary btn--sm" id="btnConfirmImageUrl">${t('detail.imageUrlLoad')}</button>
         </div>` : ''}
       </div>` : `
       ${canEdit ? `<div class="detail__image detail__image--empty">
@@ -139,6 +147,10 @@ function renderDetailView(container, recipe) {
           ${t('detail.imageUpload')}
           <input type="file" id="imageFileInput" accept="image/*" class="hidden" />
         </label>
+        <div class="detail__image-url-row detail__image-url-row--standalone">
+          <input type="url" id="imageUrlInput" placeholder="${t('detail.imageUrlPlaceholder')}" class="input" />
+          <button class="btn btn--ghost btn--sm" id="btnConfirmImageUrl">${t('detail.imageUrlLoad')}</button>
+        </div>
       </div>` : ''}`}
 
       <div class="detail__title-row">
@@ -500,6 +512,40 @@ function renderDetailView(container, recipe) {
         }
       });
     }
+
+    const btnImageFromUrl = $('#btnImageFromUrl', container);
+    if (btnImageFromUrl) {
+      btnImageFromUrl.addEventListener('click', () => {
+        const row = $('#imageUrlRow', container);
+        row.classList.toggle('hidden');
+        if (!row.classList.contains('hidden')) $('#imageUrlInput', container).focus();
+      });
+    }
+
+    const btnConfirmImageUrl = $('#btnConfirmImageUrl', container);
+    if (btnConfirmImageUrl) {
+      const loadImageFromUrl = async () => {
+        const input = $('#imageUrlInput', container);
+        const url = input.value.trim();
+        if (!url) return;
+        btnConfirmImageUrl.disabled = true;
+        try {
+          const { imageBlob, imageMimeType } = await fetchImageByUrl(url);
+          const compressed = await compressBase64ForStorage(imageBlob, imageMimeType);
+          await uploadRecipeImage(recipe.id, compressed, 'image/jpeg');
+          showToast(t('detail.imageSaved'), 'success');
+          recipe.imageBlob = compressed;
+          recipe.imageMimeType = 'image/jpeg';
+          renderDetailView(container, recipe);
+        } catch (err) {
+          showToast(err.message, 'error');
+          btnConfirmImageUrl.disabled = false;
+        }
+      };
+      btnConfirmImageUrl.addEventListener('click', loadImageFromUrl);
+      const urlInput = $('#imageUrlInput', container);
+      if (urlInput) urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadImageFromUrl(); });
+    }
   }
 
   // Edit button
@@ -558,6 +604,23 @@ async function compressImageForStorage(file) {
     };
     reader.onerror = reject;
     reader.readAsDataURL(file);
+  });
+}
+
+async function compressBase64ForStorage(base64, mimeType) {
+  const MAX_PX = 1200;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, MAX_PX / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.82).split(',')[1]);
+    };
+    img.onerror = reject;
+    img.src = `data:${mimeType};base64,${base64}`;
   });
 }
 

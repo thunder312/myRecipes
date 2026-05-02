@@ -10,6 +10,7 @@ const backupRouter = require('./routes/backup');
 const cookbooksRouter = require('./routes/cookbooks');
 const usersRouter = require('./routes/users');
 const fetchUrlRouter = require('./routes/fetch-url');
+const fetchImageRouter = require('./routes/fetch-image');
 const suggestQueriesRouter = require('./routes/suggest-queries');
 const weekplanRouter = require('./routes/weekplan');
 const storesRouter = require('./routes/stores');
@@ -119,6 +120,7 @@ app.use('/api/cookbooks', (req, res, next) => {
 }, cookbooksRouter);
 app.use('/api/users', requireAdmin, usersRouter);
 app.use('/api/fetch-url', fetchUrlRouter);
+app.use('/api/fetch-image', fetchImageRouter);
 // Suggest queries: GET public, POST requires auth, DELETE requires admin
 app.use('/api/suggest-queries', (req, res, next) => {
   if (req.method === 'GET') return next();

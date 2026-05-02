@@ -1,4 +1,5 @@
 import { analyzeRecipeText, analyzeRecipeImages, analyzeRecipeImage, validateRecipeResults } from './api.js';
+import { fetchImageByUrl } from './db.js';
 
 const MAX_IMAGE_BYTES = 4.5 * 1024 * 1024; // stay well under API's 5 MB limit
 const MAX_PDF_IMAGE_PAGES = 20;
@@ -70,13 +71,16 @@ export async function processURL(url, { multiHint = false } = {}) {
   }
 
   const doc = new DOMParser().parseFromString(html, 'text/html');
+  const imageUrl = extractRecipeImageUrl(doc, url);
 
   // Try JSON-LD structured data first (schema.org/Recipe – used by most modern recipe sites)
   if (!multiHint) {
     const jsonLdText = extractJsonLdAsText(doc);
     if (jsonLdText) {
       const results = await analyzeRecipeText(jsonLdText, { multiHint: false });
-      return applyFilter(tagResults(results, 'url', url));
+      const tagged = tagResults(results, 'url', url);
+      if (imageUrl) await attachImageFromUrl(tagged, imageUrl);
+      return applyFilter(tagged);
     }
   }
 
@@ -87,7 +91,54 @@ export async function processURL(url, { multiHint = false } = {}) {
   }
 
   const results = await analyzeRecipeText(text, { multiHint });
-  return applyFilter(tagResults(results, 'url', url));
+  const tagged = tagResults(results, 'url', url);
+  if (imageUrl) await attachImageFromUrl(tagged, imageUrl);
+  return applyFilter(tagged);
+}
+
+/**
+ * Extracts the best recipe image URL from a parsed HTML document.
+ * Priority: JSON-LD image → og:image → twitter:image
+ */
+function extractRecipeImageUrl(doc, baseUrl) {
+  for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
+    try {
+      const data = JSON.parse(script.textContent);
+      const items = Array.isArray(data) ? data : [data];
+      for (const item of items) {
+        const candidates = item['@graph'] ? [...item['@graph'], item] : [item];
+        for (const c of candidates) {
+          const types = Array.isArray(c['@type']) ? c['@type'] : [c['@type']];
+          if (types.includes('Recipe') && c.image) {
+            const raw = Array.isArray(c.image)
+              ? (typeof c.image[0] === 'string' ? c.image[0] : c.image[0]?.url)
+              : (typeof c.image === 'string' ? c.image : c.image?.url);
+            if (raw) return resolveUrl(raw, baseUrl);
+          }
+        }
+      }
+    } catch { /* skip */ }
+  }
+
+  const ogImg = doc.querySelector('meta[property="og:image"]');
+  if (ogImg?.getAttribute('content')) return resolveUrl(ogImg.getAttribute('content'), baseUrl);
+
+  const twImg = doc.querySelector('meta[name="twitter:image"]');
+  if (twImg?.getAttribute('content')) return resolveUrl(twImg.getAttribute('content'), baseUrl);
+
+  return null;
+}
+
+function resolveUrl(url, base) {
+  try { return new URL(url, base).href; } catch { return null; }
+}
+
+async function attachImageFromUrl(results, imageUrl) {
+  try {
+    const { imageBlob, imageMimeType } = await fetchImageByUrl(imageUrl);
+    const displayImg = await compressForDisplay(imageBlob, imageMimeType);
+    tagImageData(results, displayImg.base64, displayImg.mimeType);
+  } catch { /* silently skip if image can't be loaded */ }
 }
 
 /** Parst eine ISO-8601-Dauer (PT1H30M) und gibt Minuten zurück. */

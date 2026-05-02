@@ -19,11 +19,13 @@ editierbar, erweiterbar und exportierbar als Text und PDF.
   - [x] <- zum Wochenplan soll zu Wochenplan gehen nicht zu "was koch ich"-tAB
   - [x] ausgestrichene machen Kategorie grau
 
-## Mobil
-### Bugs
+## Bugs
+### Desktop
+### Mobil
 - [x] Buttons in mobiler Sicht korrigieren.
 - [x] Herz in mobiler Sicht korrigieren
-
+### KI
+- [x] Nach KI sind gleiche Zutaten wieder getrennt.
 ## Handschrift trainieren:
 
 

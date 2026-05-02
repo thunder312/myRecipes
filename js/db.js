@@ -283,6 +283,15 @@ export async function deleteRecipeImage(id) {
   });
 }
 
+export async function fetchImageByUrl(imageUrl) {
+  const resp = await fetch(`/api/fetch-image?url=${encodeURIComponent(imageUrl)}`);
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${resp.status}`);
+  }
+  return resp.json(); // { imageBlob, imageMimeType }
+}
+
 // --- Week Plan ---
 
 export async function getWeekPlan() {
