@@ -49,6 +49,8 @@ export async function render(container, initialTab) {
         <p class="suggest__intro">${t('suggest.weekPlanIntro')}</p>
         <div class="week-plan" id="weekPlanGrid"></div>
         <div class="week-plan__footer">
+          <button class="btn btn--ghost" id="btnClearPlan">${t('suggest.clearPlan')}</button>
+          <button class="btn btn--secondary" id="btnFillAllAi">${t('suggest.fillAllAi')}</button>
           <button class="btn btn--primary" id="btnGenerateList">${t('suggest.generateList')}</button>
           <a href="#week-shopping" class="btn btn--secondary hidden" id="btnGoToList">${t('suggest.listExists')}</a>
         </div>
@@ -404,6 +406,57 @@ export async function render(container, initialTab) {
       });
     });
   }
+
+  // Clear week plan
+  $('#btnClearPlan', container).addEventListener('click', async () => {
+    slots = [null, null, null, null, null, null, null];
+    renderWeekGrid();
+    await persistSlots();
+    showToast(t('suggest.planCleared'), 'success');
+  });
+
+  // Fill all days with AI
+  $('#btnFillAllAi', container).addEventListener('click', async () => {
+    const apiKey = await getSetting('apiKey');
+    if (!apiKey) { showToast(t('suggest.noApiKey'), 'warning'); return; }
+    if (allRecipes.length === 0) { showToast(t('suggest.noRecipes'), 'warning'); return; }
+
+    const btn = $('#btnFillAllAi', container);
+    const clearBtn = $('#btnClearPlan', container);
+    btn.disabled = true;
+    clearBtn.disabled = true;
+    const originalLabel = btn.textContent;
+
+    const emptyIndices = slots.map((s, i) => i).filter(i => !slots[i]);
+
+    for (let idx = 0; idx < emptyIndices.length; idx++) {
+      const dayIndex = emptyIndices[idx];
+      btn.textContent = `${t('suggest.fillAllAiLoading')} ${idx + 1}/${emptyIndices.length}…`;
+
+      const usedIds = new Set(slots.filter(Boolean));
+      const candidates = allRecipes.filter(r => !usedIds.has(r.id));
+      if (candidates.length === 0) break;
+
+      try {
+        const dayName = days[dayIndex];
+        const suggestions = await suggestRecipes(`Was soll ich am ${dayName} kochen?`, candidates);
+        if (suggestions && suggestions.length > 0) {
+          const top = suggestions[0];
+          const recipe = allRecipes.find(r => r.id === top.id || String(r.id) === String(top.id));
+          if (recipe) {
+            slots[dayIndex] = recipe.id;
+            renderWeekGrid();
+          }
+        }
+      } catch { /* skip day on error */ }
+    }
+
+    await persistSlots();
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+    clearBtn.disabled = false;
+    showToast(t('suggest.fillAllAiDone'), 'success');
+  });
 
   // Generate shopping list
   $('#btnGenerateList', container).addEventListener('click', async () => {

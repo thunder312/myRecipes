@@ -121,6 +121,7 @@
 /* Hard-coded hover/active backgrounds */
 [data-theme="dark"] .recipe-row__rating:hover,
 [data-theme="dark"] .recipe-row__favorite:hover,
+[data-theme="dark"] .recipe-row__cookbook:hover,
 [data-theme="dark"] .detail__favorite:hover { background: rgba(255, 255, 255, 0.07); }
 [data-theme="dark"] .recipe-row__rating:active { background: rgba(255, 255, 255, 0.12); }
 
@@ -951,6 +952,37 @@ button.nav__profile {
 /* Grid with favorite column */
 .recipe-row--with-fav {
   grid-template-columns: 1fr auto auto auto auto auto;
+}
+
+/* Grid with favorite + cookbook column */
+.recipe-row--with-fav.recipe-row--with-cookbook {
+  grid-template-columns: 1fr auto auto auto auto auto auto;
+}
+
+.recipe-row__cookbook {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, color 0.15s;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-text-muted);
+}
+
+.recipe-row__cookbook:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--color-primary);
+}
+
+.recipe-row__cookbook--active {
+  color: var(--color-primary);
 }
 
 /* Bulk select mode */
@@ -2780,6 +2812,10 @@ details[open] > .batch__log-heading::before,
 
   .recipe-row--with-fav {
     grid-template-columns: 1fr auto auto;
+  }
+
+  .recipe-row--with-fav.recipe-row--with-cookbook {
+    grid-template-columns: 1fr auto auto auto;
   }
 
   /* Detail */

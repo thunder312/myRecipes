@@ -78,6 +78,10 @@ export const en = {
     deleteError: 'Error deleting.',
     assignError: 'Error assigning.',
     noneSelected: 'No recipes selected.',
+    manageCookbooks: 'Cookbooks',
+    manageCookbooksTitle: (title) => `Cookbooks for "${title}"`,
+    cookbookSaved: 'Cookbook assignment saved.',
+    cookbookSaveError: 'Error saving assignment.',
   },
 
   detail: {
@@ -420,6 +424,11 @@ export const en = {
     planSaved: 'Plan saved.',
     aiSuggestModalTitle: (day) => `AI Suggestion for ${day}`,
     aiSuggestAccept: 'Use this recipe',
+    clearPlan: 'Clear week plan',
+    planCleared: 'Week plan cleared.',
+    fillAllAi: 'Fill all days with AI',
+    fillAllAiLoading: 'AI filling day',
+    fillAllAiDone: 'Week plan filled with AI suggestions.',
   },
 
   weekShopping: {

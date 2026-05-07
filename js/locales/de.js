@@ -78,6 +78,10 @@ export const de = {
     deleteError: 'Fehler beim Löschen.',
     assignError: 'Fehler beim Zuordnen.',
     noneSelected: 'Keine Rezepte ausgewählt.',
+    manageCookbooks: 'Kochbücher',
+    manageCookbooksTitle: (title) => `Kochbücher für „${title}"`,
+    cookbookSaved: 'Kochbuchzuordnung gespeichert.',
+    cookbookSaveError: 'Fehler beim Speichern.',
   },
 
   detail: {
@@ -420,6 +424,11 @@ export const de = {
     planSaved: 'Plan gespeichert.',
     aiSuggestModalTitle: (day) => `KI-Vorschlag für ${day}`,
     aiSuggestAccept: 'Übernehmen',
+    clearPlan: 'Wochenplan leeren',
+    planCleared: 'Wochenplan geleert.',
+    fillAllAi: 'Alle Tage mit KI füllen',
+    fillAllAiLoading: 'KI füllt Tag',
+    fillAllAiDone: 'Wochenplan mit KI-Vorschlägen gefüllt.',
   },
 
   weekShopping: {

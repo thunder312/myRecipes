@@ -1,4 +1,4 @@
-import { getAllRecipes, deleteRecipe, getAllCookbooks, assignRecipesToCookbook, getCookbookMemberships, patchRecipe, setFavorite } from '../db.js';
+import { getAllRecipes, deleteRecipe, getAllCookbooks, assignRecipesToCookbook, getCookbookMemberships, patchRecipe, setFavorite, setRecipeCookbooks } from '../db.js';
 import { $, createElement, formatDate, debounce, showToast, categoryChipClass } from '../utils/helpers.js';
 import { isAuthenticated } from '../utils/auth.js';
 import { t, getCategoryList, translateCategory } from '../i18n.js';
@@ -29,6 +29,8 @@ export async function render(container) {
   await refreshMemberships();
   let selectMode = false;
   const selected = new Set();
+  let activeCookbookMemberRecipeId = null;
+  let openCookbookMemberModal;
 
   const sortOptions = [
     { value: 'alpha', label: t('overview.sortAlpha') },
@@ -103,6 +105,17 @@ export async function render(container) {
             <button class="btn btn--ghost" id="btnCancelCookbookAssign">${t('overview.cancelBtn')}</button>
           </div>
         </div>
+      </div>
+      <div class="modal hidden" id="cookbookMemberModal">
+        <div class="modal__backdrop" id="cookbookMemberBackdrop"></div>
+        <div class="modal__box">
+          <h2 id="cookbookMemberTitle"></h2>
+          <div class="assign-list" id="cookbookMemberList"></div>
+          <div class="modal__actions">
+            <button class="btn btn--primary" id="btnConfirmCookbookMember">${t('cookbooks.saveBtn')}</button>
+            <button class="btn btn--ghost" id="btnCancelCookbookMember">${t('overview.cancelBtn')}</button>
+          </div>
+        </div>
       </div>` : ''}
     </div>
   `;
@@ -127,7 +140,7 @@ export async function render(container) {
     const row = e.target.closest('.recipe-row');
     if (!row) return;
     const id = parseInt(row.dataset.id, 10);
-    if (selectMode) { e.preventDefault(); toggleSelect(id); return; }
+    if (selectMode) { e.preventDefault(); toggleSelect(id, row); return; }
     const favBtn = e.target.closest('.recipe-row__favorite');
     if (favBtn) {
       const recipe = recipes.find(r => r.id === id);
@@ -166,6 +179,12 @@ export async function render(container) {
       }
       return;
     }
+    const cookbookBtn = e.target.closest('.recipe-row__cookbook');
+    if (cookbookBtn) {
+      const recipe = recipes.find(r => r.id === id);
+      if (recipe && openCookbookMemberModal) openCookbookMemberModal(recipe);
+      return;
+    }
     window.location.hash = `#detail/${id}`;
   });
 
@@ -186,7 +205,7 @@ export async function render(container) {
 
     filtered.forEach(recipe => {
       const row = document.createElement('div');
-      row.className = 'recipe-row' + (canEdit ? ' recipe-row--with-fav' : '') + (selectMode ? ' recipe-row--selectable' : '') + (selected.has(recipe.id) ? ' recipe-row--selected' : '');
+      row.className = 'recipe-row' + (canEdit ? ' recipe-row--with-fav' : '') + (canEdit && !selectMode ? ' recipe-row--with-cookbook' : '') + (selectMode ? ' recipe-row--selectable' : '') + (selected.has(recipe.id) ? ' recipe-row--selected' : '');
       row.dataset.id = recipe.id;
 
       const displayCat = translateCategory(recipe.category);
@@ -204,6 +223,13 @@ export async function render(container) {
         ${canEdit ? `<button class="recipe-row__favorite${recipe.favorite ? ' recipe-row__favorite--active' : ''}" type="button" data-id="${recipe.id}" title="${t('overview.favoritesOnly')}">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="${recipe.favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         </button>` : ''}
+        ${canEdit && !selectMode ? (() => {
+          const ids = recipeCookbookMap.get(recipe.id);
+          const isActive = ids ? cookbooks.some(cb => cb.id !== 1 && ids.has(cb.id)) : false;
+          return `<button class="recipe-row__cookbook${isActive ? ' recipe-row__cookbook--active' : ''}" type="button" data-action="cookbook" data-id="${recipe.id}" title="${t('overview.manageCookbooks')}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </button>`;
+        })() : ''}
       `;
 
       if (!selectMode) row.style.cursor = 'pointer';
@@ -211,13 +237,12 @@ export async function render(container) {
     });
   }
 
-  function toggleSelect(id) {
+  function toggleSelect(id, rowEl) {
     if (selected.has(id)) selected.delete(id); else selected.add(id);
     updateBulkUI();
-    const row = grid.querySelector(`[data-id="${id}"]`);
-    if (row) {
-      row.classList.toggle('recipe-row--selected', selected.has(id));
-      const cb = row.querySelector('input[type="checkbox"]');
+    if (rowEl) {
+      rowEl.classList.toggle('recipe-row--selected', selected.has(id));
+      const cb = rowEl.querySelector('.recipe-row__checkbox input');
       if (cb) cb.checked = selected.has(id);
     }
   }
@@ -363,6 +388,47 @@ export async function render(container) {
 
     $('#btnCancelCookbookAssign', container).addEventListener('click', () => $('#assignCookbookModal', container).classList.add('hidden'));
     $('#assignCookbookBackdrop', container).addEventListener('click', () => $('#assignCookbookModal', container).classList.add('hidden'));
+
+    openCookbookMemberModal = function(recipe) {
+      activeCookbookMemberRecipeId = recipe.id;
+      const currentIds = recipeCookbookMap.get(recipe.id) || new Set();
+      $('#cookbookMemberTitle', container).textContent = t('overview.manageCookbooksTitle', recipe.title);
+      $('#cookbookMemberList', container).innerHTML = cookbooks.map(cb => `
+        <label class="assign-item">
+          <input type="checkbox" data-cb-id="${cb.id}" ${currentIds.has(cb.id) ? 'checked' : ''} />
+          <span class="assign-item__title">${esc(cb.name)}</span>
+          ${cb.description ? `<span class="assign-item__sub">${esc(cb.description)}</span>` : ''}
+        </label>
+      `).join('');
+      $('#cookbookMemberModal', container).classList.remove('hidden');
+    };
+
+    function closeCookbookMemberModal() {
+      $('#cookbookMemberModal', container).classList.add('hidden');
+      activeCookbookMemberRecipeId = null;
+    }
+
+    $('#btnConfirmCookbookMember', container).addEventListener('click', async () => {
+      const checkboxes = container.querySelectorAll('#cookbookMemberList input[type="checkbox"]');
+      const ids = Array.from(checkboxes).filter(cb => cb.checked).map(cb => parseInt(cb.dataset.cbId, 10));
+      try {
+        await setRecipeCookbooks(activeCookbookMemberRecipeId, ids);
+        await refreshMemberships();
+        const btn = grid.querySelector(`[data-id="${activeCookbookMemberRecipeId}"] [data-action="cookbook"]`);
+        if (btn) {
+          const newIds = recipeCookbookMap.get(activeCookbookMemberRecipeId);
+          const isActive = newIds ? cookbooks.some(cb => cb.id !== 1 && newIds.has(cb.id)) : false;
+          btn.classList.toggle('recipe-row__cookbook--active', isActive);
+        }
+        showToast(t('overview.cookbookSaved'), 'success');
+        closeCookbookMemberModal();
+      } catch (err) {
+        showToast(t('overview.cookbookSaveError'), 'error');
+      }
+    });
+
+    $('#btnCancelCookbookMember', container).addEventListener('click', closeCookbookMemberModal);
+    $('#cookbookMemberBackdrop', container).addEventListener('click', closeCookbookMemberModal);
 
     $('#btnBulkDelete', container).addEventListener('click', async () => {
       const count = selected.size;
