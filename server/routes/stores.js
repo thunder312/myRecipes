@@ -36,10 +36,11 @@ router.delete('/:id(\\d+)', (req, res) => {
   }
 });
 
-// GET /api/stores/product-tags
+// GET /api/stores/product-tags – user-specific; returns empty array when not authenticated
 router.get('/product-tags', (req, res) => {
+  if (!req.user) return res.json([]);
   try {
-    res.json(getProductTags());
+    res.json(getProductTags(req.user.userId));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -61,7 +62,7 @@ router.put('/product-tags', (req, res) => {
 // DELETE /api/stores/product-tags/:name
 router.delete('/product-tags/:name', (req, res) => {
   try {
-    deleteProductTag(decodeURIComponent(req.params.name));
+    deleteProductTag(decodeURIComponent(req.params.name), req.user.userId);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -124,10 +124,11 @@ function initSchema() {
     );
 
     CREATE TABLE IF NOT EXISTS store_product_tags (
-      productName TEXT PRIMARY KEY,
+      productName TEXT NOT NULL,
+      userId INTEGER NOT NULL,
       storeId INTEGER NOT NULL,
-      updatedBy INTEGER,
       updatedAt TEXT NOT NULL,
+      PRIMARY KEY (productName, userId),
       FOREIGN KEY (storeId) REFERENCES stores(id) ON DELETE CASCADE
     );
   `);
@@ -219,6 +220,28 @@ function migrateSchema() {
     if (existingHash) {
       getDB().prepare("DELETE FROM settings WHERE key = 'passwordHash'").run();
     }
+  }
+
+  // Migrate store_product_tags: make assignments per-user (productName, userId) composite PK
+  const sptCols = db.pragma('table_info(store_product_tags)').map(r => r.name);
+  if (!sptCols.includes('userId')) {
+    db.exec(`
+      DROP TABLE IF EXISTS store_product_tags_old;
+      ALTER TABLE store_product_tags RENAME TO store_product_tags_old;
+      CREATE TABLE store_product_tags (
+        productName TEXT NOT NULL,
+        userId INTEGER NOT NULL,
+        storeId INTEGER NOT NULL,
+        updatedAt TEXT NOT NULL,
+        PRIMARY KEY (productName, userId),
+        FOREIGN KEY (storeId) REFERENCES stores(id) ON DELETE CASCADE
+      );
+      INSERT OR IGNORE INTO store_product_tags (productName, userId, storeId, updatedAt)
+        SELECT productName, updatedBy, storeId, updatedAt
+        FROM store_product_tags_old
+        WHERE updatedBy IS NOT NULL;
+      DROP TABLE store_product_tags_old;
+    `);
   }
 
   // Seed default saved queries if none exist
@@ -802,20 +825,20 @@ function deleteStore(id) {
   getDB().prepare('DELETE FROM stores WHERE id = ?').run(id);
 }
 
-function getProductTags() {
-  return getDB().prepare('SELECT * FROM store_product_tags ORDER BY productName ASC').all();
+function getProductTags(userId) {
+  return getDB().prepare('SELECT * FROM store_product_tags WHERE userId = ? ORDER BY productName ASC').all(userId);
 }
 
 function setProductTag(productName, storeId, userId) {
   const now = new Date().toISOString();
   getDB().prepare(`
-    INSERT INTO store_product_tags (productName, storeId, updatedBy, updatedAt) VALUES (?, ?, ?, ?)
-    ON CONFLICT(productName) DO UPDATE SET storeId = excluded.storeId, updatedBy = excluded.updatedBy, updatedAt = excluded.updatedAt
-  `).run(productName.toLowerCase().trim(), storeId, userId, now);
+    INSERT INTO store_product_tags (productName, userId, storeId, updatedAt) VALUES (?, ?, ?, ?)
+    ON CONFLICT(productName, userId) DO UPDATE SET storeId = excluded.storeId, updatedAt = excluded.updatedAt
+  `).run(productName.toLowerCase().trim(), userId, storeId, now);
 }
 
-function deleteProductTag(productName) {
-  getDB().prepare('DELETE FROM store_product_tags WHERE productName = ?').run(productName.toLowerCase().trim());
+function deleteProductTag(productName, userId) {
+  getDB().prepare('DELETE FROM store_product_tags WHERE productName = ? AND userId = ?').run(productName.toLowerCase().trim(), userId);
 }
 
 // --- Saved Queries ---
