@@ -4660,3 +4660,26 @@ details[open] > .batch__log-heading::before,
     width: fit-content;
   }
 }
+
+/* =================================================================== */
+/* Dev / Test environment indicator                                     */
+/* =================================================================== */
+
+#env-badge {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #f59e0b;
+  color: #1c1917;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 3px 16px;
+  border-radius: 0 0 8px 8px;
+  z-index: 100000;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.5);
+  user-select: none;
+}

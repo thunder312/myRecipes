@@ -197,7 +197,17 @@ function escapeHtml(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function applyEnvIndicator() {
+  if (window.location.hostname === 'rezepte.daniel-ertl.de') return;
+  document.title = '[TEST] ' + document.title;
+  const badge = document.createElement('div');
+  badge.id = 'env-badge';
+  badge.textContent = 'TESTUMGEBUNG';
+  document.body.appendChild(badge);
+}
+
 function init() {
+  applyEnvIndicator();
   window.addEventListener('hashchange', navigate);
 
   const logoutBtn = $('#btnLogout');
