@@ -292,6 +292,24 @@ function migrateSchema() {
   for (const user of usersWithoutCookbook) {
     createUserCookbook(user.id, user.username);
   }
+
+  // Backfill notes that have no username: set username = 'imported', keep existing date or fall back to recipe.createdAt
+  const recipesWithNotes = getDB().prepare(`SELECT id, notes, createdAt FROM recipes WHERE notes IS NOT NULL AND notes != '[]'`).all();
+  const noteUpdateStmt = getDB().prepare('UPDATE recipes SET notes = ? WHERE id = ?');
+  for (const row of recipesWithNotes) {
+    let notes;
+    try { notes = JSON.parse(row.notes); } catch { continue; }
+    if (!Array.isArray(notes)) continue;
+    let changed = false;
+    notes = notes.map(n => {
+      if (n && typeof n === 'object' && !n.username) {
+        changed = true;
+        return { ...n, username: 'imported', date: n.date || row.createdAt };
+      }
+      return n;
+    });
+    if (changed) noteUpdateStmt.run(JSON.stringify(notes), row.id);
+  }
 }
 
 // --- JSON array fields ---

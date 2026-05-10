@@ -215,6 +215,14 @@ function renderDetailView(container, recipe) {
           <input type="checkbox" id="pdfIncludeImage" />
           ${t('detail.pdfIncludeImage')}
         </label>` : ''}
+        <label class="settings__checkbox-label" style="margin-bottom: var(--space-sm);">
+          <input type="checkbox" id="pdfIncludeNotes" checked />
+          ${t('detail.pdfIncludeNotes')}
+        </label>
+        <label class="settings__checkbox-label" style="margin-bottom: var(--space-sm);">
+          <input type="checkbox" id="pdfIncludeTags" />
+          ${t('detail.pdfIncludeTags')}
+        </label>
         <div class="pdf-actions">
           <a id="pdfDownload" class="btn btn--secondary">${t('detail.pdfA4Download')}</a>
           <button id="pdfOpen" class="btn btn--primary">${t('detail.pdfA4Open')}</button>
@@ -309,22 +317,30 @@ function renderDetailView(container, recipe) {
     return !!$('#pdfIncludeImage', container)?.checked;
   }
 
+  function getIncludeNotes() {
+    return !!$('#pdfIncludeNotes', container)?.checked;
+  }
+
+  function getIncludeTags() {
+    return !!$('#pdfIncludeTags', container)?.checked;
+  }
+
   function invalidatePdfCache() {
     if (pdfUrl) { URL.revokeObjectURL(pdfUrl); pdfUrl = null; }
     if (pdfA5Url) { URL.revokeObjectURL(pdfA5Url); pdfA5Url = null; }
   }
 
-  const pdfCheckbox = $('#pdfIncludeImage', container);
-  if (pdfCheckbox) {
-    pdfCheckbox.addEventListener('change', invalidatePdfCache);
-  }
+  ['#pdfIncludeImage', '#pdfIncludeNotes', '#pdfIncludeTags'].forEach(id => {
+    const el = $(id, container);
+    if (el) el.addEventListener('change', invalidatePdfCache);
+  });
 
   function getPdfUrl() {
     const inc = getIncludeImage();
     if (!pdfUrl || inc !== lastIncludeImage) {
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
       lastIncludeImage = inc;
-      const blob = generateRecipePDF(recipe, { includeImage: inc });
+      const blob = generateRecipePDF(recipe, { includeImage: inc, includeNotes: getIncludeNotes(), includeTags: getIncludeTags() });
       pdfUrl = URL.createObjectURL(blob);
     }
     return pdfUrl;
@@ -335,7 +351,7 @@ function renderDetailView(container, recipe) {
     if (!pdfA5Url || inc !== lastIncludeImage) {
       if (pdfA5Url) URL.revokeObjectURL(pdfA5Url);
       lastIncludeImage = inc;
-      const blob = generateRecipeA5PDF(recipe, { includeImage: inc });
+      const blob = generateRecipeA5PDF(recipe, { includeImage: inc, includeNotes: getIncludeNotes(), includeTags: getIncludeTags() });
       pdfA5Url = URL.createObjectURL(blob);
     }
     return pdfA5Url;
@@ -651,20 +667,10 @@ function renderEditView(container, recipe) {
   // Save
   $('#btnSaveEdit', container).addEventListener('click', async () => {
     const formData = readRecipeForm(formEl);
-
-    // Convert importNotes textarea → notes array (replaces existing notes)
-    const { importNotes, ...rest } = formData;
-    if (importNotes && importNotes.trim()) {
-      rest.notes = importNotes.trim().split('\n').filter(Boolean)
-        .map(text => ({ date: new Date().toISOString(), text }));
-    } else if (!importNotes) {
-      rest.notes = recipe.notes; // unchanged
-    } else {
-      rest.notes = []; // user cleared the field
-    }
+    formData.notes = recipe.notes; // notes managed via chat interface only
 
     // Merge edited fields into existing recipe
-    Object.assign(recipe, rest);
+    Object.assign(recipe, formData);
 
     await updateRecipe(recipe);
     showToast(t('detail.recipeSaved'), 'success');

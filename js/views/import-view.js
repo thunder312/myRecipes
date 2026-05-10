@@ -502,13 +502,17 @@ async function renderImportForm(container) {
   }
 
   let capturedPhotos = [];
+  let photoObjectURLs = [];
 
   function buildPhotoThumbnails() {
+    photoObjectURLs.forEach(u => URL.revokeObjectURL(u));
+    photoObjectURLs = [];
     cameraPhotos.innerHTML = '';
     capturedPhotos.forEach((file, idx) => {
       const thumb = document.createElement('div');
       thumb.className = 'camera-collector__photo';
       const url = URL.createObjectURL(file);
+      photoObjectURLs.push(url);
       thumb.innerHTML = `
         <img src="${url}" alt="Seite ${idx + 1}" />
         <span class="camera-collector__photo-num">${idx + 1}</span>
@@ -519,6 +523,8 @@ async function renderImportForm(container) {
   }
 
   function resetCameraCollector() {
+    photoObjectURLs.forEach(u => URL.revokeObjectURL(u));
+    photoObjectURLs = [];
     capturedPhotos = [];
     cameraPhotos.innerHTML = '';
     cameraCollector.classList.add('hidden');
@@ -713,6 +719,15 @@ async function renderImportForm(container) {
     recipes.forEach((r, idx) => {
       const formEl = $(`#reviewForm-${idx}`, container);
       renderRecipeForm(formEl, r);
+    });
+
+    // Sync .review-card--checked class (Safari :has() fallback)
+    function syncReviewCardClass(cb) {
+      cb.closest('.review-card')?.classList.toggle('review-card--checked', cb.checked);
+    }
+    container.querySelectorAll('#multiList input[type="checkbox"]').forEach(cb => {
+      syncReviewCardClass(cb);
+      cb.addEventListener('change', () => syncReviewCardClass(cb));
     });
 
     // Toggle accordion

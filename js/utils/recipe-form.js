@@ -68,11 +68,6 @@ export function renderRecipeForm(targetEl, data) {
       <textarea class="input input--textarea" data-field="description" rows="2">${esc(data.description || '')}</textarea>
     </div>
     <div class="form-group">
-      <label>${t('recipeForm.notesLabel')}</label>
-      <textarea class="input input--textarea" data-field="importNotes" rows="3"
-                placeholder="${t('recipeForm.notesPlaceholder')}">${esc(data.importNotes || (Array.isArray(data.notes) ? data.notes.map(n => n.text).join('\n') : ''))}</textarea>
-    </div>
-    <div class="form-group">
       <label>${t('recipeForm.sourceNoteLabel')}</label>
       <input type="text" class="input" data-field="sourceNote"
              value="${esc(data.sourceNote || '')}"
@@ -99,7 +94,6 @@ export function readRecipeForm(formEl) {
     recipeText: get('recipeText'),
     servings: parseInt(get('servings')) || null,
     difficulty: get('difficulty'),
-    importNotes: get('importNotes'),
     sourceNote: get('sourceNote'),
   };
 }

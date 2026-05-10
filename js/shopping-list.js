@@ -1,4 +1,4 @@
-import { getSetting, setSetting } from './db.js';
+import { getSetting, setSetting, getWeekShoppingList, saveWeekShoppingList } from './db.js';
 import { showToast } from './utils/helpers.js';
 import { t } from './i18n.js';
 import { generateShoppingListPDF } from './pdf-generator.js';
@@ -159,12 +159,22 @@ export async function openShoppingListModal(recipe) {
         <button class="btn btn--ghost" id="slBtnCopy">${escHtml(t('shoppingList.btnCopy'))}</button>
         <button class="btn btn--secondary" id="slBtnTxt">${escHtml(t('shoppingList.btnTxt'))}</button>
         <button class="btn btn--primary" id="slBtnPdf">${escHtml(t('shoppingList.btnPdf'))}</button>
+        <button class="btn btn--secondary" id="slBtnGoToShopping">${escHtml(t('shoppingList.btnGoToShopping'))}</button>
         <button class="btn btn--ghost" id="slCloseBtn">${escHtml(t('shoppingList.btnClose'))}</button>
       </div>
     </div>
   `;
 
   document.body.appendChild(modal);
+
+  // Sync .sl-ingredient--checked class (Safari :has() fallback)
+  modal.querySelectorAll('.sl-ingredient__cb').forEach(cb => {
+    const li = cb.closest('.sl-ingredient');
+    if (li) {
+      li.classList.toggle('sl-ingredient--checked', cb.checked);
+      cb.addEventListener('change', () => li.classList.toggle('sl-ingredient--checked', cb.checked));
+    }
+  });
 
   // --- Helpers to get current state ---
   function getCheckedIngredients() {
@@ -213,6 +223,24 @@ export async function openShoppingListModal(recipe) {
       items: getCheckedIngredients(),
       extras: parseExtras(),
     });
+  });
+
+  modal.querySelector('#slBtnGoToShopping').addEventListener('click', async () => {
+    const checked = getCheckedIngredients();
+    try {
+      const existing = await getWeekShoppingList();
+      const currentItems = existing?.items || [];
+      const newItems = checked
+        .filter(name => !currentItems.some(i => i.name.toLowerCase() === name.toLowerCase()))
+        .map(name => ({ id: `${Date.now()}-${Math.random()}`, name, amount: '', recipes: [recipe.title || ''], checked: false, storeId: null }));
+      if (newItems.length > 0) {
+        await saveWeekShoppingList([...currentItems, ...newItems], existing?.extras || []);
+      }
+    } catch {
+      // not logged in or no list – navigate anyway
+    }
+    close();
+    window.location.hash = '#week-shopping';
   });
 
   modal.querySelector('#slBtnAi').addEventListener('click', async () => {

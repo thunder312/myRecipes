@@ -1,6 +1,16 @@
 import { jsPDF } from 'jspdf';
 import { t, translateCategory, translateDifficulty } from './i18n.js';
 
+function formatNoteMeta(note) {
+  const parts = [];
+  if (note.username) parts.push(note.username);
+  if (note.date) {
+    const d = new Date(note.date);
+    if (!isNaN(d)) parts.push(d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }));
+  }
+  return parts.join(' · ');
+}
+
 function splitIntoSteps(text) {
   if (!text || !text.trim()) return [];
   const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
@@ -371,7 +381,7 @@ function addRecipeToDoc(doc, recipeData) {
   }
 }
 
-export function generateRecipePDF(recipeData, { includeImage = false } = {}) {
+export function generateRecipePDF(recipeData, { includeImage = false, includeTags = true, includeNotes = true } = {}) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   doc.setProperties({ title: recipeData.title || t('pdf.recipe') });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -489,29 +499,41 @@ export function generateRecipePDF(recipeData, { includeImage = false } = {}) {
   }
 
   // Notes
-  const noteTexts = (recipeData.notes || []).map(n => n.text).filter(Boolean);
-  if (noteTexts.length > 0) {
-    y = checkPageBreak(doc, y, 20, margin);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.setTextColor(0);
-    doc.text(t('pdf.notes'), margin, y);
-    y += 8;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-    for (const text of noteTexts) {
-      const lines = doc.splitTextToSize(text, contentWidth);
-      for (const line of lines) {
-        y = checkPageBreak(doc, y, 7, margin);
-        doc.text(line, margin, y);
-        y += 5.5;
+  if (includeNotes) {
+    const notesA4 = (recipeData.notes || []).filter(n => n.text);
+    if (notesA4.length > 0) {
+      y = checkPageBreak(doc, y, 20, margin);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.text(t('pdf.notes'), margin, y);
+      y += 8;
+      for (const note of notesA4) {
+        const meta = formatNoteMeta(note);
+        if (meta) {
+          y = checkPageBreak(doc, y, 5, margin);
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(9);
+          doc.setTextColor(120);
+          doc.text(meta, margin, y);
+          y += 4.5;
+        }
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        doc.setTextColor(0);
+        const lines = doc.splitTextToSize(note.text, contentWidth);
+        for (const line of lines) {
+          y = checkPageBreak(doc, y, 7, margin);
+          doc.text(line, margin, y);
+          y += 5.5;
+        }
+        y += 3;
       }
-      y += 3;
     }
   }
 
   // Tags
-  if (recipeData.tags && recipeData.tags.length > 0) {
+  if (includeTags && recipeData.tags && recipeData.tags.length > 0) {
     y = checkPageBreak(doc, y, 10, margin);
     doc.setFontSize(9);
     doc.setTextColor(120);
@@ -633,7 +655,7 @@ function checkPageBreak(doc, y, neededSpace, margin) {
 // --- A5 "Zettelkasten" template – A4 landscape, overflow into right column if needed ---
 // Same visual layout as A4, but with proportionally smaller font sizes.
 
-export function generateRecipeA5PDF(recipeData, { includeImage = false } = {}) {
+export function generateRecipeA5PDF(recipeData, { includeImage = false, includeTags = true, includeNotes = true } = {}) {
   // A4 landscape: 297 × 210 mm (two A5 halves side by side)
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
   doc.setProperties({ title: recipeData.title || t('pdf.recipe') });
@@ -805,29 +827,41 @@ export function generateRecipeA5PDF(recipeData, { includeImage = false } = {}) {
   }
 
   // Notes
-  const noteTextsA5 = (recipeData.notes || []).map(n => n.text).filter(Boolean);
-  if (noteTextsA5.length > 0) {
-    ensureSpace(fs.section + 4);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(fs.section);
-    doc.setTextColor(0);
-    doc.text(t('pdf.notes'), x, y);
-    y += 6;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(fs.body);
-    for (const text of noteTextsA5) {
-      const lines = doc.splitTextToSize(text, colWidth);
-      for (const line of lines) {
-        ensureSpace(4.5);
-        doc.text(line, x, y);
-        y += 4.5;
+  if (includeNotes) {
+    const notesA5 = (recipeData.notes || []).filter(n => n.text);
+    if (notesA5.length > 0) {
+      ensureSpace(fs.section + 4);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(fs.section);
+      doc.setTextColor(0);
+      doc.text(t('pdf.notes'), x, y);
+      y += 6;
+      for (const note of notesA5) {
+        const meta = formatNoteMeta(note);
+        if (meta) {
+          ensureSpace(4.5);
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(fs.body - 1);
+          doc.setTextColor(120);
+          doc.text(meta, x, y);
+          y += 4;
+        }
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(fs.body);
+        doc.setTextColor(0);
+        const lines = doc.splitTextToSize(note.text, colWidth);
+        for (const line of lines) {
+          ensureSpace(4.5);
+          doc.text(line, x, y);
+          y += 4.5;
+        }
+        y += 3;
       }
-      y += 3;
     }
   }
 
   // Tags
-  if (recipeData.tags && recipeData.tags.length > 0) {
+  if (includeTags && recipeData.tags && recipeData.tags.length > 0) {
     ensureSpace(6);
     doc.setFontSize(fs.small);
     doc.setTextColor(120);
@@ -983,27 +1017,37 @@ function buildRecipeA5Pages(doc, recipe, colWidth, fs, topY, availH) {
   }
 
   // --- Notes ---
-  const noteTexts = (recipe.notes || []).map(n => n.text).filter(Boolean);
-  if (noteTexts.length) {
-    addBlock(8, (doc, x, y) => {
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(fs.section); doc.setTextColor(0);
-      doc.text(t('pdf.notes'), x, y);
-      return y + 6;
-    });
-    for (const text of noteTexts) {
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body);
-      const noteLines = doc.splitTextToSize(text, colWidth);
-      const noteH = noteLines.length * 4.5 + 3;
-      addBlock(noteH, (doc, x, y) => {
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body); doc.setTextColor(0);
-        doc.text(noteLines, x, y);
-        return y + noteH;
+  if (includeNotes) {
+    const notes2col = (recipe.notes || []).filter(n => n.text);
+    if (notes2col.length) {
+      addBlock(8, (doc, x, y) => {
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(fs.section); doc.setTextColor(0);
+        doc.text(t('pdf.notes'), x, y);
+        return y + 6;
       });
+      for (const note of notes2col) {
+        const meta = formatNoteMeta(note);
+        if (meta) {
+          addBlock(4.5, (doc, x, y) => {
+            doc.setFont('helvetica', 'italic'); doc.setFontSize(fs.body - 1); doc.setTextColor(120);
+            doc.text(meta, x, y);
+            return y + 4;
+          });
+        }
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body);
+        const noteLines = doc.splitTextToSize(note.text, colWidth);
+        const noteH = noteLines.length * 4.5 + 3;
+        addBlock(noteH, (doc, x, y) => {
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(fs.body); doc.setTextColor(0);
+          doc.text(noteLines, x, y);
+          return y + noteH;
+        });
+      }
     }
   }
 
   // --- Tags / Sides ---
-  if (recipe.tags?.length) {
+  if (includeTags && recipe.tags?.length) {
     addBlock(6, (doc, x, y) => {
       doc.setFontSize(fs.small); doc.setTextColor(120);
       doc.text('Tags: ' + recipe.tags.join(', '), x, y);
