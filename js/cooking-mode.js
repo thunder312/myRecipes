@@ -28,23 +28,71 @@ function esc(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Detect iOS/Safari: requestFullscreen and screen.orientation.lock are unsupported there.
+// iPad with "Request Desktop Website" reports MacIntel but has maxTouchPoints > 1.
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 let wakeLock = null;
+let noSleepVideo = null;
 let isOpen = false;
+let savedScrollY = 0;
 
 async function acquireWakeLock() {
   if ('wakeLock' in navigator) {
-    try { wakeLock = await navigator.wakeLock.request('screen'); } catch (_) {}
+    try { wakeLock = await navigator.wakeLock.request('screen'); return; } catch (_) {}
+  }
+  // iOS Safari fallback: a canvas-stream video keeps the screen awake the same
+  // way a playing <video> element does (works in Safari browser ≥ 15.4).
+  if (isIOS && !noSleepVideo) {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1;
+      canvas.height = 1;
+      const ctx = canvas.getContext('2d');
+      ctx.fillRect(0, 0, 1, 1);
+      const video = document.createElement('video');
+      video.setAttribute('playsinline', '');
+      video.muted = true;
+      video.loop = true;
+      video.style.cssText = 'position:fixed;top:-2px;left:-2px;width:1px;height:1px;opacity:0.01;pointer-events:none;';
+      video.srcObject = canvas.captureStream(1);
+      document.body.appendChild(video);
+      await video.play();
+      noSleepVideo = video;
+    } catch (_) {}
   }
 }
 
 function releaseWakeLock() {
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  if (noSleepVideo) { noSleepVideo.pause(); noSleepVideo.remove(); noSleepVideo = null; }
 }
 
-// Try to go fullscreen and lock landscape on mobile.
-// Falls back to CSS rotation class if orientation lock isn't available.
+// iOS Safari ignores overflow:hidden on <body>; the body-fixed trick is required.
+function lockBodyScroll() {
+  savedScrollY = window.scrollY;
+  document.body.style.overflow = 'hidden';
+  if (isIOS) {
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${savedScrollY}px`;
+    document.body.style.width = '100%';
+  }
+}
+
+function unlockBodyScroll() {
+  document.body.style.overflow = '';
+  if (isIOS) {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, savedScrollY);
+  }
+}
+
+// Fullscreen + orientation lock – silently skipped on iOS where both APIs are unsupported.
 async function tryLandscape(overlay) {
-  if (window.innerWidth > 900) return; // desktop – no change needed
+  if (window.innerWidth > 900 || isIOS) return;
 
   try {
     if (overlay.requestFullscreen) {
@@ -57,6 +105,7 @@ async function tryLandscape(overlay) {
 }
 
 async function releaseLandscape(overlay) {
+  if (isIOS) return;
   try { if (screen.orientation?.unlock) screen.orientation.unlock(); } catch (_) {}
   try { if (document.fullscreenElement) await document.exitFullscreen(); } catch (_) {}
 }
@@ -138,9 +187,15 @@ export function openCookingMode(recipe, scaledIngredients) {
   `;
 
   document.body.appendChild(overlay);
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
   acquireWakeLock();
   tryLandscape(overlay);
+
+  // Prevent touch-scroll from propagating to the page behind the overlay on iOS.
+  // The ingredient panel has its own overflow-y:auto and must be excluded.
+  overlay.addEventListener('touchmove', e => {
+    if (!e.target.closest('.cook-mode__ingr-panel')) e.preventDefault();
+  }, { passive: false });
 
   function stepNumber(upTo) {
     let n = 0;
@@ -211,7 +266,7 @@ export function openCookingMode(recipe, scaledIngredients) {
     isOpen = false;
     releaseWakeLock();
     releaseLandscape(overlay);
-    document.body.style.overflow = '';
+    unlockBodyScroll();
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('visibilitychange', onVisibilityChange);
     overlay.remove();

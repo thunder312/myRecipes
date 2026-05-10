@@ -3863,7 +3863,7 @@ details[open] > .batch__log-heading::before,
   margin-bottom: var(--space-md);
 }
 
-/* ==========================================================================
+/* ========================================================================== */
 
 .cook-mode {
   position: fixed;
@@ -3876,6 +3876,10 @@ details[open] > .batch__log-heading::before,
   font-family: var(--font);
   overscroll-behavior: contain;
   outline: none;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 .cook-mode__header {
