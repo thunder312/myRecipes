@@ -107,7 +107,7 @@ Jedes Rezept-Objekt hat folgende Felder:
   "prepTime": Gesamtzeit in Minuten als Zahl (Summe aus Vorbereitungszeit + Zubereitungszeit + Ruhezeit/Wartezeit/Marinierzeit/Backzeit – addiere ALLE genannten Zeitangaben). null nur wenn wirklich keine Zeitangabe vorhanden,
   "mainIngredient": "Hauptzutat z.B. Rind, Huhn, Schwein, Fisch, Gemüse, Pasta, etc.",
   "sides": ["Passende Beilagen als Array, z.B. Reis, Kartoffeln, Knödel, Salat, Brot"],
-  "tags": ["Relevante Tags als Array, z.B. vegetarisch, vegan, schnell, glutenfrei, laktosefrei, Freitag-tauglich, festlich, Comfort Food, low-carb"],
+  "tags": ["Relevante Tags als Array, z.B. vegetarisch, vegan, Fisch, schnell, glutenfrei, laktosefrei, festlich, Comfort Food, low-carb"],
   "ingredients": ["Alle Zutaten als Array"],
   "description": "Kurze Beschreibung des Gerichts in 1-2 Sätzen",
   "servings": Portionen als Zahl oder null,
@@ -118,7 +118,7 @@ Jedes Rezept-Objekt hat folgende Felder:
 
 Wichtige Regeln:
 - Das Feld 'recipeText' darf NIEMALS leer sein – extrahiere alle Schritte vollständig aus dem Abschnitt 'Zubereitung'
-- Wenn das Rezept kein Fleisch enthält, füge "Freitag-tauglich" zu den Tags hinzu
+- Wenn das Rezept kein Fleisch enthält, füge "vegetarisch" zu den Tags hinzu; wenn es Fisch oder Meeresfrüchte enthält, füge stattdessen "Fisch" hinzu
 - Wenn die Zubereitungszeit unter 30 Minuten ist, füge "schnell" zu den Tags hinzu
 - Für 'prepTime': Summiere ALLE Zeitangaben (Vorbereitungszeit + Zubereitungszeit + Ruhezeit + Marinierzeit + Backzeit etc.). Wenn z.B. "Vorbereitungszeit: 20 Min, Zubereitungszeit: 15 Min, Ruhezeit: 30 Min" steht, ist prepTime = 65. Schätze die Gesamtzeit wenn keine expliziten Angaben vorhanden
 - Gewürzmischungen (z.B. Hähnchen-Gewürz, Gyros-Gewürz, Rubs, Marinaden-Mischungen) gehören in die Kategorie "Gewürzmischungen" – NICHT in "Beilage" oder "Snack". Bei Gewürzmischungen ist "sides" ein leeres Array.
@@ -149,7 +149,7 @@ Each recipe object has the following fields:
   "prepTime": Total time in minutes as a number (sum of prep time + cooking time + resting/marinating/baking time – add ALL mentioned times). null only if truly no time is given,
   "mainIngredient": "Main ingredient e.g. beef, chicken, pork, fish, vegetables, pasta, etc.",
   "sides": ["Suitable side dishes as array, e.g. rice, potatoes, salad, bread"],
-  "tags": ["Relevant tags as array, e.g. vegetarian, vegan, quick, gluten-free, lactose-free, Friday-friendly, festive, comfort food, low-carb"],
+  "tags": ["Relevant tags as array, e.g. vegetarian, vegan, fish, quick, gluten-free, lactose-free, festive, comfort food, low-carb"],
   "ingredients": ["All ingredients as array"],
   "description": "Short description of the dish in 1-2 sentences",
   "servings": Servings as number or null,
@@ -160,7 +160,7 @@ Each recipe object has the following fields:
 
 Important rules:
 - The field 'recipeText' must NEVER be empty – extract all steps completely from the preparation section
-- If the recipe contains no meat, add "Friday-friendly" to the tags
+- If the recipe contains no meat, add "vegetarian" to the tags; if it contains fish or seafood, add "fish" instead
 - If the preparation time is under 30 minutes, add "quick" to the tags
 - For 'prepTime': Sum ALL time values (prep time + cooking time + resting time + marinating time + baking time etc.). If e.g. "Prep: 20 min, Cook: 15 min, Rest: 30 min" is stated, prepTime = 65. Estimate total time if no explicit values are given
 - Spice blends (e.g. chicken seasoning, gyros spice, rubs, marinade mixes) belong in category "Spice Blend" – NOT in "Side Dish" or "Snack". For spice blends, "sides" is an empty array.
