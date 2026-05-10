@@ -1,4 +1,4 @@
-import { getSetting, setSetting, getWeekShoppingList, saveWeekShoppingList } from './db.js';
+import { getSetting, setSetting, getWeekShoppingList, saveWeekShoppingList, pushToBring } from './db.js';
 import { showToast } from './utils/helpers.js';
 import { t } from './i18n.js';
 import { generateShoppingListPDF } from './pdf-generator.js';
@@ -160,6 +160,7 @@ export async function openShoppingListModal(recipe) {
         <button class="btn btn--secondary" id="slBtnTxt">${escHtml(t('shoppingList.btnTxt'))}</button>
         <button class="btn btn--primary" id="slBtnPdf">${escHtml(t('shoppingList.btnPdf'))}</button>
         <button class="btn btn--secondary" id="slBtnGoToShopping">${escHtml(t('shoppingList.btnGoToShopping'))}</button>
+        <button class="btn btn--secondary btn--bring" id="slBtnBring">${escHtml(t('shoppingList.btnBring'))}</button>
         <button class="btn btn--ghost" id="slCloseBtn">${escHtml(t('shoppingList.btnClose'))}</button>
       </div>
     </div>
@@ -241,6 +242,31 @@ export async function openShoppingListModal(recipe) {
     }
     close();
     window.location.hash = '#week-shopping';
+  });
+
+  modal.querySelector('#slBtnBring').addEventListener('click', async () => {
+    const items = [...modal.querySelectorAll('.sl-ingredient__cb')]
+      .filter(cb => !cb.checked)
+      .map(cb => ingredients[parseInt(cb.dataset.idx, 10)].displayText);
+    if (items.length === 0) return;
+    const btn = modal.querySelector('#slBtnBring');
+    btn.disabled = true;
+    try {
+      await pushToBring(items);
+      showToast(t('shoppingList.bringHint'), 'success');
+    } catch (err) {
+      try { await navigator.clipboard.writeText(items.join('\n')); } catch (_) {}
+      window.open('https://web.getbring.com', '_blank');
+      // Only show an error toast if Bring! is configured but push failed (not just "not configured")
+      const msg = err.message || '';
+      if (!msg.includes('hinterlegt') && !msg.includes('nicht verbunden')) {
+        showToast(t('shoppingList.bringPushFailed'), 'error');
+      } else {
+        showToast(t('shoppingList.bringHintFallback'), 'info');
+      }
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   modal.querySelector('#slBtnAi').addEventListener('click', async () => {

@@ -351,6 +351,45 @@ export async function deleteProductTag(productName) {
   await apiFetch(`/stores/product-tags/${encodeURIComponent(productName)}`, { method: 'DELETE' });
 }
 
+// --- Bring! ---
+
+export async function getBringConfig() {
+  const res = await apiFetch('/bring/config');
+  return res.json();
+}
+
+export async function connectBring(email, password) {
+  const res = await apiFetch('/bring/connect', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+  return res.json();
+}
+
+export async function getBringLists() {
+  const res = await apiFetch('/bring/lists');
+  return res.json();
+}
+
+export async function saveBringListConfig(listUuid) {
+  await apiFetch('/bring/config', {
+    method: 'PUT',
+    body: JSON.stringify({ listUuid }),
+  });
+}
+
+export async function pushToBring(items) {
+  const res = await apiFetch('/bring/push', {
+    method: 'POST',
+    body: JSON.stringify({ items }),
+  });
+  return res.json();
+}
+
+export async function disconnectBring() {
+  await apiFetch('/bring/config', { method: 'DELETE' });
+}
+
 // --- Backup ---
 
 export async function exportAll(includeImages = false) {

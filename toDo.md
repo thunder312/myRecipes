@@ -22,7 +22,8 @@ editierbar, erweiterbar und exportierbar als Text und PDF.
 - [x] Mache eine Weiche, ob ich gerade auf dem Test-system oder Produktiv bin. Das Testsystem-Tab und auch die GUI soll einen optischen Marker erhalten, damit es keine Verwchslungen gibt, wenn ich beide Versionen offen habe.
 - [x] Baue Notizen in der Rezept-Detailsicht um. Es soll nur noch ein Notizfeld geben. Neue Notizen von Usern, werden unten angefügt mit Username und Datum. Quasi ähnlich wie ein Chat. Korrigiere mehrfach Notizen auch auf dem Prod-System. Wenn mehrere existieren, fasse sie zusammen. Wenn du den Urheber der Notiz nicht ermitteln kannst, schreibe "imported" und das Import-Datum des Rezeptes.
 - [x] Auch den Einkaufszettel für ein einzelnes Rezept soll man nicht nur exportieren können, sondern auch gleich in die Einkaufs-Sicht wechseln können.
--
+- [x] Die Einkaufsliste soll direkt in die App Bring exportiert werden können
+- [x] Bring! Account-Verwaltung pro Benutzer (Einstellungen), direkter Push über API
 ## Bugs
 ### Desktop
 ### Mobil

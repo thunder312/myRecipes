@@ -1,4 +1,4 @@
-import { getSetting, setSetting, exportAll, importAll, getAllUsers, createUser, resetUserPassword, deleteUser, changeUserRole, getAllStores, addStore, deleteStore } from '../db.js';
+import { getSetting, setSetting, exportAll, importAll, getAllUsers, createUser, resetUserPassword, deleteUser, changeUserRole, getAllStores, addStore, deleteStore, getBringConfig, connectBring, getBringLists, saveBringListConfig, disconnectBring } from '../db.js';
 import { $, showToast, getToastLog, clearToastLog } from '../utils/helpers.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { validateApiKey, BILLING_URL } from '../api.js';
@@ -123,6 +123,33 @@ async function renderSettings(container) {
           <button class="btn btn--secondary" id="btnPantryAdd">${t('settings.pantryAddBtn')}</button>
         </div>
         <button class="btn btn--ghost btn--sm" id="btnPantryReset">${t('settings.pantryResetBtn')}</button>
+      </section>
+
+      <section class="settings__section" id="bringSection">
+        <h2>${t('settings.bringSection')}</h2>
+        <p class="settings__hint">${t('settings.bringHint')}</p>
+        <div id="bringConnectForm">
+          <div class="form-group">
+            <label for="bringEmail">${t('settings.bringEmail')}</label>
+            <input type="email" id="bringEmail" class="input" placeholder="name@example.com" />
+          </div>
+          <div class="form-group">
+            <label for="bringPassword">${t('settings.bringPassword')}</label>
+            <input type="password" id="bringPassword" class="input" />
+          </div>
+          <button class="btn btn--bring" id="btnBringConnect">${t('settings.bringConnectBtn')}</button>
+        </div>
+        <div id="bringConnectedInfo" class="hidden">
+          <p class="settings__hint" id="bringConnectedLabel"></p>
+          <div class="form-group">
+            <label for="bringListSelect">${t('settings.bringListLabel')}</label>
+            <select id="bringListSelect" class="select">
+              <option value="">${t('settings.bringListPlaceholder')}</option>
+            </select>
+            <button class="btn btn--primary" id="btnBringListSave">${t('settings.bringListSaveBtn')}</button>
+          </div>
+          <button class="btn btn--ghost btn--sm" id="btnBringDisconnect">${t('settings.bringDisconnectBtn')}</button>
+        </div>
       </section>
 
       <section class="settings__section">
@@ -304,6 +331,9 @@ async function renderSettings(container) {
     });
   }
 
+  // --- Bring! integration ---
+  await initBringSection(container);
+
   // --- Export ---
   $('#btnExport', container).addEventListener('click', async () => {
     try {
@@ -347,6 +377,78 @@ async function renderSettings(container) {
     clearToastLog();
     renderToastLog(container);
     showToast(t('settings.logCleared'), 'success');
+  });
+}
+
+async function initBringSection(container) {
+  async function showConnectedState(email, listUuid) {
+    $('#bringConnectForm', container)?.classList.add('hidden');
+    const info = $('#bringConnectedInfo', container);
+    info?.classList.remove('hidden');
+    const label = $('#bringConnectedLabel', container);
+    if (label) label.textContent = t('settings.bringConnected', email);
+    // Load lists
+    try {
+      const lists = await getBringLists();
+      const sel = $('#bringListSelect', container);
+      if (sel) {
+        sel.innerHTML = lists.map(l =>
+          `<option value="${escapeAttr(l.listUuid)}" ${l.listUuid === listUuid ? 'selected' : ''}>${escapeAttr(l.name)}</option>`
+        ).join('');
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  try {
+    const config = await getBringConfig();
+    if (config.connected) {
+      await showConnectedState(config.email, config.listUuid);
+    }
+  } catch { /* not connected */ }
+
+  $('#btnBringConnect', container)?.addEventListener('click', async () => {
+    const email = $('#bringEmail', container).value.trim();
+    const password = $('#bringPassword', container).value;
+    if (!email || !password) { showToast(t('settings.bringEmail') + ' / ' + t('settings.bringPassword'), 'warning'); return; }
+    const btn = $('#btnBringConnect', container);
+    btn.disabled = true;
+    btn.textContent = t('settings.bringConnecting');
+    try {
+      await connectBring(email, password);
+      showToast(t('settings.bringConnectionOk'), 'success');
+      await showConnectedState(email, null);
+    } catch {
+      showToast(t('settings.bringConnectFailed'), 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = t('settings.bringConnectBtn');
+    }
+  });
+
+  $('#btnBringListSave', container)?.addEventListener('click', async () => {
+    const listUuid = $('#bringListSelect', container)?.value;
+    if (!listUuid) return;
+    try {
+      await saveBringListConfig(listUuid);
+      showToast(t('settings.bringListSaved'), 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  $('#btnBringDisconnect', container)?.addEventListener('click', async () => {
+    try {
+      await disconnectBring();
+      $('#bringConnectedInfo', container)?.classList.add('hidden');
+      $('#bringConnectForm', container)?.classList.remove('hidden');
+      $('#bringEmail', container).value = '';
+      $('#bringPassword', container).value = '';
+      showToast(t('settings.bringDisconnected'), 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
   });
 }
 

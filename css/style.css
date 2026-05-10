@@ -3363,6 +3363,19 @@ details[open] > .batch__log-heading::before,
   margin-bottom: var(--space-md);
 }
 
+/* Bring! btn */
+.btn--bring {
+  background: #ff6b35;
+  color: #fff;
+  border-color: #ff6b35;
+}
+
+.btn--bring:hover {
+  background: #e85d2a;
+  border-color: #e85d2a;
+  color: #fff;
+}
+
 /* Danger text btn */
 .btn--danger-text {
   color: var(--color-error);

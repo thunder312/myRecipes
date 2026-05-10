@@ -1,4 +1,4 @@
-import { getWeekShoppingList, saveWeekShoppingList, deleteWeekShoppingList, getWeekPlan, getAllStores, getProductTags, setProductTag, getAllRecipes } from '../db.js';
+import { getWeekShoppingList, saveWeekShoppingList, deleteWeekShoppingList, getWeekPlan, getAllStores, getProductTags, setProductTag, getAllRecipes, pushToBring } from '../db.js';
 import { $, showToast, debounce } from '../utils/helpers.js';
 import { t, tRaw } from '../i18n.js';
 import { normalizeShoppingList, resolveSlashIngredients } from '../api.js';
@@ -142,6 +142,7 @@ export async function render(container) {
           <button class="btn btn--ghost" id="btnWslCopy">${t('weekShopping.copyBtn')}</button>
           <button class="btn btn--secondary" id="btnWslTxt">${t('weekShopping.txtBtn')}</button>
           <button class="btn btn--primary" id="btnWslPdf">${t('weekShopping.pdfBtn')}</button>
+          <button class="btn btn--secondary btn--bring" id="btnWslBring">${t('weekShopping.bringBtn')}</button>
           <button class="btn btn--ghost btn--danger-text week-shopping__delete" id="btnWslDelete">${t('weekShopping.deleteBtn')}</button>
         </div>
       </div>
@@ -288,6 +289,29 @@ export async function render(container) {
         showToast(t('weekShopping.copied'), 'success');
       } catch {
         showToast(t('weekShopping.copyFailed'), 'error');
+      }
+    });
+
+    // Bring! export
+    $('#btnWslBring', container)?.addEventListener('click', async () => {
+      const bringItems = items.filter(i => !i.checked).map(i => (i.amount ? `${i.amount} ${i.name}` : i.name));
+      if (bringItems.length === 0) return;
+      const btn = $('#btnWslBring', container);
+      if (btn) btn.disabled = true;
+      try {
+        await pushToBring(bringItems);
+        showToast(t('weekShopping.bringHint'), 'success');
+      } catch (err) {
+        try { await navigator.clipboard.writeText(bringItems.join('\n')); } catch (_) {}
+        window.open('https://web.getbring.com', '_blank');
+        const msg = err.message || '';
+        if (!msg.includes('hinterlegt') && !msg.includes('nicht verbunden')) {
+          showToast(t('weekShopping.bringPushFailed'), 'error');
+        } else {
+          showToast(t('weekShopping.bringHintFallback'), 'info');
+        }
+      } finally {
+        if (btn) btn.disabled = false;
       }
     });
 

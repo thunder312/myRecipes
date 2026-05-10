@@ -184,6 +184,21 @@ function migrateSchema() {
   if (!userCols.includes('theme')) {
     db.exec("ALTER TABLE users ADD COLUMN theme TEXT NOT NULL DEFAULT 'light'");
   }
+  if (!userCols.includes('bringEmail')) {
+    db.exec('ALTER TABLE users ADD COLUMN bringEmail TEXT');
+  }
+  if (!userCols.includes('bringPassword')) {
+    db.exec('ALTER TABLE users ADD COLUMN bringPassword TEXT');
+  }
+  if (!userCols.includes('bringListUuid')) {
+    db.exec('ALTER TABLE users ADD COLUMN bringListUuid TEXT');
+  }
+  if (!userCols.includes('bringAccessToken')) {
+    db.exec('ALTER TABLE users ADD COLUMN bringAccessToken TEXT');
+  }
+  if (!userCols.includes('bringUserUuid')) {
+    db.exec('ALTER TABLE users ADD COLUMN bringUserUuid TEXT');
+  }
 
   // Add userId to cookbooks (links a cookbook to its owner)
   const cbCols = db.pragma('table_info(cookbooks)').map(r => r.name);
@@ -767,6 +782,28 @@ function setUserTheme(id, theme) {
   getDB().prepare('UPDATE users SET theme = ? WHERE id = ?').run(theme, id);
 }
 
+function getUserBringConfig(id) {
+  const row = getDB().prepare('SELECT bringEmail, bringPassword, bringListUuid, bringAccessToken, bringUserUuid FROM users WHERE id = ?').get(id);
+  if (!row) return null;
+  return {
+    email: row.bringEmail || null,
+    password: row.bringPassword || null,
+    listUuid: row.bringListUuid || null,
+    accessToken: row.bringAccessToken || null,
+    userUuid: row.bringUserUuid || null,
+  };
+}
+
+function setUserBringConfig(id, { email, password, listUuid, accessToken, userUuid }) {
+  getDB().prepare('UPDATE users SET bringEmail = ?, bringPassword = ?, bringListUuid = ?, bringAccessToken = ?, bringUserUuid = ? WHERE id = ?')
+    .run(email || null, password || null, listUuid || null, accessToken || null, userUuid || null, id);
+}
+
+function updateUserBringToken(id, accessToken, userUuid) {
+  getDB().prepare('UPDATE users SET bringAccessToken = ?, bringUserUuid = ? WHERE id = ?')
+    .run(accessToken, userUuid, id);
+}
+
 function updateUsername(id, newUsername) {
   const existing = getUserByUsername(newUsername);
   if (existing && existing.id !== id) throw new Error('Benutzername bereits vergeben.');
@@ -928,4 +965,7 @@ module.exports = {
   getProductTags,
   setProductTag,
   deleteProductTag,
+  getUserBringConfig,
+  setUserBringConfig,
+  updateUserBringToken,
 };
