@@ -1,9 +1,9 @@
-import { getSetting, setSetting, exportAll, importAll, getAllUsers, createUser, resetUserPassword, deleteUser, changeUserRole, getAllStores, addStore, deleteStore, getBringConfig, connectBring, getBringLists, saveBringListConfig, disconnectBring, getAllRecipes, uploadRecipeImage, getAllCookbooks, getCookbookMemberships } from '../db.js';
+import { getSetting, setSetting, exportAll, importAll, getAllUsers, createUser, resetUserPassword, deleteUser, changeUserRole, getAllStores, addStore, deleteStore, getBringConfig, connectBring, getBringLists, saveBringListConfig, disconnectBring, getAllRecipes, uploadRecipeImage, deleteRecipeImage, getAllCookbooks, getCookbookMemberships } from '../db.js';
 import { $, showToast, getToastLog, clearToastLog } from '../utils/helpers.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
-import { validateApiKey, BILLING_URL } from '../api.js';
+import { validateApiKey, BILLING_URL, translateToEn } from '../api.js';
 import { getAuthToken, getAuthUser, isAdmin, getShowNewsPopup, setShowNewsPopup } from '../utils/auth.js';
-import { t, getLanguage, setLanguage } from '../i18n.js';
+import { t, getLanguage, setLanguage, translateCategory } from '../i18n.js';
 import { loadPantryItems, savePantryItems, DEFAULT_PANTRY_DE, DEFAULT_PANTRY_EN } from '../shopping-list.js';
 
 export async function render(container) {
@@ -91,6 +91,10 @@ async function renderSettings(container) {
           </div>
           <p class="batch__progress-text" id="bulkImageText"></p>
           <div class="bulk-image-log" id="bulkImageLog"></div>
+        </div>
+        <div id="bulkResultSection" class="hidden" style="margin-top: var(--space-lg);">
+          <p class="settings__hint"><strong id="bulkResultTitle"></strong></p>
+          <div id="bulkResultGrid" class="bulk-result-grid"></div>
         </div>
         <div id="bulkManualSection" class="hidden" style="margin-top: var(--space-lg);">
           <p class="settings__hint"><strong id="bulkManualTitle"></strong></p>
@@ -440,6 +444,7 @@ async function renderSettings(container) {
       let ok = 0, skip = 0, err = 0;
       const total = toProcess.length;
       const noResultRecipes = [];
+      const resultPreviews = []; // { id, title, imageBlob }
 
       function addLog(msg) {
         const line = document.createElement('div');
@@ -455,7 +460,10 @@ async function renderSettings(container) {
         textEl.textContent = t('settings.bulkImageRunning', i + 1, total);
 
         try {
-          const searchResp = await fetch(`/api/ai/pixabay?q=${encodeURIComponent(recipe.title)}`, {
+          const enTitle = await translateToEn(recipe.title);
+          const enCat = recipe.category ? translateCategory(recipe.category, 'en') : '';
+          const pixQuery = enCat ? `${enTitle} ${enCat}` : enTitle;
+          const searchResp = await fetch(`/api/ai/pixabay?q=${encodeURIComponent(pixQuery)}&lang=en`, {
             headers: { Authorization: `Bearer ${getAuthToken()}` },
           });
           if (searchResp.status === 429) {
@@ -486,9 +494,10 @@ async function renderSettings(container) {
 
           const imgData = await imgResp.json();
           const compressed = await compressBase64(imgData.imageBlob, imgData.imageMimeType);
-          await uploadRecipeImage(recipe.id, compressed, 'image/jpeg');
+          await uploadRecipeImage(recipe.id, compressed, 'image/jpeg', 'auto');
           ok++;
-          addLog(`✓ ${recipe.title}`);
+          resultPreviews.push({ id: recipe.id, title: recipe.title, imageBlob: compressed });
+          addLog(`✓ ${recipe.title} [${pixQuery}]`);
         } catch (e) {
           err++;
           addLog(`✗ ${recipe.title}: ${e.message}`);
@@ -504,6 +513,40 @@ async function renderSettings(container) {
       textEl.textContent = t('settings.bulkImageDone', ok, skip, err);
       btn.disabled = false;
       showToast(t('settings.bulkImageDone', ok, skip, err), ok > 0 ? 'success' : 'info');
+
+      // Show result preview grid
+      const resultSection = $('#bulkResultSection', container);
+      const resultGrid = $('#bulkResultGrid', container);
+      if (resultPreviews.length > 0 && resultSection && resultGrid) {
+        $('#bulkResultTitle', container).textContent = t('settings.bulkResultTitle');
+        resultGrid.innerHTML = resultPreviews.map((item) => `
+          <div class="bulk-result-item" data-recipe-id="${item.id}">
+            <img class="bulk-result-thumb" src="data:image/jpeg;base64,${item.imageBlob}" alt="${escapeAttr(item.title)}" />
+            <div class="bulk-result-label">${escapeAttr(item.title)}</div>
+            <button class="btn btn--ghost btn--sm bulk-result-remove" data-recipe-id="${item.id}">${t('settings.bulkResultRemove')}</button>
+          </div>
+        `).join('');
+        resultSection.classList.remove('hidden');
+
+        const sectionBody = resultSection.closest('.settings__section-body');
+        if (sectionBody) sectionBody.style.maxHeight = sectionBody.scrollHeight + 'px';
+
+        resultGrid.querySelectorAll('.bulk-result-remove').forEach((btn2) => {
+          btn2.addEventListener('click', async () => {
+            const recipeId = parseInt(btn2.dataset.recipeId, 10);
+            btn2.disabled = true;
+            btn2.textContent = '…';
+            try {
+              await deleteRecipeImage(recipeId);
+              btn2.closest('.bulk-result-item').remove();
+            } catch (e) {
+              showToast(e.message, 'error');
+              btn2.disabled = false;
+              btn2.textContent = t('settings.bulkResultRemove');
+            }
+          });
+        });
+      }
 
       // Show manual URL entry for recipes where Pixabay found nothing
       const manualSection = $('#bulkManualSection', container);
@@ -543,7 +586,7 @@ async function renderSettings(container) {
               }
               const imgData = await imgResp.json();
               const compressed = await compressBase64(imgData.imageBlob, imgData.imageMimeType);
-              await uploadRecipeImage(recipeId, compressed, 'image/jpeg');
+              await uploadRecipeImage(recipeId, compressed, 'image/jpeg', 'user');
               applyBtn.textContent = t('settings.bulkManualApplied');
               applyBtn.classList.remove('btn--ghost');
               applyBtn.classList.add('btn--success');

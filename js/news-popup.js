@@ -4,6 +4,16 @@ import { getAuthToken } from './utils/auth.js';
 const CHANGELOG = [
   {
     date: '2026-05-16',
+    de: 'Massenbildersuche: Nach dem Durchlauf erscheint eine Bildvorschau aller zugewiesenen Fotos – mit Entfernen-Button falls ein Bild nicht passt.',
+    en: 'Bulk image search: After the run, a photo preview of all assigned images appears – with a remove button in case a photo doesn\'t fit.',
+  },
+  {
+    date: '2026-05-16',
+    de: 'Automatisch zugewiesene Bilder (Pixabay-Bulk oder KI-Ergänzung) zeigen jetzt einen Badge „Automatisch gesucht" am Bild – als Hinweis, dass das Foto kein echtes Foto des Gerichts ist.',
+    en: 'Automatically assigned photos (Pixabay bulk search or AI enhancement) now show an "Auto-searched" badge on the image – as a reminder that the photo may not show the actual dish.',
+  },
+  {
+    date: '2026-05-16',
     de: 'Rezept-Detailseite: Bild jetzt als Vorschau – per Klick in voller Auflösung. PDF-Block einklappbar. Portionen-Scaler direkt neben dem Einkaufszettel. Koch-Statistik kompakter.',
     en: 'Recipe detail page: Image shown as thumbnail – click to view full resolution. PDF block now collapsible. Serving scaler right next to the shopping list. Cook stats more compact.',
   },

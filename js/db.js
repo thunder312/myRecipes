@@ -269,10 +269,10 @@ export async function deleteSavedQuery(id) {
 
 // --- Recipe image ---
 
-export async function uploadRecipeImage(id, imageBase64, mimeType) {
+export async function uploadRecipeImage(id, imageBase64, mimeType, imageSource = 'user') {
   await apiFetch(`/recipes/${id}/image`, {
     method: 'PATCH',
-    body: JSON.stringify({ imageBlob: imageBase64, imageMimeType: mimeType }),
+    body: JSON.stringify({ imageBlob: imageBase64, imageMimeType: mimeType, imageSource }),
   });
 }
 

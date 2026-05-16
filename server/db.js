@@ -164,6 +164,9 @@ function migrateSchema() {
   if (!cols.includes('imageMimeType')) {
     db.exec("ALTER TABLE recipes ADD COLUMN imageMimeType TEXT");
   }
+  if (!cols.includes('imageSource')) {
+    db.exec("ALTER TABLE recipes ADD COLUMN imageSource TEXT");
+  }
   if (!cols.includes('rating')) {
     db.exec('ALTER TABLE recipes ADD COLUMN rating REAL');
   }

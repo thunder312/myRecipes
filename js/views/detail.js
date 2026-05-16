@@ -123,7 +123,10 @@ function renderDetailView(container, recipe) {
       ${recipe.imageBlob ? `
       <div class="detail__image">
         <div class="detail__image-inner">
-          <img src="data:${recipe.imageMimeType || 'image/jpeg'};base64,${recipe.imageBlob}" alt="${esc(recipe.title)}" class="detail__image-img" id="detailImageThumb" loading="lazy" />
+          <div class="detail__image-img-wrap">
+            <img src="data:${recipe.imageMimeType || 'image/jpeg'};base64,${recipe.imageBlob}" alt="${esc(recipe.title)}" class="detail__image-img" id="detailImageThumb" loading="lazy" />
+            ${recipe.imageSource === 'auto' ? `<div class="detail__image-auto-badge" title="${t('detail.imageAutoSearchTooltip')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> ${t('detail.imageAutoSearchBadge')}</div>` : ''}
+          </div>
           ${canEdit ? `<div class="detail__image-actions">
             <label class="btn btn--ghost btn--sm detail__image-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -526,10 +529,11 @@ function renderDetailView(container, recipe) {
         if (!file) return;
         try {
           const base64 = await compressImageForStorage(file);
-          await uploadRecipeImage(recipe.id, base64, 'image/jpeg');
+          await uploadRecipeImage(recipe.id, base64, 'image/jpeg', 'user');
           showToast(t('detail.imageSaved'), 'success');
           recipe.imageBlob = base64;
           recipe.imageMimeType = 'image/jpeg';
+          recipe.imageSource = 'user';
           renderDetailView(container, recipe);
         } catch (err) {
           showToast(err.message, 'error');
@@ -572,10 +576,11 @@ function renderDetailView(container, recipe) {
         try {
           const { imageBlob, imageMimeType } = await fetchImageByUrl(url);
           const compressed = await compressBase64ForStorage(imageBlob, imageMimeType);
-          await uploadRecipeImage(recipe.id, compressed, 'image/jpeg');
+          await uploadRecipeImage(recipe.id, compressed, 'image/jpeg', 'user');
           showToast(t('detail.imageSaved'), 'success');
           recipe.imageBlob = compressed;
           recipe.imageMimeType = 'image/jpeg';
+          recipe.imageSource = 'user';
           renderDetailView(container, recipe);
         } catch (err) {
           showToast(err.message, 'error');
@@ -793,9 +798,10 @@ async function openAiModal(container, recipe) {
         if (imgResp.ok) {
           const imgData = await imgResp.json();
           const compressed = await compressBase64ForStorage(imgData.imageBlob, imgData.imageMimeType);
-          await uploadRecipeImage(recipe.id, compressed, 'image/jpeg');
+          await uploadRecipeImage(recipe.id, compressed, 'image/jpeg', 'auto');
           recipe.imageBlob = compressed;
           recipe.imageMimeType = 'image/jpeg';
+          recipe.imageSource = 'auto';
         }
       } catch (e) {
         showToast(e.message, 'error');

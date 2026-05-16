@@ -101,12 +101,13 @@ router.patch('/:id/image', (req, res) => {
   if (req.user.role !== 'admin' && existing.createdBy && existing.createdBy !== req.user.userId) {
     return res.status(403).json({ error: 'Keine Berechtigung' });
   }
-  const { imageBlob, imageMimeType } = req.body;
+  const { imageBlob, imageMimeType, imageSource } = req.body;
   const imgBuffer = (typeof imageBlob === 'string' && imageBlob.length > 0)
     ? Buffer.from(imageBlob, 'base64')
     : null;
-  getDB().prepare('UPDATE recipes SET imageBlob = ?, imageMimeType = ?, updatedAt = ? WHERE id = ?')
-    .run(imgBuffer, imageMimeType || null, new Date().toISOString(), id);
+  const srcValue = imgBuffer ? (imageSource || 'user') : null;
+  getDB().prepare('UPDATE recipes SET imageBlob = ?, imageMimeType = ?, imageSource = ?, updatedAt = ? WHERE id = ?')
+    .run(imgBuffer, imageMimeType || null, srcValue, new Date().toISOString(), id);
   res.json({ success: true });
 });
 
