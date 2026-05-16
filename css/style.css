@@ -4943,9 +4943,14 @@ details[open] > .batch__log-heading::before,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--color-primary);
+  text-decoration: none;
 }
+.bulk-manual-title:hover { text-decoration: underline; }
 .bulk-manual-url {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  min-width: 80px;
+  width: 0; /* override .input width:100% so flex can control sizing */
   font-size: var(--font-size-sm);
   padding: var(--space-xs) var(--space-sm);
   height: 2rem;

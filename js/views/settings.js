@@ -513,12 +513,16 @@ async function renderSettings(container) {
         $('#bulkManualHint', container).textContent = t('settings.bulkManualHint');
         manualList.innerHTML = noResultRecipes.map((r) => `
           <div class="bulk-manual-row" data-recipe-id="${r.id}">
-            <span class="bulk-manual-title">${escapeAttr(r.title)}</span>
+            <a class="bulk-manual-title" href="https://www.google.com/search?q=${encodeURIComponent(r.title)}&amp;tbm=isch" target="_blank" rel="noopener">${escapeAttr(r.title)}</a>
             <input type="text" class="input bulk-manual-url" placeholder="${t('settings.bulkManualUrlPlaceholder')}" />
             <button class="btn btn--ghost btn--sm bulk-manual-btn">${t('settings.bulkManualApply')}</button>
           </div>
         `).join('');
         manualSection.classList.remove('hidden');
+
+        // Let the section body grow to fit the newly added content
+        const sectionBody = manualSection.closest('.settings__section-body');
+        if (sectionBody) sectionBody.style.maxHeight = sectionBody.scrollHeight + 'px';
 
         manualList.querySelectorAll('.bulk-manual-row').forEach((row) => {
           const recipeId = parseInt(row.dataset.recipeId, 10);
