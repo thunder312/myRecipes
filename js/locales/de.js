@@ -388,6 +388,7 @@ export const de = {
     notificationsHint: 'Steuere, welche Hinweise beim Login angezeigt werden.',
     newsPopupLabel: 'Neuigkeiten-Pop-Up beim Login anzeigen',
     newsPopupSaved: 'Einstellung gespeichert.',
+    newsShowNowBtn: 'Neuigkeiten jetzt anzeigen',
   },
 
   news: {

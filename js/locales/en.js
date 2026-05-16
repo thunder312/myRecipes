@@ -388,6 +388,7 @@ export const en = {
     notificationsHint: 'Control which hints are shown at login.',
     newsPopupLabel: 'Show news pop-up at login',
     newsPopupSaved: 'Setting saved.',
+    newsShowNowBtn: 'Show news now',
   },
 
   news: {

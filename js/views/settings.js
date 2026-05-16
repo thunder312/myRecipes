@@ -77,6 +77,9 @@ async function renderSettings(container) {
           <input type="checkbox" id="newsPopupToggle" ${getShowNewsPopup() ? 'checked' : ''} />
           ${t('settings.newsPopupLabel')}
         </label>
+        <button class="btn btn--ghost btn--sm" id="btnShowNewsNow" style="margin-top: var(--space-md);">
+          ${t('settings.newsShowNowBtn')}
+        </button>
       </section>
 
       ${admin ? `
@@ -251,6 +254,12 @@ async function renderSettings(container) {
       }
     } catch { /* ignore */ }
     showToast(t('settings.newsPopupSaved'), 'success');
+  });
+
+  // --- News jetzt anzeigen ---
+  $('#btnShowNewsNow', container)?.addEventListener('click', async () => {
+    const { maybeShowNewsPopup } = await import('../news-popup.js');
+    await maybeShowNewsPopup('2020-01-01T00:00:00.000Z');
   });
 
   // --- Stores ---
