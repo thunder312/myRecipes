@@ -23,13 +23,15 @@ editierbar, erweiterbar und exportierbar als Text und PDF.
 - [x] Auch den Einkaufszettel für ein einzelnes Rezept soll man nicht nur exportieren können, sondern auch gleich in die Einkaufs-Sicht wechseln können.
 - [x] Die Einkaufsliste soll direkt in die App Bring exportiert werden können
 - [x] Bring! Account-Verwaltung pro Benutzer (Einstellungen), direkter Push über API
-- [ ] Der Freitextfilter in der Übersicht soll auch auf dieses Herkunftsfeld filtern
-- [ ] Der Import soll optional auch nach einem passenden Bild im Internet suchen (Rezeptname), und dies gleich mit importieren. Falls die neue Option im Import ausgewählt wurde.
-- [ ] Es soll in den Optionen eine Möglichkeit geben, für sein eigenes Kochbuch für alle Rezepte ein Bild im Internet zu suchen (bestehende werden überschrieben.
-- [ ] Selbsterfasste und bestehende Rezepte sollen nach der Eingabe auch die Möglichkeit haben, von der KI in den Punkten Beilagen, Tags, Beschreibung und Bild ergänzt werden können.
-- [ ] Der Button Kochmodus soll oben unter der Überschrift plaziert werdn
+- [x] Der Freitextfilter in der Übersicht soll auch auf dieses Herkunftsfeld filtern
+- [x] Der Import soll optional auch nach einem passenden Bild im Internet suchen (Rezeptname), und dies gleich mit importieren. Falls die neue Option im Import ausgewählt wurde.
+- [x] Es soll in den Optionen eine Möglichkeit geben, für sein eigenes Kochbuch für alle Rezepte ein Bild im Internet zu suchen (bestehende werden überschrieben.
+- [x] Selbsterfasste und bestehende Rezepte sollen nach der Eingabe auch die Möglichkeit haben, von der KI in den Punkten Beilagen, Tags, Beschreibung und Bild ergänzt werden können.
+- [x] Der Button Kochmodus soll oben unter der Überschrift plaziert werdn
 - [x] Es soll ein News-Pop-Up geben, das die neuen Rezepte und Features auflistet, die seit dem letzten Login hinzugekommen sind.
       Es soll mit OK bestätigt werden können oder in den Einstellungen komplett pro User abschaltbar sein.
+- [ ] Auto-Backup der DB nach Dropbox alle 24h 2 Saves reichen (ältere löschen).
+-
 ## Bugs
 ### Desktop
 ### Mobil

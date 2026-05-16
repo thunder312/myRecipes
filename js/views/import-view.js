@@ -2,7 +2,7 @@ import { getSetting, addRecipe, getAllRecipes, updateRecipe, deleteRecipe, getAl
 import { processURL, processPDF, processImage, processImages, processText, extractSearchResults } from '../import.js';
 import { parseVoiceIntent, ApiError } from '../api.js';
 import { $, showToast, categoryChipClass } from '../utils/helpers.js';
-import { setImportRunning } from '../utils/auth.js';
+import { setImportRunning, getAuthToken } from '../utils/auth.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
 import { t, getLanguage } from '../i18n.js';
@@ -254,7 +254,14 @@ async function renderImportForm(container) {
 
       <!-- Single recipe preview -->
       <div class="import__preview hidden" id="importPreview">
-        <h2>${t('import.preview')}</h2>
+        <div class="import__preview-header">
+          <h2>${t('import.preview')}</h2>
+          <button class="btn btn--ghost btn--sm" id="btnImgSearch">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            ${t('detail.aiImageSearchBtn')}
+          </button>
+        </div>
+        <div class="ai-image-gallery hidden" id="previewImageGallery"></div>
         <div class="preview-form" id="previewForm"></div>
         <div class="import__preview-actions">
           <button class="btn btn--primary" id="btnSave">${t('import.saveBtn')}</button>
@@ -672,6 +679,68 @@ async function renderImportForm(container) {
   $('#btnCancel', container).addEventListener('click', () => {
     currentData = null;
     $('#importPreview', container).classList.add('hidden');
+  });
+
+  // Image search for import preview
+  $('#btnImgSearch', container).addEventListener('click', async () => {
+    const btn = $('#btnImgSearch', container);
+    const gallery = $('#previewImageGallery', container);
+    if (!currentData) return;
+
+    const title = currentData.title || '';
+    btn.disabled = true;
+    const origHtml = btn.innerHTML;
+    btn.textContent = t('detail.aiImageSearching');
+    gallery.classList.add('hidden');
+
+    try {
+      const token = getAuthToken();
+      const resp = await fetch(`/api/ai/pixabay?q=${encodeURIComponent(title)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || resp.statusText);
+      }
+      const { hits } = await resp.json();
+      if (!hits?.length) {
+        showToast(t('detail.aiImageNoResults'), 'warning');
+        return;
+      }
+      gallery.innerHTML = hits.map((h, i) => `
+        <button class="ai-image-thumb" data-webformat="${h.webformatURL}" type="button">
+          <img src="${h.previewURL}" alt="" loading="lazy" />
+        </button>
+      `).join('');
+      gallery.classList.remove('hidden');
+
+      gallery.querySelectorAll('.ai-image-thumb').forEach(thumb => {
+        thumb.addEventListener('click', async () => {
+          gallery.querySelectorAll('.ai-image-thumb').forEach(b => b.classList.remove('ai-image-thumb--selected'));
+          thumb.classList.add('ai-image-thumb--selected');
+          thumb.disabled = true;
+          try {
+            const imgResp = await fetch(`/api/fetch-image?url=${encodeURIComponent(thumb.dataset.webformat)}`, {
+              headers: { Authorization: `Bearer ${getAuthToken()}` },
+            });
+            if (!imgResp.ok) throw new Error('Bild konnte nicht geladen werden');
+            const imgData = await imgResp.json();
+            currentData._imageBlob = imgData.imageBlob;
+            currentData._imageMimeType = imgData.imageMimeType;
+            showToast(t('detail.aiImageSelected'), 'success');
+          } catch (e) {
+            showToast(e.message, 'error');
+          } finally {
+            thumb.disabled = false;
+          }
+        });
+      });
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
   });
 
   // --- Multi-recipe review with accordion ---

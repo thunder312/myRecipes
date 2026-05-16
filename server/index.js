@@ -15,6 +15,7 @@ const suggestQueriesRouter = require('./routes/suggest-queries');
 const weekplanRouter = require('./routes/weekplan');
 const storesRouter = require('./routes/stores');
 const bringRouter = require('./routes/bring');
+const aiRouter = require('./routes/ai');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -130,6 +131,7 @@ app.use('/api/suggest-queries', (req, res, next) => {
 }, suggestQueriesRouter);
 app.use('/api/weekplan', requireAuth, weekplanRouter);
 app.use('/api/bring', requireAuth, bringRouter);
+app.use('/api/ai', requireAuth, aiRouter);
 app.use('/api/stores', (req, res, next) => {
   if (req.method === 'GET') return optionalAuth(req, res, next);
   requireAuth(req, res, next);

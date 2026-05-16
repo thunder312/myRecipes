@@ -381,6 +381,105 @@ Return ONLY the JSON, no markdown, no explanation.`;
   }
 }
 
+function buildEnhancePromptDE(recipe) {
+  return `Du bist ein Koch-Assistent. Ergänze das folgende Rezept mit fehlenden oder verbesserungswürdigen Informationen.
+
+Rezept:
+- Titel: ${recipe.title || ''}
+- Kategorie: ${recipe.category || ''}
+- Beschreibung: ${recipe.description || '(fehlt)'}
+- Beilagen: ${(recipe.sides || []).join(', ') || '(fehlt)'}
+- Tags: ${(recipe.tags || []).join(', ') || '(fehlt)'}
+- Zutaten: ${(recipe.ingredients || []).slice(0, 15).join(', ')}
+- Zubereitung (Auszug): ${(recipe.recipeText || '').slice(0, 400)}
+
+Antworte NUR mit einem JSON-Objekt:
+{
+  "sides": ["Beilage 1", "Beilage 2"],
+  "tags": ["Tag 1", "Tag 2"],
+  "description": "Kurze Beschreibung in 1-2 Sätzen",
+  "imageQuery": "Englischer Suchbegriff für Pixabay (z.B. 'beef goulash bowl')"
+}
+
+Regeln:
+- sides: 2-4 passende Beilagen; leeres Array wenn bereits vorhanden und gut
+- tags: ergänze sinnvolle Tags (vegetarisch, vegan, schnell, festlich, low-carb etc.); leeres Array wenn bereits gut
+- description: immer eine kurze, prägnante Beschreibung in 1-2 Sätzen (auch wenn bereits eine vorhanden ist)
+- imageQuery: immer einen englischen Begriff für ein passendes Lebensmittel-/Gericht-Foto`;
+}
+
+function buildEnhancePromptEN(recipe) {
+  return `You are a cooking assistant. Supplement the following recipe with missing or improvable information.
+
+Recipe:
+- Title: ${recipe.title || ''}
+- Category: ${recipe.category || ''}
+- Description: ${recipe.description || '(missing)'}
+- Sides: ${(recipe.sides || []).join(', ') || '(missing)'}
+- Tags: ${(recipe.tags || []).join(', ') || '(missing)'}
+- Ingredients: ${(recipe.ingredients || []).slice(0, 15).join(', ')}
+- Preparation (excerpt): ${(recipe.recipeText || '').slice(0, 400)}
+
+Respond ONLY with a JSON object:
+{
+  "sides": ["Side 1", "Side 2"],
+  "tags": ["Tag 1", "Tag 2"],
+  "description": "Short description in 1-2 sentences",
+  "imageQuery": "English search term for Pixabay (e.g. 'beef goulash bowl')"
+}
+
+Rules:
+- sides: 2-4 suitable side dishes; empty array if already present and good
+- tags: add meaningful tags (vegetarian, vegan, quick, festive, low-carb etc.); empty array if already good
+- description: always provide a short, concise description in 1-2 sentences (even if one already exists)
+- imageQuery: always provide an English term for a matching food/dish photo`;
+}
+
+export async function enhanceRecipe(recipe) {
+  const apiKey = await getApiKey();
+  const prompt = getLanguage() === 'en'
+    ? buildEnhancePromptEN(recipe)
+    : buildEnhancePromptDE(recipe);
+
+  let response;
+  try {
+    response = await fetchWithTimeout(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 512,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+  } catch (fetchErr) {
+    const msg = fetchErr.name === 'AbortError' ? t('apiErrors.timeout') : fetchErr.message;
+    throw new ApiError(msg, 0, false);
+  }
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    handleApiError(response, err);
+  }
+
+  const data = await response.json();
+  const text = data.content?.[0]?.text || '';
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const cleaned = fenceMatch ? fenceMatch[1].trim() : text.trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+    throw new Error(t('apiErrors.parseError'));
+  }
+}
+
 /**
  * Filtert ungültige/sinnlose Rezepte aus den API-Ergebnissen.
  * Gibt { valid: [...], filtered: number } zurück.

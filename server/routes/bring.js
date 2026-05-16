@@ -28,28 +28,33 @@ async function authenticateBring(email, password) {
     body: new URLSearchParams({ email, password }).toString(),
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
     throw new Error(`Bring! Anmeldung fehlgeschlagen (${res.status})`);
   }
   return res.json();
 }
 
-async function fetchListsForUser(userUuid, token) {
-  const res = await bringFetch(`${BRING_API}/bringlists/${userUuid}`, {
-    headers: { Authorization: `Bearer ${token}` },
+async function fetchListsForUser(privateUuid, publicUuid, token) {
+  const res = await bringFetch(`${BRING_API}/bringusers/${privateUuid}/lists`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'X-BRING-USER-UUID': privateUuid,
+      'X-BRING-PUBLIC-USER-UUID': publicUuid,
+    },
   });
   if (!res.ok) throw { status: res.status };
   const data = await res.json();
   return data.lists || [];
 }
 
-async function pushItemsToList(listUuid, items, token) {
+async function pushItemsToList(listUuid, items, token, privateUuid, publicUuid) {
   for (const item of items) {
     const body = new URLSearchParams({ purchase: item, specification: '', recently: '' }).toString();
     const r = await bringFetch(`${BRING_API}/bringlists/${listUuid}`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${token}`,
+        'X-BRING-USER-UUID': privateUuid,
+        'X-BRING-PUBLIC-USER-UUID': publicUuid,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body,
@@ -70,7 +75,8 @@ router.post('/connect', async (req, res) => {
       password,
       accessToken: data.access_token,
       userUuid: data.uuid,
-      listUuid: existing.listUuid || null,
+      publicUserUuid: data.publicUuid,
+      listUuid: existing.listUuid || data.bringListUUID || null,
     });
     res.json({ success: true, userUuid: data.uuid });
   } catch (err) {
@@ -101,7 +107,10 @@ router.put('/config', (req, res) => {
 
 // DELETE /api/bring/config – disconnect
 router.delete('/config', (req, res) => {
-  setUserBringConfig(req.user.userId, { email: null, password: null, listUuid: null, accessToken: null, userUuid: null });
+  setUserBringConfig(req.user.userId, {
+    email: null, password: null, listUuid: null,
+    accessToken: null, userUuid: null, publicUserUuid: null,
+  });
   res.json({ success: true });
 });
 
@@ -110,25 +119,27 @@ router.get('/lists', async (req, res) => {
   const config = getUserBringConfig(req.user.userId);
   if (!config?.email) return res.status(400).json({ error: 'Kein Bring!-Account hinterlegt' });
   try {
-    let { accessToken: token, userUuid, email, password } = config;
-    if (!token) {
+    let { accessToken: token, userUuid, publicUserUuid, email, password } = config;
+    if (!token || !publicUserUuid) {
       const data = await authenticateBring(email, password);
       token = data.access_token;
       userUuid = data.uuid;
-      updateUserBringToken(req.user.userId, token, userUuid);
+      publicUserUuid = data.publicUuid;
+      updateUserBringToken(req.user.userId, token, userUuid, publicUserUuid);
     }
     let lists;
     try {
-      lists = await fetchListsForUser(userUuid, token);
+      lists = await fetchListsForUser(userUuid, publicUserUuid, token);
     } catch (e) {
       if (e.status === 401) {
         const data = await authenticateBring(email, password);
         token = data.access_token;
         userUuid = data.uuid;
-        updateUserBringToken(req.user.userId, token, userUuid);
-        lists = await fetchListsForUser(userUuid, token);
+        publicUserUuid = data.publicUuid;
+        updateUserBringToken(req.user.userId, token, userUuid, publicUserUuid);
+        lists = await fetchListsForUser(userUuid, publicUserUuid, token);
       } else {
-        throw new Error(`Bring! Listen-Abruf fehlgeschlagen (${e.status})`);
+        throw new Error(`Bring! Listen-Abruf fehlgeschlagen (${e.status ?? e.message ?? 'Netzwerkfehler'})`);
       }
     }
     res.json(lists);
@@ -145,24 +156,26 @@ router.post('/push', async (req, res) => {
   if (!config?.email) return res.status(400).json({ error: 'Kein Bring!-Account hinterlegt' });
   if (!config.listUuid) return res.status(400).json({ error: 'Keine Bring!-Liste ausgewählt. Bitte in den Einstellungen konfigurieren.' });
   try {
-    let { accessToken: token, userUuid, email, password, listUuid } = config;
-    if (!token) {
+    let { accessToken: token, userUuid, publicUserUuid, email, password, listUuid } = config;
+    if (!token || !publicUserUuid) {
       const data = await authenticateBring(email, password);
       token = data.access_token;
       userUuid = data.uuid;
-      updateUserBringToken(req.user.userId, token, userUuid);
+      publicUserUuid = data.publicUuid;
+      updateUserBringToken(req.user.userId, token, userUuid, publicUserUuid);
     }
     try {
-      await pushItemsToList(listUuid, items, token);
+      await pushItemsToList(listUuid, items, token, userUuid, publicUserUuid);
     } catch (e) {
       if (e.status === 401) {
         const data = await authenticateBring(email, password);
         token = data.access_token;
         userUuid = data.uuid;
-        updateUserBringToken(req.user.userId, token, userUuid);
-        await pushItemsToList(listUuid, items, token);
+        publicUserUuid = data.publicUuid;
+        updateUserBringToken(req.user.userId, token, userUuid, publicUserUuid);
+        await pushItemsToList(listUuid, items, token, userUuid, publicUserUuid);
       } else {
-        throw new Error(`Bring! Push fehlgeschlagen (${e.status})`);
+        throw new Error(`Bring! Push fehlgeschlagen (${e.status ?? e.message ?? 'Netzwerkfehler'})`);
       }
     }
     res.json({ success: true, count: items.length });

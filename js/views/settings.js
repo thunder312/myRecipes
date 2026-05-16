@@ -1,4 +1,4 @@
-import { getSetting, setSetting, exportAll, importAll, getAllUsers, createUser, resetUserPassword, deleteUser, changeUserRole, getAllStores, addStore, deleteStore, getBringConfig, connectBring, getBringLists, saveBringListConfig, disconnectBring } from '../db.js';
+import { getSetting, setSetting, exportAll, importAll, getAllUsers, createUser, resetUserPassword, deleteUser, changeUserRole, getAllStores, addStore, deleteStore, getBringConfig, connectBring, getBringLists, saveBringListConfig, disconnectBring, getAllRecipes, uploadRecipeImage } from '../db.js';
 import { $, showToast, getToastLog, clearToastLog } from '../utils/helpers.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { validateApiKey, BILLING_URL } from '../api.js';
@@ -14,6 +14,7 @@ async function renderSettings(container) {
   const user = getAuthUser();
   const admin = isAdmin();
   const apiKey = admin ? (await getSetting('apiKey') || '') : '';
+  const pixabayKey = admin ? (await getSetting('pixabayKey') || '') : '';
 
   container.innerHTML = `
     <div class="settings">
@@ -31,6 +32,39 @@ async function renderSettings(container) {
         </div>
         <div class="settings__api-status" id="apiStatus"></div>
         <a href="${BILLING_URL}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">${t('settings.apiKeyBilling')}</a>
+      </section>
+
+      <section class="settings__section">
+        <h2>${t('settings.pixabaySection')}</h2>
+        <p class="settings__hint">${t('settings.pixabayHint')}</p>
+        <div class="form-group">
+          <label for="pixabayKeyInput">${t('settings.pixabayKeyLabel')}</label>
+          <input type="password" id="pixabayKeyInput" class="input" value="${escapeAttr(pixabayKey)}" placeholder="55887044-..." />
+          <button class="btn btn--primary" id="btnSavePixabayKey">${t('settings.pixabayKeySaveBtn')}</button>
+        </div>
+      </section>
+
+      <section class="settings__section">
+        <h2>${t('settings.bulkImageSection')}</h2>
+        <p class="settings__hint">${t('settings.bulkImageHint')}</p>
+        <label class="settings__checkbox-label">
+          <input type="checkbox" id="bulkOnlyMissing" checked />
+          ${t('settings.bulkImageOnlyMissing')}
+        </label>
+        <label class="settings__checkbox-label" style="margin-top: var(--space-sm);">
+          <input type="checkbox" id="bulkOverwrite" />
+          ${t('settings.bulkImageOverwrite')}
+        </label>
+        <div style="margin-top: var(--space-md);">
+          <button class="btn btn--secondary" id="btnBulkImage">${t('settings.bulkImageBtn')}</button>
+        </div>
+        <div id="bulkImageProgress" class="hidden" style="margin-top: var(--space-md);">
+          <div class="batch__progress-bar-wrapper">
+            <div class="batch__progress-bar" id="bulkImageBar" style="width:0%"></div>
+          </div>
+          <p class="batch__progress-text" id="bulkImageText"></p>
+          <div class="bulk-image-log" id="bulkImageLog"></div>
+        </div>
       </section>
       ` : ''}
 
@@ -194,6 +228,8 @@ async function renderSettings(container) {
     </div>
   `;
 
+  initCollapsibleSections(container);
+
   // --- Language toggle ---
   $('#langToggle', container).addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-lang]');
@@ -300,6 +336,97 @@ async function renderSettings(container) {
         btn.disabled = false;
         btn.textContent = t('settings.apiKeySaveBtn');
       }
+    });
+  }
+
+  // --- Pixabay API Key (admin only) ---
+  if (admin) {
+    $('#btnSavePixabayKey', container).addEventListener('click', async () => {
+      const key = $('#pixabayKeyInput', container).value.trim().replace(/^["']|["']$/g, '');
+      await setSetting('pixabayKey', key);
+      showToast(t('settings.pixabayKeySaved'), 'success');
+    });
+
+    // --- Bulk Image Search ---
+    $('#btnBulkImage', container).addEventListener('click', async () => {
+      const pixKey = ($('#pixabayKeyInput', container).value || pixabayKey).trim();
+      if (!pixKey) { showToast(t('settings.bulkImageNoKey'), 'warning'); return; }
+
+      const onlyMissing = $('#bulkOnlyMissing', container).checked;
+      const overwrite = $('#bulkOverwrite', container).checked;
+      const progressEl = $('#bulkImageProgress', container);
+      const barEl = $('#bulkImageBar', container);
+      const textEl = $('#bulkImageText', container);
+      const logEl = $('#bulkImageLog', container);
+      const btn = $('#btnBulkImage', container);
+
+      btn.disabled = true;
+      progressEl.classList.remove('hidden');
+      logEl.innerHTML = '';
+
+      const recipes = await getAllRecipes();
+      const toProcess = recipes.filter(r => {
+        if (onlyMissing && r.imageBlob) return false;
+        if (!onlyMissing && !overwrite && r.imageBlob) return false;
+        return true;
+      });
+
+      let ok = 0, skip = 0, err = 0;
+      const total = toProcess.length;
+
+      function addLog(msg) {
+        const line = document.createElement('div');
+        line.textContent = msg;
+        logEl.appendChild(line);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      for (let i = 0; i < toProcess.length; i++) {
+        const recipe = toProcess[i];
+        const pct = Math.round(((i + 1) / total) * 100);
+        barEl.style.width = `${pct}%`;
+        textEl.textContent = t('settings.bulkImageRunning', i + 1, total);
+
+        try {
+          const searchResp = await fetch(`/api/ai/pixabay?q=${encodeURIComponent(recipe.title)}`, {
+            headers: { Authorization: `Bearer ${getAuthToken()}` },
+          });
+          if (searchResp.status === 429) {
+            addLog(`⏳ Rate limit – 10s warten…`);
+            await new Promise(r => setTimeout(r, 10000));
+            i--; // retry
+            continue;
+          }
+          if (!searchResp.ok) { skip++; addLog(`⚠ ${recipe.title}: Suche fehlgeschlagen`); continue; }
+
+          const { hits } = await searchResp.json();
+          if (!hits?.length) { skip++; addLog(`– ${recipe.title}: Kein Bild gefunden`); continue; }
+
+          const imgResp = await fetch(`/api/fetch-image?url=${encodeURIComponent(hits[0].webformatURL)}`, {
+            headers: { Authorization: `Bearer ${getAuthToken()}` },
+          });
+          if (!imgResp.ok) { skip++; addLog(`⚠ ${recipe.title}: Bild-Download fehlgeschlagen`); continue; }
+
+          const imgData = await imgResp.json();
+          const compressed = await compressBase64(imgData.imageBlob, imgData.imageMimeType);
+          await uploadRecipeImage(recipe.id, compressed, 'image/jpeg');
+          ok++;
+          addLog(`✓ ${recipe.title}`);
+        } catch (e) {
+          err++;
+          addLog(`✗ ${recipe.title}: ${e.message}`);
+        }
+
+        // 1.5s delay between requests
+        if (i < toProcess.length - 1) {
+          await new Promise(r => setTimeout(r, 1500));
+        }
+      }
+
+      barEl.style.width = '100%';
+      textEl.textContent = t('settings.bulkImageDone', ok, skip, err);
+      btn.disabled = false;
+      showToast(t('settings.bulkImageDone', ok, skip, err), ok > 0 ? 'success' : 'info');
     });
   }
 
@@ -432,7 +559,7 @@ async function initBringSection(container) {
         ).join('');
       }
     } catch (err) {
-      showToast(err.message, 'error');
+      showToast(err.message || t('settings.bringPushFailed'), 'error');
     }
   }
 
@@ -573,6 +700,59 @@ function renderToastLog(container) {
 function escapeAttr(str) {
   if (!str) return '';
   return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function initCollapsibleSections(container) {
+  container.querySelectorAll('.settings__section').forEach((section) => {
+    const h2 = section.querySelector(':scope > h2');
+    if (!h2) return;
+
+    const key = 'settings_sec_' + h2.textContent.trim().slice(0, 40);
+    const stored = localStorage.getItem(key);
+    const collapsed = stored === null ? true : stored === '1';
+
+    // Wrap all non-h2 children in a collapsible body div
+    const body = document.createElement('div');
+    body.className = 'settings__section-body';
+    [...section.children].filter(el => el !== h2).forEach(el => body.appendChild(el));
+    section.appendChild(body);
+
+    // Add chevron icon to h2
+    h2.classList.add('settings__section-header');
+    const chevron = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    chevron.setAttribute('class', 'settings__chevron');
+    chevron.setAttribute('width', '18');
+    chevron.setAttribute('height', '18');
+    chevron.setAttribute('viewBox', '0 0 24 24');
+    chevron.setAttribute('fill', 'none');
+    chevron.setAttribute('stroke', 'currentColor');
+    chevron.setAttribute('stroke-width', '2');
+    chevron.innerHTML = '<polyline points="6 9 12 15 18 9"/>';
+    h2.appendChild(chevron);
+
+    if (collapsed) section.classList.add('settings__section--collapsed');
+
+    h2.addEventListener('click', () => {
+      const now = section.classList.toggle('settings__section--collapsed');
+      localStorage.setItem(key, now ? '1' : '0');
+    });
+  });
+}
+
+function compressBase64(base64, mimeType, maxPx = 1200) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.82).split(',')[1]);
+    };
+    img.onerror = reject;
+    img.src = `data:${mimeType};base64,${base64}`;
+  });
 }
 
 // ---------------------------------------------------------------------------

@@ -4,6 +4,21 @@ import { getAuthToken } from './utils/auth.js';
 const CHANGELOG = [
   {
     date: '2026-05-16',
+    de: 'KI-Ergänzung: Beilagen, Tags und Beschreibung per KI vorschlagen lassen – inkl. Bildsuche via Pixabay.',
+    en: 'AI Enhancement: Get AI suggestions for sides, tags and description – with optional Pixabay image search.',
+  },
+  {
+    date: '2026-05-16',
+    de: 'Beim Import kann jetzt optional ein passendes Bild aus Pixabay gesucht und direkt hinzugefügt werden.',
+    en: 'During import, you can now search Pixabay for a matching photo and add it directly.',
+  },
+  {
+    date: '2026-05-16',
+    de: 'Einstellungen: Bilder für alle Rezepte auf einmal per Pixabay suchen (Bulk-Bildersuche).',
+    en: 'Settings: Search photos for all recipes at once via Pixabay (bulk image search).',
+  },
+  {
+    date: '2026-05-16',
     de: 'Neue Kategorien: Frühstück, Dip und Süßkonserven.',
     en: 'New categories: Breakfast, Dip and Sweet Preserves.',
   },

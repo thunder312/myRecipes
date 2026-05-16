@@ -2,11 +2,12 @@ import { getRecipe, addRecipe, updateRecipe, patchRecipe, deleteRecipe, uploadRe
 import { generateRecipePDF, generateRecipeA5PDF } from '../pdf-generator.js';
 import { $, createElement, formatDate, formatDateTime, todayISO, showToast, categoryChipClass } from '../utils/helpers.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
-import { isAuthenticated, getAuthUser } from '../utils/auth.js';
+import { isAuthenticated, getAuthUser, getAuthToken } from '../utils/auth.js';
 import { t, translateCategory, translateDifficulty } from '../i18n.js';
 import { openShoppingListModal } from '../shopping-list.js';
 import { openCookingMode } from '../cooking-mode.js';
 import { scaleIngredient } from '../utils/ingredient-scaler.js';
+import { enhanceRecipe } from '../api.js';
 
 export async function render(container, recipeId) {
   const id = parseInt(recipeId, 10);
@@ -112,6 +113,7 @@ function renderDetailView(container, recipe) {
         <a href="#overview" class="btn btn--ghost">${t('detail.back')}</a>
         <div class="detail__actions">
           ${canEdit ? `<button class="btn btn--secondary" id="btnEdit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> ${t('detail.editBtn')}</button>` : ''}
+          ${canEdit ? `<button class="btn btn--ghost" id="btnAiEnhance"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> ${t('detail.aiEnhanceBtn')}</button>` : ''}
           ${loggedIn ? `<button class="btn btn--ghost" id="btnDuplicate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> ${t('detail.duplicateBtn')}</button>` : ''}
           <button class="btn btn--primary" id="btnCooked">${t('detail.cookedToday')}</button>
           ${canEdit ? `<button class="btn btn--danger" id="btnDelete">${t('detail.deleteBtn')}</button>` : ''}
@@ -307,6 +309,24 @@ function renderDetailView(container, recipe) {
 
       <div class="detail__source">
         <small>${t('detail.source')}: ${esc(recipe.sourceType)} – ${esc(recipe.sourceRef) || '–'}</small>
+      </div>
+    </div>
+
+    <!-- KI-Ergänzungs-Modal -->
+    <div class="modal hidden" id="aiModal">
+      <div class="modal__backdrop" id="aiModalBackdrop"></div>
+      <div class="modal__box">
+        <div class="modal__header">
+          <h2>${t('detail.aiModalTitle')}</h2>
+          <button class="modal__close" id="btnAiClose">&times;</button>
+        </div>
+        <div class="modal__body" id="aiModalBody">
+          <div class="spinner" id="aiSpinner"></div>
+        </div>
+        <div class="modal__footer hidden" id="aiModalFooter">
+          <button class="btn btn--primary" id="btnAiApply">${t('detail.aiModalApply')}</button>
+          <button class="btn btn--ghost" id="btnAiClose2">${t('detail.aiModalClose')}</button>
+        </div>
       </div>
     </div>
   `;
@@ -601,6 +621,205 @@ function renderDetailView(container, recipe) {
       }
     });
   }
+  // KI-Ergänzung
+  if (canEdit) {
+    const btnAiEnhance = $('#btnAiEnhance', container);
+    if (btnAiEnhance) {
+      btnAiEnhance.addEventListener('click', () => openAiModal(container, recipe));
+    }
+  }
+}
+
+async function openAiModal(container, recipe) {
+  const modal = $('#aiModal', container);
+  const body = $('#aiModalBody', container);
+  const footer = $('#aiModalFooter', container);
+  const spinner = $('#aiSpinner', container);
+
+  modal.classList.remove('hidden');
+  body.innerHTML = '<div class="spinner"></div>';
+  footer.classList.add('hidden');
+
+  let suggestions;
+  try {
+    suggestions = await enhanceRecipe(recipe);
+  } catch (err) {
+    body.innerHTML = `<p class="error-msg">${t('detail.aiEnhanceError')}: ${err.message}</p>`;
+    footer.classList.remove('hidden');
+    footer.querySelector('#btnAiApply').classList.add('hidden');
+    setupAiModalClose(container, modal);
+    return;
+  }
+
+  const hasSides = suggestions.sides?.length > 0;
+  const hasTags = suggestions.tags?.length > 0;
+  const descText = suggestions.description?.trim() || '';
+  const imageQuery = suggestions.imageQuery || recipe.title || '';
+
+  if (!hasSides && !hasTags && !descText) {
+    body.innerHTML = `<p>${t('detail.aiNoSuggestions')}</p>`;
+    footer.classList.remove('hidden');
+    footer.querySelector('#btnAiApply').classList.add('hidden');
+    setupAiModalClose(container, modal);
+    return;
+  }
+
+  body.innerHTML = `
+    ${hasSides ? `
+    <div class="ai-suggestion">
+      <label class="ai-suggestion__label">
+        <input type="checkbox" id="aiUseSides" checked />
+        <strong>${t('detail.aiModalSides')}</strong>
+      </label>
+      <div class="ai-suggestion__chips">
+        ${suggestions.sides.map(s => `<span class="chip">${esc(s)}</span>`).join(' ')}
+      </div>
+    </div>` : ''}
+    ${hasTags ? `
+    <div class="ai-suggestion">
+      <label class="ai-suggestion__label">
+        <input type="checkbox" id="aiUseTags" checked />
+        <strong>${t('detail.aiModalTags')}</strong>
+      </label>
+      <div class="ai-suggestion__chips">
+        ${suggestions.tags.map(s => `<span class="chip chip--tag">${esc(s)}</span>`).join(' ')}
+      </div>
+    </div>` : ''}
+    ${descText ? `
+    <div class="ai-suggestion">
+      <label class="ai-suggestion__label">
+        <input type="checkbox" id="aiUseDesc" />
+        <strong>${t('detail.aiModalDesc')}</strong>
+      </label>
+      <p class="ai-suggestion__text">${esc(descText)}</p>
+    </div>` : ''}
+    <div class="ai-suggestion">
+      <strong>${t('detail.aiModalImage')}</strong>
+      <div id="aiImageSection" style="margin-top: var(--space-sm);">
+        <button class="btn btn--ghost btn--sm" id="btnAiImageSearch">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          ${t('detail.aiImageSearchBtn')}
+        </button>
+      </div>
+    </div>
+  `;
+
+  footer.classList.remove('hidden');
+  footer.querySelector('#btnAiApply').classList.remove('hidden');
+
+  let selectedImageBlob = null;
+  let selectedImageMime = null;
+
+  $('#btnAiImageSearch', container)?.addEventListener('click', async () => {
+    const btn = $('#btnAiImageSearch', container);
+    const section = $('#aiImageSection', container);
+    btn.disabled = true;
+    btn.textContent = t('detail.aiImageSearching');
+    try {
+      const token = getAuthToken();
+      const resp = await fetch(`/api/ai/pixabay?q=${encodeURIComponent(imageQuery)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || resp.statusText);
+      }
+      const { hits } = await resp.json();
+      if (!hits?.length) {
+        section.innerHTML = `<p>${t('detail.aiImageNoResults')}</p>`;
+        return;
+      }
+      section.innerHTML = `
+        <div class="ai-image-gallery">
+          ${hits.map((h, i) => `
+            <button class="ai-image-thumb" data-img-idx="${i}" type="button">
+              <img src="${h.previewURL}" alt="${esc(h.tags || '')}" loading="lazy" />
+            </button>
+          `).join('')}
+        </div>
+        <p class="ai-image-hint hidden" id="aiImageHint">${t('detail.aiImageSelected')}</p>
+      `;
+      section.querySelectorAll('.ai-image-thumb').forEach((btn2, i) => {
+        btn2.addEventListener('click', () => {
+          section.querySelectorAll('.ai-image-thumb').forEach(b => b.classList.remove('ai-image-thumb--selected'));
+          btn2.classList.add('ai-image-thumb--selected');
+          selectedImageBlob = null;
+          selectedImageMime = null;
+          // Store the webformat URL for download on apply
+          btn2.dataset.webformatUrl = hits[i].webformatURL;
+          $('#aiImageHint', section).classList.remove('hidden');
+        });
+      });
+    } catch (err) {
+      section.innerHTML = `<p class="error-msg">${err.message}</p>`;
+    }
+  });
+
+  const closeModal = () => {
+    modal.classList.add('hidden');
+    selectedImageBlob = null;
+    selectedImageMime = null;
+  };
+
+  setupAiModalClose(container, modal, closeModal);
+
+  $('#btnAiApply', container).addEventListener('click', async () => {
+    const btn = $('#btnAiApply', container);
+    btn.disabled = true;
+
+    const patches = {};
+
+    if (hasSides && $('#aiUseSides', container)?.checked) {
+      patches.sides = suggestions.sides;
+    }
+    if (hasTags && $('#aiUseTags', container)?.checked) {
+      const existing = recipe.tags || [];
+      const merged = [...new Set([...existing, ...suggestions.tags])];
+      patches.tags = merged;
+    }
+    if (descText && $('#aiUseDesc', container)?.checked) {
+      patches.description = descText;
+    }
+
+    // Download selected image if any
+    const selectedThumb = body.querySelector('.ai-image-thumb--selected');
+    if (selectedThumb?.dataset.webformatUrl) {
+      try {
+        const token = getAuthToken();
+        const imgResp = await fetch(`/api/fetch-image?url=${encodeURIComponent(selectedThumb.dataset.webformatUrl)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (imgResp.ok) {
+          const imgData = await imgResp.json();
+          const compressed = await compressBase64ForStorage(imgData.imageBlob, imgData.imageMimeType);
+          await uploadRecipeImage(recipe.id, compressed, 'image/jpeg');
+          recipe.imageBlob = compressed;
+          recipe.imageMimeType = 'image/jpeg';
+        }
+      } catch (e) {
+        showToast(e.message, 'error');
+      }
+    }
+
+    if (Object.keys(patches).length > 0) {
+      Object.assign(recipe, patches);
+      await patchRecipe(recipe.id, patches);
+    }
+
+    showToast(t('detail.aiApplied'), 'success');
+    closeModal();
+    renderDetailView(container, recipe);
+  });
+}
+
+function setupAiModalClose(container, modal, closeModal) {
+  const doClose = closeModal || (() => modal.classList.add('hidden'));
+  const backdrop = $('#aiModalBackdrop', container);
+  const closeBtn = $('#btnAiClose', container);
+  const closeBtn2 = $('#btnAiClose2', container);
+  if (backdrop) backdrop.addEventListener('click', doClose);
+  if (closeBtn) closeBtn.addEventListener('click', doClose);
+  if (closeBtn2) closeBtn2.addEventListener('click', doClose);
 }
 
 async function compressImageForStorage(file) {
