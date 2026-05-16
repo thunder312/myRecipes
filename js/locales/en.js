@@ -420,6 +420,17 @@ export const en = {
     bulkImageDone: (ok, skip, err) => `Done: ${ok} photos set, ${skip} skipped, ${err} errors.`,
     bulkImageNoKey: 'Please enter a Pixabay API key first.',
     bulkImageRateLimit: 'Pixabay rate limit – waiting…',
+    bulkFilterCookbook: 'Cookbook',
+    bulkFilterOrigin: 'Origin',
+    bulkFilterKeyword: 'Keyword (title)',
+    bulkFilterKeywordPlaceholder: 'e.g. cake…',
+    bulkFilterAll: 'All',
+    bulkPreviewCount: (n) => `${n} recipe${n === 1 ? '' : 's'} match the criteria.`,
+    bulkManualSection: 'No photo found – enter URL manually',
+    bulkManualHint: 'No matching photo was found for these recipes. Enter an image URL and apply it.',
+    bulkManualUrlPlaceholder: 'https://…',
+    bulkManualApply: 'Apply',
+    bulkManualApplied: 'Done ✓',
   },
 
   news: {

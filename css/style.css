@@ -4910,6 +4910,57 @@ details[open] > .batch__log-heading::before,
   margin-top: var(--space-xs);
 }
 
+/* Pixabay Bulk-Suche Filter + Vorschau */
+.bulk-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+.bulk-filter-row .form-group {
+  flex: 1 1 160px;
+  min-width: 140px;
+  margin-bottom: 0;
+}
+.bulk-preview-count {
+  margin-top: var(--space-md);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Pixabay Bulk – manuelle URL-Eingabe */
+.bulk-manual-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.bulk-manual-row:last-child { border-bottom: none; }
+.bulk-manual-title {
+  flex: 0 0 220px;
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bulk-manual-url {
+  flex: 1 1 auto;
+  font-size: var(--font-size-sm);
+  padding: var(--space-xs) var(--space-sm);
+  height: 2rem;
+}
+.bulk-manual-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  min-width: 7rem;
+}
+.btn--success {
+  background: var(--color-success, #2e7d32);
+  color: #fff;
+  border-color: transparent;
+}
+
 /* Pixabay Bulk-Suche Fortschritt */
 .bulk-image-log {
   font-size: var(--font-size-sm);

@@ -4,6 +4,11 @@ import { getAuthToken } from './utils/auth.js';
 const CHANGELOG = [
   {
     date: '2026-05-16',
+    de: 'Massenbildersuche (Admin): Bilder für mehrere Rezepte auf einmal suchen – mit Filter nach Kochbuch, Herkunft und Stichwort sowie Vorschau der Trefferanzahl. Nur für Admins, um die Pixabay-API nicht zu überlasten.',
+    en: 'Bulk image search (admin): Find photos for multiple recipes at once – filter by cookbook, origin and keyword with a live preview count. Admin-only to avoid overloading the Pixabay API.',
+  },
+  {
+    date: '2026-05-16',
     de: 'KI-Ergänzung: Beilagen, Tags und Beschreibung per KI vorschlagen lassen – inkl. Bildsuche via Pixabay.',
     en: 'AI Enhancement: Get AI suggestions for sides, tags and description – with optional Pixabay image search.',
   },
@@ -11,11 +16,6 @@ const CHANGELOG = [
     date: '2026-05-16',
     de: 'Beim Import kann jetzt optional ein passendes Bild aus Pixabay gesucht und direkt hinzugefügt werden.',
     en: 'During import, you can now search Pixabay for a matching photo and add it directly.',
-  },
-  {
-    date: '2026-05-16',
-    de: 'Einstellungen: Bilder für alle Rezepte auf einmal per Pixabay suchen (Bulk-Bildersuche).',
-    en: 'Settings: Search photos for all recipes at once via Pixabay (bulk image search).',
   },
   {
     date: '2026-05-16',

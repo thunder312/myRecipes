@@ -1,4 +1,4 @@
-import { getSetting, setSetting, exportAll, importAll, getAllUsers, createUser, resetUserPassword, deleteUser, changeUserRole, getAllStores, addStore, deleteStore, getBringConfig, connectBring, getBringLists, saveBringListConfig, disconnectBring, getAllRecipes, uploadRecipeImage } from '../db.js';
+import { getSetting, setSetting, exportAll, importAll, getAllUsers, createUser, resetUserPassword, deleteUser, changeUserRole, getAllStores, addStore, deleteStore, getBringConfig, connectBring, getBringLists, saveBringListConfig, disconnectBring, getAllRecipes, uploadRecipeImage, getAllCookbooks, getCookbookMemberships } from '../db.js';
 import { $, showToast, getToastLog, clearToastLog } from '../utils/helpers.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { validateApiKey, BILLING_URL } from '../api.js';
@@ -15,6 +15,12 @@ async function renderSettings(container) {
   const admin = isAdmin();
   const apiKey = admin ? (await getSetting('apiKey') || '') : '';
   const pixabayKey = admin ? (await getSetting('pixabayKey') || '') : '';
+  const allRecipes = admin ? await getAllRecipes() : [];
+  const cookbooks = admin ? await getAllCookbooks() : [];
+  const memberships = admin ? await getCookbookMemberships() : [];
+  const origins = admin
+    ? [...new Set(allRecipes.filter(r => r.origin).map(r => r.origin))].sort()
+    : [];
 
   container.innerHTML = `
     <div class="settings">
@@ -47,6 +53,26 @@ async function renderSettings(container) {
       <section class="settings__section">
         <h2>${t('settings.bulkImageSection')}</h2>
         <p class="settings__hint">${t('settings.bulkImageHint')}</p>
+        <div class="bulk-filter-row">
+          <div class="form-group">
+            <label for="bulkFilterCookbook">${t('settings.bulkFilterCookbook')}</label>
+            <select id="bulkFilterCookbook" class="input">
+              <option value="">${t('settings.bulkFilterAll')}</option>
+              ${cookbooks.map(c => `<option value="${c.id}">${escapeAttr(c.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="bulkFilterOrigin">${t('settings.bulkFilterOrigin')}</label>
+            <select id="bulkFilterOrigin" class="input">
+              <option value="">${t('settings.bulkFilterAll')}</option>
+              ${origins.map(o => `<option value="${escapeAttr(o)}">${escapeAttr(o)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="bulkFilterKeyword">${t('settings.bulkFilterKeyword')}</label>
+            <input type="text" id="bulkFilterKeyword" class="input" placeholder="${t('settings.bulkFilterKeywordPlaceholder')}" />
+          </div>
+        </div>
         <label class="settings__checkbox-label">
           <input type="checkbox" id="bulkOnlyMissing" checked />
           ${t('settings.bulkImageOnlyMissing')}
@@ -55,7 +81,8 @@ async function renderSettings(container) {
           <input type="checkbox" id="bulkOverwrite" />
           ${t('settings.bulkImageOverwrite')}
         </label>
-        <div style="margin-top: var(--space-md);">
+        <p id="bulkPreviewCount" class="settings__hint bulk-preview-count"></p>
+        <div style="margin-top: var(--space-sm);">
           <button class="btn btn--secondary" id="btnBulkImage">${t('settings.bulkImageBtn')}</button>
         </div>
         <div id="bulkImageProgress" class="hidden" style="margin-top: var(--space-md);">
@@ -64,6 +91,11 @@ async function renderSettings(container) {
           </div>
           <p class="batch__progress-text" id="bulkImageText"></p>
           <div class="bulk-image-log" id="bulkImageLog"></div>
+        </div>
+        <div id="bulkManualSection" class="hidden" style="margin-top: var(--space-lg);">
+          <p class="settings__hint"><strong id="bulkManualTitle"></strong></p>
+          <p class="settings__hint" id="bulkManualHint"></p>
+          <div id="bulkManualList"></div>
         </div>
       </section>
       ` : ''}
@@ -348,12 +380,46 @@ async function renderSettings(container) {
     });
 
     // --- Bulk Image Search ---
+    const buildMembershipSet = (cookbookId) => {
+      if (!cookbookId) return null;
+      const cbId = parseInt(cookbookId, 10);
+      return new Set(memberships.filter(m => m.cookbookId === cbId).map(m => m.recipeId));
+    };
+
+    function getBulkFilteredRecipes() {
+      const cookbookId = $('#bulkFilterCookbook', container)?.value || '';
+      const origin = $('#bulkFilterOrigin', container)?.value || '';
+      const keyword = ($('#bulkFilterKeyword', container)?.value || '').trim().toLowerCase();
+      const onlyMissing = $('#bulkOnlyMissing', container)?.checked ?? true;
+      const overwrite = $('#bulkOverwrite', container)?.checked ?? false;
+      const cbSet = buildMembershipSet(cookbookId);
+      return allRecipes.filter(r => {
+        if (onlyMissing && r.imageMimeType) return false;
+        if (!onlyMissing && !overwrite && r.imageMimeType) return false;
+        if (cbSet && !cbSet.has(r.id)) return false;
+        if (origin && r.origin !== origin) return false;
+        if (keyword && !r.title.toLowerCase().includes(keyword)) return false;
+        return true;
+      });
+    }
+
+    function updateBulkCount() {
+      const countEl = $('#bulkPreviewCount', container);
+      if (!countEl) return;
+      const n = getBulkFilteredRecipes().length;
+      countEl.textContent = t('settings.bulkPreviewCount', n);
+    }
+
+    ['bulkFilterCookbook', 'bulkFilterOrigin', 'bulkOnlyMissing', 'bulkOverwrite'].forEach(id => {
+      $('#' + id, container)?.addEventListener('change', updateBulkCount);
+    });
+    $('#bulkFilterKeyword', container)?.addEventListener('input', updateBulkCount);
+    updateBulkCount();
+
     $('#btnBulkImage', container).addEventListener('click', async () => {
       const pixKey = ($('#pixabayKeyInput', container).value || pixabayKey).trim();
       if (!pixKey) { showToast(t('settings.bulkImageNoKey'), 'warning'); return; }
 
-      const onlyMissing = $('#bulkOnlyMissing', container).checked;
-      const overwrite = $('#bulkOverwrite', container).checked;
       const progressEl = $('#bulkImageProgress', container);
       const barEl = $('#bulkImageBar', container);
       const textEl = $('#bulkImageText', container);
@@ -364,15 +430,16 @@ async function renderSettings(container) {
       progressEl.classList.remove('hidden');
       logEl.innerHTML = '';
 
-      const recipes = await getAllRecipes();
-      const toProcess = recipes.filter(r => {
-        if (onlyMissing && r.imageBlob) return false;
-        if (!onlyMissing && !overwrite && r.imageBlob) return false;
-        return true;
-      });
+      const toProcess = getBulkFilteredRecipes();
+      if (toProcess.length === 0) {
+        showToast('Keine Rezepte entsprechen den Kriterien.', 'warning');
+        btn.disabled = false;
+        return;
+      }
 
       let ok = 0, skip = 0, err = 0;
       const total = toProcess.length;
+      const noResultRecipes = [];
 
       function addLog(msg) {
         const line = document.createElement('div');
@@ -397,10 +464,20 @@ async function renderSettings(container) {
             i--; // retry
             continue;
           }
-          if (!searchResp.ok) { skip++; addLog(`⚠ ${recipe.title}: Suche fehlgeschlagen`); continue; }
+          if (!searchResp.ok) {
+            const errBody = await searchResp.json().catch(() => ({}));
+            skip++;
+            addLog(`⚠ ${recipe.title}: ${errBody.error || `HTTP ${searchResp.status}`}`);
+            continue;
+          }
 
           const { hits } = await searchResp.json();
-          if (!hits?.length) { skip++; addLog(`– ${recipe.title}: Kein Bild gefunden`); continue; }
+          if (!hits?.length) {
+            skip++;
+            noResultRecipes.push(recipe);
+            addLog(`– ${recipe.title}: Kein Bild gefunden`);
+            continue;
+          }
 
           const imgResp = await fetch(`/api/fetch-image?url=${encodeURIComponent(hits[0].webformatURL)}`, {
             headers: { Authorization: `Bearer ${getAuthToken()}` },
@@ -427,6 +504,56 @@ async function renderSettings(container) {
       textEl.textContent = t('settings.bulkImageDone', ok, skip, err);
       btn.disabled = false;
       showToast(t('settings.bulkImageDone', ok, skip, err), ok > 0 ? 'success' : 'info');
+
+      // Show manual URL entry for recipes where Pixabay found nothing
+      const manualSection = $('#bulkManualSection', container);
+      const manualList = $('#bulkManualList', container);
+      if (noResultRecipes.length > 0) {
+        $('#bulkManualTitle', container).textContent = t('settings.bulkManualSection');
+        $('#bulkManualHint', container).textContent = t('settings.bulkManualHint');
+        manualList.innerHTML = noResultRecipes.map((r) => `
+          <div class="bulk-manual-row" data-recipe-id="${r.id}">
+            <span class="bulk-manual-title">${escapeAttr(r.title)}</span>
+            <input type="text" class="input bulk-manual-url" placeholder="${t('settings.bulkManualUrlPlaceholder')}" />
+            <button class="btn btn--ghost btn--sm bulk-manual-btn">${t('settings.bulkManualApply')}</button>
+          </div>
+        `).join('');
+        manualSection.classList.remove('hidden');
+
+        manualList.querySelectorAll('.bulk-manual-row').forEach((row) => {
+          const recipeId = parseInt(row.dataset.recipeId, 10);
+          const applyBtn = row.querySelector('.bulk-manual-btn');
+          const urlInput = row.querySelector('.bulk-manual-url');
+          applyBtn.addEventListener('click', async () => {
+            const url = urlInput.value.trim();
+            if (!url) return;
+            applyBtn.disabled = true;
+            applyBtn.textContent = '…';
+            try {
+              const imgResp = await fetch(`/api/fetch-image?url=${encodeURIComponent(url)}`, {
+                headers: { Authorization: `Bearer ${getAuthToken()}` },
+              });
+              if (!imgResp.ok) {
+                const errBody = await imgResp.json().catch(() => ({}));
+                throw new Error(errBody.error || `HTTP ${imgResp.status}`);
+              }
+              const imgData = await imgResp.json();
+              const compressed = await compressBase64(imgData.imageBlob, imgData.imageMimeType);
+              await uploadRecipeImage(recipeId, compressed, 'image/jpeg');
+              applyBtn.textContent = t('settings.bulkManualApplied');
+              applyBtn.classList.remove('btn--ghost');
+              applyBtn.classList.add('btn--success');
+              urlInput.disabled = true;
+            } catch (e) {
+              showToast(e.message, 'error');
+              applyBtn.disabled = false;
+              applyBtn.textContent = t('settings.bulkManualApply');
+            }
+          });
+        });
+      } else {
+        manualSection.classList.add('hidden');
+      }
     });
   }
 
