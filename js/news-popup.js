@@ -4,6 +4,16 @@ import { getAuthToken } from './utils/auth.js';
 const CHANGELOG = [
   {
     date: '2026-05-16',
+    de: 'Rezept-Detailseite: Bild jetzt als Vorschau – per Klick in voller Auflösung. PDF-Block einklappbar. Portionen-Scaler direkt neben dem Einkaufszettel. Koch-Statistik kompakter.',
+    en: 'Recipe detail page: Image shown as thumbnail – click to view full resolution. PDF block now collapsible. Serving scaler right next to the shopping list. Cook stats more compact.',
+  },
+  {
+    date: '2026-05-16',
+    de: 'Mobil: Navigationsleiste springt beim Scrollen nicht mehr.',
+    en: 'Mobile: Navigation bar no longer jumps when scrolling.',
+  },
+  {
+    date: '2026-05-16',
     de: 'Massenbildersuche (Admin): Bilder für mehrere Rezepte auf einmal suchen – mit Filter nach Kochbuch, Herkunft und Stichwort sowie Vorschau der Trefferanzahl. Nur für Admins, um die Pixabay-API nicht zu überlasten.',
     en: 'Bulk image search (admin): Find photos for multiple recipes at once – filter by cookbook, origin and keyword with a live preview count. Admin-only to avoid overloading the Pixabay API.',
   },

@@ -2783,8 +2783,25 @@ details[open] > .batch__log-heading::before,
     --nav-width: 0px;
   }
 
+  /* Contain scroll inside .main so the fixed nav doesn't jump on iOS Safari
+     when the browser chrome (address bar) hides/shows during scroll */
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+  }
+
   .app {
     flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .main {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Bottom tab bar on mobile */
