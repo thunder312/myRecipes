@@ -122,23 +122,25 @@ function renderDetailView(container, recipe) {
 
       ${recipe.imageBlob ? `
       <div class="detail__image">
-        <img src="data:${recipe.imageMimeType || 'image/jpeg'};base64,${recipe.imageBlob}" alt="${esc(recipe.title)}" class="detail__image-img" loading="lazy" />
-        ${canEdit ? `<div class="detail__image-actions">
-          <label class="btn btn--ghost btn--sm detail__image-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            ${t('detail.imageChange')}
-            <input type="file" id="imageFileInput" accept="image/*" class="hidden" />
-          </label>
-          <button class="btn btn--ghost btn--sm detail__image-btn" id="btnImageFromUrl">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-            ${t('detail.imageUrlBtn')}
-          </button>
-          <button class="btn btn--ghost btn--sm detail__image-btn" id="btnDeleteImage">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
-            ${t('detail.imageDelete')}
-          </button>
+        <div class="detail__image-inner">
+          <img src="data:${recipe.imageMimeType || 'image/jpeg'};base64,${recipe.imageBlob}" alt="${esc(recipe.title)}" class="detail__image-img" id="detailImageThumb" loading="lazy" />
+          ${canEdit ? `<div class="detail__image-actions">
+            <label class="btn btn--ghost btn--sm detail__image-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              ${t('detail.imageChange')}
+              <input type="file" id="imageFileInput" accept="image/*" class="hidden" />
+            </label>
+            <button class="btn btn--ghost btn--sm detail__image-btn" id="btnImageFromUrl">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+              ${t('detail.imageUrlBtn')}
+            </button>
+            <button class="btn btn--ghost btn--sm detail__image-btn" id="btnDeleteImage">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+              ${t('detail.imageDelete')}
+            </button>
+          </div>` : ''}
         </div>
-        <div class="detail__image-url-row hidden" id="imageUrlRow">
+        ${canEdit ? `<div class="detail__image-url-row hidden" id="imageUrlRow">
           <input type="url" id="imageUrlInput" placeholder="${t('detail.imageUrlPlaceholder')}" class="input" />
           <button class="btn btn--primary btn--sm" id="btnConfirmImageUrl">${t('detail.imageUrlLoad')}</button>
         </div>` : ''}
@@ -178,12 +180,7 @@ function renderDetailView(container, recipe) {
         ${recipe.prepTime ? `<span class="chip chip--time">${t('detail.minutes', recipe.prepTime)}</span>` : ''}
         ${recipe.difficulty ? `<span class="chip chip--difficulty">${esc(displayDiff)}</span>` : ''}
         ${recipe.mainIngredient ? `<span class="chip chip--ingredient">${esc(recipe.mainIngredient)}</span>` : ''}
-      </div>
-
-      <div class="detail__scaler">
-        <button class="scaler__btn" id="scalerMinus" aria-label="Portionen verringern">−</button>
-        <span class="scaler__label" id="scalerLabel">${t('detail.servingsScaled', recipe.servings || 1)}</span>
-        <button class="scaler__btn" id="scalerPlus" aria-label="Portionen erhöhen">+</button>
+        ${recipe.servings ? `<span class="chip chip--servings">${t('detail.servingsScaled', recipe.servings)}</span>` : ''}
       </div>
 
       ${recipe.description ? `<p class="detail__desc">${esc(recipe.description)}</p>` : ''}
@@ -220,8 +217,8 @@ function renderDetailView(container, recipe) {
         }
       </div>
 
-      <div class="detail__pdf">
-        <h3>${t('detail.pdfSection')}</h3>
+      <details class="detail__pdf">
+        <summary class="detail__pdf-summary">${t('detail.pdfSection')}</summary>
         ${recipe.imageBlob ? `
         <label class="settings__checkbox-label" style="margin-bottom: var(--space-sm);">
           <input type="checkbox" id="pdfIncludeImage" />
@@ -241,7 +238,7 @@ function renderDetailView(container, recipe) {
           <a id="pdfA5Download" class="btn btn--secondary">${t('detail.pdfA5Download')}</a>
           <button id="pdfA5Open" class="btn btn--primary">${t('detail.pdfA5Open')}</button>
         </div>
-      </div>
+      </details>
 
       <div class="detail__shopping">
         <button class="btn btn--secondary" id="btnShoppingList">
@@ -251,15 +248,20 @@ function renderDetailView(container, recipe) {
           </svg>
           ${t('detail.shoppingListBtn')}
         </button>
+        ${recipe.servings ? `
+        <div class="detail__scaler-mini">
+          <button class="scaler__btn--mini" id="scalerMinus">−</button>
+          <span class="scaler__label--mini" id="scalerLabel">${recipe.servings}</span>
+          <button class="scaler__btn--mini" id="scalerPlus">+</button>
+        </div>` : ''}
       </div>
 
       <!-- Notes Section -->
       <div class="detail__notes">
         <h3>${t('detail.notesSection')}</h3>
-        <p class="detail__notes-hint">${t('detail.noteHint')}</p>
         <div class="notes-list" id="notesList">
           ${recipe.notes.length === 0
-            ? `<p class="notes-list__empty">${t('detail.noNotes')}</p>`
+            ? ''
             : recipe.notes.map((note, idx) => {
                 const canDeleteNote = loggedIn && (
                   user.role === 'admin' ||
@@ -284,20 +286,10 @@ function renderDetailView(container, recipe) {
       </div>
 
       <div class="detail__stats">
-        <h3>${t('detail.statsSection')}</h3>
-        <div class="stat-grid">
-          <div class="stat">
-            <span class="stat__value" id="cookedCount">${recipe.cookedCount || 0}</span>
-            <span class="stat__label">${t('detail.timesCooked')}</span>
-          </div>
-          <div class="stat">
-            <span class="stat__value">${recipe.cookedDates?.length ? formatDate(recipe.cookedDates[recipe.cookedDates.length - 1]) : '–'}</span>
-            <span class="stat__label">${t('detail.lastCooked')}</span>
-          </div>
-          <div class="stat">
-            <span class="stat__value">${formatDate(recipe.createdAt)}</span>
-            <span class="stat__label">${t('detail.importedOn')}</span>
-          </div>
+        <div class="stat-mini-row">
+          <span class="stat-mini"><strong id="cookedCount">${recipe.cookedCount || 0}</strong> ${t('detail.timesCooked')}</span>
+          <span class="stat-mini">${t('detail.lastCooked')} ${recipe.cookedDates?.length ? formatDate(recipe.cookedDates[recipe.cookedDates.length - 1]) : '–'}</span>
+          <span class="stat-mini">${t('detail.importedOn')}: ${formatDate(recipe.createdAt)}</span>
         </div>
         ${recipe.cookedDates?.length ? `
           <details class="detail__history">
@@ -329,7 +321,26 @@ function renderDetailView(container, recipe) {
         </div>
       </div>
     </div>
+
+    <!-- Lightbox -->
+    <div class="detail__lightbox hidden" id="detailLightbox">
+      <div class="detail__lightbox-backdrop" id="lightboxBackdrop"></div>
+      <img class="detail__lightbox-img" id="lightboxImg" alt="" />
+    </div>
   `;
+
+  // Lightbox for hero image
+  const thumb = $('#detailImageThumb', container);
+  if (thumb) {
+    thumb.addEventListener('click', () => {
+      const lb = $('#detailLightbox', container);
+      $('#lightboxImg', container).src = thumb.src;
+      lb.classList.remove('hidden');
+    });
+    const closeLightbox = () => $('#detailLightbox', container)?.classList.add('hidden');
+    $('#lightboxBackdrop', container)?.addEventListener('click', closeLightbox);
+    $('#lightboxImg', container)?.addEventListener('click', closeLightbox);
+  }
 
   // PDF on demand – cache invalidated when "include image" checkbox changes
   let pdfUrl = null;
@@ -404,33 +415,6 @@ function renderDetailView(container, recipe) {
   });
   $('#pdfA5Open', container).addEventListener('click', () => openPdfInTab(getPdfA5Url(), filenameA5));
 
-  // --- Portions scaler ---
-  let currentServings = recipe.servings || 1;
-  const baseServings  = recipe.servings || 1;
-
-  function getScaledIngredients() {
-    const factor = currentServings / baseServings;
-    return (recipe.ingredients || []).map(i => scaleIngredient(i, factor));
-  }
-
-  function updateScaler() {
-    const labelEl = $('#scalerLabel', container);
-    const listEl  = $('#ingredientList', container);
-    if (labelEl) labelEl.textContent = t('detail.servingsScaled', currentServings);
-    if (listEl) {
-      const factor = currentServings / baseServings;
-      listEl.innerHTML = (recipe.ingredients || [])
-        .map(i => `<li>${esc(scaleIngredient(i, factor))}</li>`)
-        .join('');
-    }
-  }
-
-  $('#scalerMinus', container).addEventListener('click', () => {
-    if (currentServings > 1) { currentServings--; updateScaler(); }
-  });
-  $('#scalerPlus', container).addEventListener('click', () => {
-    if (currentServings < 99) { currentServings++; updateScaler(); }
-  });
 
   // Favorite toggle
   $('#favoriteBtn', container)?.addEventListener('click', async () => {
@@ -465,9 +449,26 @@ function renderDetailView(container, recipe) {
     }
   });
 
+  // Mini scaler – only affects shopping list
+  let currentServings = recipe.servings || 1;
+  const baseServings = recipe.servings || 1;
+  if ($('#scalerMinus', container)) {
+    const updateMiniScaler = () => {
+      const el = $('#scalerLabel', container);
+      if (el) el.textContent = currentServings;
+    };
+    $('#scalerMinus', container).addEventListener('click', () => {
+      if (currentServings > 1) { currentServings--; updateMiniScaler(); }
+    });
+    $('#scalerPlus', container).addEventListener('click', () => {
+      if (currentServings < 99) { currentServings++; updateMiniScaler(); }
+    });
+  }
+
   $('#btnShoppingList', container).addEventListener('click', () => {
-    const scaledRecipe = recipe.servings
-      ? { ...recipe, ingredients: getScaledIngredients(), servings: currentServings }
+    const factor = currentServings / baseServings;
+    const scaledRecipe = factor !== 1
+      ? { ...recipe, ingredients: (recipe.ingredients || []).map(i => scaleIngredient(i, factor)), servings: currentServings }
       : recipe;
     openShoppingListModal(scaledRecipe);
   });
@@ -475,7 +476,7 @@ function renderDetailView(container, recipe) {
   const cookModeBtn = $('#btnCookMode', container);
   if (cookModeBtn) {
     cookModeBtn.addEventListener('click', () => {
-      openCookingMode(recipe, getScaledIngredients());
+      openCookingMode(recipe, recipe.ingredients || []);
     });
   }
 

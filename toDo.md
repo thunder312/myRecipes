@@ -31,7 +31,14 @@ editierbar, erweiterbar und exportierbar als Text und PDF.
 - [x] Es soll ein News-Pop-Up geben, das die neuen Rezepte und Features auflistet, die seit dem letzten Login hinzugekommen sind.
       Es soll mit OK bestätigt werden können oder in den Einstellungen komplett pro User abschaltbar sein.
 - [ ] Auto-Backup der DB nach Dropbox alle 24h 2 Saves reichen (ältere löschen).
--
+- [ ] Pixabay Massen-Import ist kacke. -> Google Bilder suche oder Chefkoch?
+- [ ] Bilder im Rezeptbuch-Export optional inkludieren.
+- [x] Rezept-Detailseite refactoren
+    - Bild in Mini-Ansicht per Klick vergrößern.
+    - Portionen-Edit nur im Bearbeitungs-Modus
+    - Rezept-PDF-Block einklappbar
+    - Notizen: Texte: "Halte fest, was dir beim Kochen aufgefallen ist." und "Noch keine Notizen vorhanden." entfernen, da selbsterklärend.
+    - Koch-Statistik, deutlich kleiner formatieren, weil nicht so wichtig.
 ## Bugs
 ### Desktop
 ### Mobil
@@ -40,7 +47,7 @@ editierbar, erweiterbar und exportierbar als Text und PDF.
 - [x] Teste alle bestehenden Features auch für Apple bzw. Safari. Sollte es Probleme geben, baue diese gegebenenfalls um.
 ## KI
 - [x] Nach KI sind gleiche Zutaten wieder getrennt.
-## Handschrift trainieren:
+## Handschrift trainieren
 
 ## Claude
 - [x] Autopilot
