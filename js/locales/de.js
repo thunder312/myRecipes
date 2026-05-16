@@ -1,8 +1,8 @@
 export const de = {
   categories: [
-    'Vorspeise', 'Suppe', 'Salat', 'Hauptspeise', 'Beilage',
+    'Frühstück', 'Vorspeise', 'Suppe', 'Salat', 'Hauptspeise', 'Beilage',
     'Fingerfood', 'Snack', 'Nachspeise', 'Kuchen', 'Brot/Gebäck',
-    'Soße', 'Getränk', 'Gewürzmischungen', 'Sauerkonserven', 'Wurstrezept',
+    'Dip', 'Soße', 'Getränk', 'Gewürzmischungen', 'Sauerkonserven', 'Süßkonserven', 'Wurstrezept',
   ],
   difficulties: { leicht: 'leicht', mittel: 'mittel', schwer: 'schwer' },
 

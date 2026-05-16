@@ -1,8 +1,8 @@
 export const en = {
   categories: [
-    'Starter', 'Soup', 'Salad', 'Main Course', 'Side Dish',
+    'Breakfast', 'Starter', 'Soup', 'Salad', 'Main Course', 'Side Dish',
     'Finger Food', 'Snack', 'Dessert', 'Cake', 'Bread & Pastry',
-    'Sauce', 'Drink', 'Spice Blend', 'Preserves', 'Sausage',
+    'Dip', 'Sauce', 'Drink', 'Spice Blend', 'Preserves', 'Sweet Preserves', 'Sausage',
   ],
   difficulties: { leicht: 'easy', mittel: 'medium', schwer: 'hard' },
 

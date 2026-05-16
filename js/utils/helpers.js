@@ -93,7 +93,10 @@ const CATEGORY_CLASS_MAP = {
   'Gewürzmischungen': 'chip--cat-gewuerz',
   'Kuchen': 'chip--cat-kuchen',
   'Soße': 'chip--cat-sosse',
+  'Frühstück': 'chip--cat-fruehstueck',
+  'Dip': 'chip--cat-dip',
   'Sauerkonserven': 'chip--cat-sauerkonserven',
+  'Süßkonserven': 'chip--cat-suesskons',
   'Wurstrezept': 'chip--cat-wurst',
 };
 

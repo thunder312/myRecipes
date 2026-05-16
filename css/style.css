@@ -139,7 +139,10 @@
 [data-theme="dark"] .chip--cat-gewuerz      { background: rgba(237,233,254,.15); color: #c4b5fd; }
 [data-theme="dark"] .chip--cat-kuchen       { background: rgba(253,242,248,.15); color: #f0abfc; }
 [data-theme="dark"] .chip--cat-sosse        { background: rgba(254,242,242,.15); color: #fca5a5; }
+[data-theme="dark"] .chip--cat-fruehstueck  { background: rgba(255,247,237,.15); color: #fb923c; }
+[data-theme="dark"] .chip--cat-dip          { background: rgba(254,252,232,.15); color: #facc15; }
 [data-theme="dark"] .chip--cat-sauerkonserven { background: rgba(236,253,245,.15); color: #6ee7b7; }
+[data-theme="dark"] .chip--cat-suesskons    { background: rgba(253,244,255,.15); color: #e879f9; }
 [data-theme="dark"] .chip--cat-wurst        { background: rgba(245,243,255,.15); color: #c4b5fd; }
 
 /* Input/select borders */
@@ -564,7 +567,10 @@ button.nav__profile {
 .chip--cat-gewuerz      { background: #ede9fe; color: #5b21b6; }
 .chip--cat-kuchen       { background: #fdf2f8; color: #be185d; }
 .chip--cat-sosse        { background: #fef2f2; color: #b91c1c; }
+.chip--cat-fruehstueck  { background: #fff7ed; color: #c2410c; }
+.chip--cat-dip          { background: #fefce8; color: #a16207; }
 .chip--cat-sauerkonserven { background: #ecfdf5; color: #047857; }
+.chip--cat-suesskons    { background: #fdf4ff; color: #a21caf; }
 .chip--cat-wurst        { background: #f5f3ff; color: #6d28d9; }
 
 .chip--origin {
