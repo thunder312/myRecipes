@@ -4,6 +4,11 @@ import { getAuthToken } from './utils/auth.js';
 const CHANGELOG = [
   {
     date: '2026-05-16',
+    de: 'Neue Kategorien: Frühstück, Dip und Süßkonserven.',
+    en: 'New categories: Breakfast, Dip and Sweet Preserves.',
+  },
+  {
+    date: '2026-05-16',
     de: 'Koch-Modus-Button jetzt direkt oben neben der Bewertung.',
     en: 'Cook mode button now at the top next to the rating.',
   },
