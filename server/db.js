@@ -199,6 +199,15 @@ function migrateSchema() {
   if (!userCols.includes('bringUserUuid')) {
     db.exec('ALTER TABLE users ADD COLUMN bringUserUuid TEXT');
   }
+  if (!userCols.includes('bringPublicUserUuid')) {
+    db.exec('ALTER TABLE users ADD COLUMN bringPublicUserUuid TEXT');
+  }
+  if (!userCols.includes('lastLoginAt')) {
+    db.exec('ALTER TABLE users ADD COLUMN lastLoginAt TEXT');
+  }
+  if (!userCols.includes('showNewsPopup')) {
+    db.exec('ALTER TABLE users ADD COLUMN showNewsPopup INTEGER NOT NULL DEFAULT 1');
+  }
 
   // Add userId to cookbooks (links a cookbook to its owner)
   const cbCols = db.pragma('table_info(cookbooks)').map(r => r.name);
@@ -782,8 +791,28 @@ function setUserTheme(id, theme) {
   getDB().prepare('UPDATE users SET theme = ? WHERE id = ?').run(theme, id);
 }
 
+function getUserLastLogin(id) {
+  const row = getDB().prepare('SELECT lastLoginAt, showNewsPopup FROM users WHERE id = ?').get(id);
+  return row ? { lastLoginAt: row.lastLoginAt || null, showNewsPopup: row.showNewsPopup !== 0 } : null;
+}
+
+function updateUserLastLogin(id, timestamp) {
+  getDB().prepare('UPDATE users SET lastLoginAt = ? WHERE id = ?').run(timestamp, id);
+}
+
+function setUserShowNewsPopup(id, value) {
+  getDB().prepare('UPDATE users SET showNewsPopup = ? WHERE id = ?').run(value ? 1 : 0, id);
+}
+
+function getNewRecipesSince(since) {
+  const rows = getDB().prepare(
+    'SELECT id, title, createdAt FROM recipes WHERE createdAt > ? ORDER BY createdAt DESC'
+  ).all(since);
+  return rows;
+}
+
 function getUserBringConfig(id) {
-  const row = getDB().prepare('SELECT bringEmail, bringPassword, bringListUuid, bringAccessToken, bringUserUuid FROM users WHERE id = ?').get(id);
+  const row = getDB().prepare('SELECT bringEmail, bringPassword, bringListUuid, bringAccessToken, bringUserUuid, bringPublicUserUuid FROM users WHERE id = ?').get(id);
   if (!row) return null;
   return {
     email: row.bringEmail || null,
@@ -791,17 +820,18 @@ function getUserBringConfig(id) {
     listUuid: row.bringListUuid || null,
     accessToken: row.bringAccessToken || null,
     userUuid: row.bringUserUuid || null,
+    publicUserUuid: row.bringPublicUserUuid || null,
   };
 }
 
-function setUserBringConfig(id, { email, password, listUuid, accessToken, userUuid }) {
-  getDB().prepare('UPDATE users SET bringEmail = ?, bringPassword = ?, bringListUuid = ?, bringAccessToken = ?, bringUserUuid = ? WHERE id = ?')
-    .run(email || null, password || null, listUuid || null, accessToken || null, userUuid || null, id);
+function setUserBringConfig(id, { email, password, listUuid, accessToken, userUuid, publicUserUuid }) {
+  getDB().prepare('UPDATE users SET bringEmail = ?, bringPassword = ?, bringListUuid = ?, bringAccessToken = ?, bringUserUuid = ?, bringPublicUserUuid = ? WHERE id = ?')
+    .run(email || null, password || null, listUuid || null, accessToken || null, userUuid || null, publicUserUuid || null, id);
 }
 
-function updateUserBringToken(id, accessToken, userUuid) {
-  getDB().prepare('UPDATE users SET bringAccessToken = ?, bringUserUuid = ? WHERE id = ?')
-    .run(accessToken, userUuid, id);
+function updateUserBringToken(id, accessToken, userUuid, publicUserUuid) {
+  getDB().prepare('UPDATE users SET bringAccessToken = ?, bringUserUuid = ?, bringPublicUserUuid = ? WHERE id = ?')
+    .run(accessToken, userUuid, publicUserUuid || null, id);
 }
 
 function updateUsername(id, newUsername) {
@@ -968,4 +998,8 @@ module.exports = {
   getUserBringConfig,
   setUserBringConfig,
   updateUserBringToken,
+  getUserLastLogin,
+  updateUserLastLogin,
+  setUserShowNewsPopup,
+  getNewRecipesSince,
 };

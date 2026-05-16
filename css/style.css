@@ -1199,6 +1199,10 @@ button.nav__profile {
   flex-shrink: 0;
 }
 
+.detail__title-actions .detail__rating {
+  margin-left: var(--space-lg);
+}
+
 .detail__favorite {
   display: flex;
   align-items: center;
@@ -1250,6 +1254,16 @@ button.nav__profile {
   line-height: 1.7;
   padding-left: var(--space-md);
   border-left: 3px solid var(--color-primary-subtle);
+}
+
+.detail__source-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-top: calc(-1 * var(--space-md));
+  margin-bottom: var(--space-xl);
 }
 
 .detail__tags,
@@ -2839,6 +2853,14 @@ details[open] > .batch__log-heading::before,
 
   .detail__title {
     font-size: var(--font-size-xl);
+  }
+
+  .detail__title-actions .detail__rating {
+    margin-left: var(--space-sm);
+  }
+
+  #btnCookMode .cook-mode-label {
+    display: none;
   }
 
   .detail__rating-img {
@@ -4700,4 +4722,55 @@ details[open] > .batch__log-heading::before,
   pointer-events: none;
   box-shadow: 0 2px 8px rgba(245, 158, 11, 0.5);
   user-select: none;
+}
+
+/* --- News Popup --- */
+.news-popup {
+  max-width: 480px;
+}
+
+.news-popup__since {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-lg);
+}
+
+.news-popup__section {
+  margin-bottom: var(--space-lg);
+}
+
+.news-popup__section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 var(--space-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.news-popup__section-title svg {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.news-popup__list {
+  margin: 0;
+  padding: 0 0 0 var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.news-popup__list li {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.news-popup__more {
+  color: var(--color-text-secondary) !important;
+  font-style: italic;
 }

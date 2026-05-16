@@ -291,7 +291,7 @@ export async function render(container) {
       if (cookbookId !== 0 && !recipeCookbookMap.get(r.id)?.has(cookbookId)) return false;
       if (filterState.favoritesOnly && !r.favorite) return false;
       if (search) {
-        const haystack = [r.title, r.description, r.mainIngredient, ...(r.tags || []), ...(r.ingredients || [])].join(' ').toLowerCase();
+        const haystack = [r.title, r.description, r.mainIngredient, r.origin, r.sourceNote, ...(r.tags || []), ...(r.ingredients || [])].join(' ').toLowerCase();
         if (!haystack.includes(search)) return false;
       }
       return true;

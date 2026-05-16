@@ -137,6 +137,7 @@ export const de = {
     shoppingListBtn: 'Einkaufszettel',
     servingsScaled: (n) => `${n} Portion${n !== 1 ? 'en' : ''}`,
     cookModeBtn: 'Koch-Modus',
+    sourceNote: 'Von wem/Woher',
     pdfIncludeImage: 'Bild in PDF einbeziehen',
     pdfIncludeNotes: 'Notizen in PDF einbeziehen',
     pdfIncludeTags: 'Tags in PDF einbeziehen',
@@ -383,6 +384,19 @@ export const de = {
     bringNoList: 'Bitte zuerst eine Bring!-Liste in den Einstellungen auswählen.',
     bringPushed: (n) => `${n} Artikel an Bring! übertragen.`,
     bringPushFailed: 'Übertragung zu Bring! fehlgeschlagen.',
+    notificationsSection: 'Benachrichtigungen',
+    notificationsHint: 'Steuere, welche Hinweise beim Login angezeigt werden.',
+    newsPopupLabel: 'Neuigkeiten-Pop-Up beim Login anzeigen',
+    newsPopupSaved: 'Einstellung gespeichert.',
+  },
+
+  news: {
+    title: 'Neuigkeiten',
+    since: (date) => `Seit deiner letzten Anmeldung am ${date}:`,
+    featuresTitle: 'Neue Funktionen',
+    recipesTitle: (n) => `${n} neue${n === 1 ? 's' : ''} Rezept${n === 1 ? '' : 'e'}`,
+    andMore: (n) => `… und ${n} weitere`,
+    okBtn: 'OK',
   },
 
   shoppingList: {

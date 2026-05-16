@@ -2,7 +2,7 @@ import { getSetting, setSetting, exportAll, importAll, getAllUsers, createUser, 
 import { $, showToast, getToastLog, clearToastLog } from '../utils/helpers.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { validateApiKey, BILLING_URL } from '../api.js';
-import { getAuthToken, getAuthUser, isAdmin } from '../utils/auth.js';
+import { getAuthToken, getAuthUser, isAdmin, getShowNewsPopup, setShowNewsPopup } from '../utils/auth.js';
 import { t, getLanguage, setLanguage } from '../i18n.js';
 import { loadPantryItems, savePantryItems, DEFAULT_PANTRY_DE, DEFAULT_PANTRY_EN } from '../shopping-list.js';
 
@@ -68,6 +68,15 @@ async function renderSettings(container) {
           <input type="password" id="confirmPassword" class="input" placeholder="${t('settings.confirmPassword')}" />
           <button class="btn btn--primary" id="btnChangePw">${t('settings.changePasswordBtn')}</button>
         </div>
+      </section>
+
+      <section class="settings__section">
+        <h2>${t('settings.notificationsSection')}</h2>
+        <p class="settings__hint">${t('settings.notificationsHint')}</p>
+        <label class="settings__checkbox-label">
+          <input type="checkbox" id="newsPopupToggle" ${getShowNewsPopup() ? 'checked' : ''} />
+          ${t('settings.newsPopupLabel')}
+        </label>
       </section>
 
       ${admin ? `
@@ -225,6 +234,23 @@ async function renderSettings(container) {
       }
     } catch { /* ignore */ }
     showToast(t('settings.themeSaved'), 'success');
+  });
+
+  // --- News popup toggle ---
+  $('#newsPopupToggle', container)?.addEventListener('change', async (e) => {
+    const enabled = e.target.checked;
+    setShowNewsPopup(enabled);
+    try {
+      const token = getAuthToken();
+      if (token) {
+        await fetch('/api/auth/news-popup', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ showNewsPopup: enabled }),
+        });
+      }
+    } catch { /* ignore */ }
+    showToast(t('settings.newsPopupSaved'), 'success');
   });
 
   // --- Stores ---

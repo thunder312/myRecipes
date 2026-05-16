@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { getUserByUsername, updateUserPassword, updateUsername, getUser, verifyPassword, getUserLanguage, setUserLanguage, getUserTheme, setUserTheme } = require('../db');
+const { getUserByUsername, updateUserPassword, updateUsername, getUser, verifyPassword, getUserLanguage, setUserLanguage, getUserTheme, setUserTheme, getUserLastLogin, updateUserLastLogin, setUserShowNewsPopup, getNewRecipesSince } = require('../db');
 
 const router = Router();
 
@@ -34,7 +34,11 @@ router.post('/login', (req, res) => {
   const token = createToken(user.id, user.username, user.role);
   const language = getUserLanguage(user.id);
   const theme = getUserTheme(user.id);
-  res.json({ success: true, token, username: user.username, role: user.role, language, theme });
+  const loginMeta = getUserLastLogin(user.id);
+  const previousLoginAt = loginMeta ? loginMeta.lastLoginAt : null;
+  const showNewsPopup = loginMeta ? loginMeta.showNewsPopup : true;
+  updateUserLastLogin(user.id, new Date().toISOString());
+  res.json({ success: true, token, username: user.username, role: user.role, language, theme, lastLoginAt: previousLoginAt, showNewsPopup });
 });
 
 // POST /api/auth/logout
@@ -107,6 +111,32 @@ router.patch('/language', (req, res) => {
   if (!['de', 'en'].includes(language)) return res.status(400).json({ error: 'Invalid language' });
   setUserLanguage(tokenData.userId, language);
   res.json({ success: true });
+});
+
+// PATCH /api/auth/news-popup – toggle news popup setting for authenticated user
+router.patch('/news-popup', (req, res) => {
+  const { validateTokenWithData } = req.app.get('auth');
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const tokenData = validateTokenWithData(token);
+  if (!tokenData) return res.status(401).json({ error: 'Nicht authentifiziert' });
+  const { showNewsPopup } = req.body;
+  if (typeof showNewsPopup !== 'boolean') return res.status(400).json({ error: 'Invalid value' });
+  setUserShowNewsPopup(tokenData.userId, showNewsPopup);
+  res.json({ success: true });
+});
+
+// GET /api/auth/news?since=<ISO> – fetch new recipes since given timestamp
+router.get('/news', (req, res) => {
+  const { validateTokenWithData } = req.app.get('auth');
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const tokenData = validateTokenWithData(token);
+  if (!tokenData) return res.status(401).json({ error: 'Nicht authentifiziert' });
+  const { since } = req.query;
+  if (!since) return res.status(400).json({ error: 'since parameter required' });
+  const recipes = getNewRecipesSince(since);
+  res.json({ recipes });
 });
 
 // PATCH /api/auth/theme – save preferred theme for authenticated user

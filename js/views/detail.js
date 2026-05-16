@@ -156,6 +156,11 @@ function renderDetailView(container, recipe) {
       <div class="detail__title-row">
         <h1 class="detail__title">${esc(recipe.title)}</h1>
         <div class="detail__title-actions">
+          ${splitIntoSteps(recipe.recipeText || '').length > 0 ? `
+          <button class="btn btn--primary btn--sm" id="btnCookMode">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5,3 19,12 5,21"/></svg>
+            <span class="cook-mode-label">${t('detail.cookModeBtn')}</span>
+          </button>` : ''}
           <div class="detail__rating" id="ratingWidget" title="Bewertung ändern">
             <img src="img/rating/${recipe.rating || 0}.webp" alt="Bewertung ${recipe.rating || 0}" class="detail__rating-img" id="ratingImg" />
           </div>
@@ -180,6 +185,11 @@ function renderDetailView(container, recipe) {
       </div>
 
       ${recipe.description ? `<p class="detail__desc">${esc(recipe.description)}</p>` : ''}
+
+      ${recipe.sourceNote ? `<p class="detail__source-note">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+        ${t('detail.sourceNote')}: <em>${esc(recipe.sourceNote)}</em>
+      </p>` : ''}
 
       ${recipe.tags?.length ? `
         <div class="detail__tags">
@@ -239,13 +249,6 @@ function renderDetailView(container, recipe) {
           </svg>
           ${t('detail.shoppingListBtn')}
         </button>
-        ${splitIntoSteps(recipe.recipeText || '').length > 0 ? `
-        <button class="btn btn--primary" id="btnCookMode">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <polygon points="5,3 19,12 5,21"/>
-          </svg>
-          ${t('detail.cookModeBtn')}
-        </button>` : ''}
       </div>
 
       <!-- Notes Section -->

@@ -4,6 +4,7 @@
 const TOKEN_KEY = 'myRecipes_token';
 const ACTIVITY_KEY = 'myRecipes_lastActivity';
 const USER_KEY = 'myRecipes_user'; // JSON: { username, role }
+const NEWS_POPUP_KEY = 'myRecipes_showNewsPopup';
 const TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 let importRunning = false;
@@ -49,11 +50,20 @@ export function isAdmin() {
   return getAuthUser().role === 'admin';
 }
 
+export function getShowNewsPopup() {
+  return sessionStorage.getItem(NEWS_POPUP_KEY) !== 'false';
+}
+
+export function setShowNewsPopup(value) {
+  sessionStorage.setItem(NEWS_POPUP_KEY, value ? 'true' : 'false');
+}
+
 export function logout() {
   const token = getAuthToken();
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(ACTIVITY_KEY);
   sessionStorage.removeItem(USER_KEY);
+  sessionStorage.removeItem(NEWS_POPUP_KEY);
   if (token) {
     fetch('/api/auth/logout', {
       method: 'POST',

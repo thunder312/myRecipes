@@ -1,5 +1,5 @@
 import { $, showToast } from './helpers.js';
-import { isAuthenticated, setAuthenticated, getAuthToken } from './auth.js';
+import { isAuthenticated, setAuthenticated, getAuthToken, setShowNewsPopup } from './auth.js';
 import { t, setLanguage, getLanguage } from '../i18n.js';
 
 export async function ensureAuthenticated(container, onSuccess) {
@@ -120,7 +120,11 @@ function renderLogin(container, onSuccess) {
         }
 
         setAuthenticated(data.token, data.username, data.role);
+        setShowNewsPopup(data.showNewsPopup !== false);
         onSuccess();
+        if (data.showNewsPopup !== false && data.lastLoginAt) {
+          import('../news-popup.js').then(m => m.maybeShowNewsPopup(data.lastLoginAt)).catch(() => {});
+        }
       } catch (err) {
         errEl.textContent = `${err.message}`;
         errEl.classList.remove('hidden');

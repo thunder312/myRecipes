@@ -137,6 +137,7 @@ export const en = {
     shoppingListBtn: 'Shopping List',
     servingsScaled: (n) => `${n} portion${n !== 1 ? 's' : ''}`,
     cookModeBtn: 'Cook Mode',
+    sourceNote: 'Source',
     pdfIncludeImage: 'Include photo in PDF',
     pdfIncludeNotes: 'Include notes in PDF',
     pdfIncludeTags: 'Include tags in PDF',
@@ -383,6 +384,19 @@ export const en = {
     bringNoList: 'Please select a Bring! list in settings first.',
     bringPushed: (n) => `${n} items sent to Bring!`,
     bringPushFailed: 'Failed to send items to Bring!',
+    notificationsSection: 'Notifications',
+    notificationsHint: 'Control which hints are shown at login.',
+    newsPopupLabel: 'Show news pop-up at login',
+    newsPopupSaved: 'Setting saved.',
+  },
+
+  news: {
+    title: "What's New",
+    since: (date) => `Since your last login on ${date}:`,
+    featuresTitle: 'New features',
+    recipesTitle: (n) => `${n} new recipe${n === 1 ? '' : 's'}`,
+    andMore: (n) => `… and ${n} more`,
+    okBtn: 'OK',
   },
 
   shoppingList: {
