@@ -137,10 +137,11 @@ export async function maybeShowNewsPopup(lastLoginAt) {
   const since = new Date(lastLoginAt);
   const newFeatures = CHANGELOG.filter(entry => new Date(entry.date) > since);
 
+  const oldestEntry = CHANGELOG[CHANGELOG.length - 1].date;
   let newRecipes = [];
   try {
     const token = getAuthToken();
-    const res = await fetch(`/api/auth/news?since=${encodeURIComponent(lastLoginAt)}`, {
+    const res = await fetch(`/api/auth/news?since=${encodeURIComponent(oldestEntry + 'T00:00:00.000Z')}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (res.ok) {
@@ -160,12 +161,21 @@ function showNewsModal(allFeatures, recipes, since) {
 
   const lang = getLanguage();
 
-  // Group by date, newest first
+  // Build per-day map: { features: [], recipes: [] }
   const dateMap = {};
+  const ensure = (d) => { if (!dateMap[d]) dateMap[d] = { features: [], recipes: [] }; };
+
   for (const entry of allFeatures) {
-    if (!dateMap[entry.date]) dateMap[entry.date] = [];
-    dateMap[entry.date].push(entry);
+    ensure(entry.date);
+    dateMap[entry.date].features.push(entry);
   }
+  for (const recipe of recipes) {
+    const date = recipe.createdAt ? recipe.createdAt.substring(0, 10) : null;
+    if (!date) continue;
+    ensure(date);
+    dateMap[date].recipes.push(recipe);
+  }
+
   const days = Object.keys(dateMap).sort((a, b) => new Date(b) - new Date(a));
   const total = days.length;
 
@@ -176,19 +186,6 @@ function showNewsModal(allFeatures, recipes, since) {
     lang === 'en' ? 'en-GB' : 'de-DE',
     { day: 'numeric', month: 'long', year: 'numeric' }
   );
-
-  const recipesHtml = recipes.length > 0 ? `
-    <div class="news-popup__section">
-      <h3 class="news-popup__section-title">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2h18v20l-9-5-9 5V2z"/></svg>
-        ${t('news.recipesTitle', recipes.length)}
-      </h3>
-      <ul class="news-popup__list">
-        ${recipes.slice(0, 10).map(r => `<li>${escapeHtml(r.title)}</li>`).join('')}
-        ${recipes.length > 10 ? `<li class="news-popup__more">… ${t('news.andMore', recipes.length - 10)}</li>` : ''}
-      </ul>
-    </div>
-  ` : '';
 
   const navHtml = total > 1 ? `
     <div class="news-popup__nav">
@@ -217,7 +214,6 @@ function showNewsModal(allFeatures, recipes, since) {
       </div>
       <div class="modal__body">
         <div class="news-popup__section" id="newsContent"></div>
-        ${recipesHtml}
       </div>
       <div class="modal__footer">
         <button class="btn btn--primary" id="btnNewsOk">${t('news.okBtn')}</button>
@@ -227,9 +223,9 @@ function showNewsModal(allFeatures, recipes, since) {
   document.body.appendChild(modal);
 
   function renderDayContent(index) {
-    const entries = dateMap[days[index]];
-    const highlighted = entries.filter(f => f.highlight);
-    const normal = entries.filter(f => !f.highlight);
+    const { features, recipes: dayRecipes } = dateMap[days[index]];
+    const highlighted = features.filter(f => f.highlight);
+    const normal = features.filter(f => !f.highlight);
 
     const highlightHtml = highlighted.map(f => `
       <div class="news-popup__highlight">
@@ -244,7 +240,20 @@ function showNewsModal(allFeatures, recipes, since) {
       </ul>
     ` : '';
 
-    return highlightHtml + normalHtml;
+    const recipesHtml = dayRecipes.length > 0 ? `
+      <div class="news-popup__section">
+        <h3 class="news-popup__section-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2h18v20l-9-5-9 5V2z"/></svg>
+          ${t('news.recipesTitle', dayRecipes.length)}
+        </h3>
+        <ul class="news-popup__list">
+          ${dayRecipes.slice(0, 10).map(r => `<li>${escapeHtml(r.title)}</li>`).join('')}
+          ${dayRecipes.length > 10 ? `<li class="news-popup__more">… ${t('news.andMore', dayRecipes.length - 10)}</li>` : ''}
+        </ul>
+      </div>
+    ` : '';
+
+    return highlightHtml + normalHtml + recipesHtml;
   }
 
   function updatePage(index) {

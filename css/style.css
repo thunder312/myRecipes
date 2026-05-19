@@ -4872,6 +4872,12 @@ details[open] > .batch__log-heading::before,
   margin-bottom: var(--space-lg);
 }
 
+.news-popup__section + .news-popup__section {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--color-border);
+}
+
 .news-popup__section-title {
   display: flex;
   align-items: center;
