@@ -30,10 +30,10 @@ editierbar, erweiterbar und exportierbar als Text und PDF.
 - [x] Der Button Kochmodus soll oben unter der Überschrift plaziert werdn
 - [x] Es soll ein News-Pop-Up geben, das die neuen Rezepte und Features auflistet, die seit dem letzten Login hinzugekommen sind.
       Es soll mit OK bestätigt werden können oder in den Einstellungen komplett pro User abschaltbar sein.
-- [ ] Auto-Backup der DB nach Dropbox alle 24h 2 Saves reichen (ältere löschen).
+- [x] Auto-Backup der DB nach Dropbox alle 24h 2 Saves reichen (ältere löschen).
 - [ ] Pixabay Massen-Import ist kacke. -> Google Bilder suche oder Chefkoch?
 - [ ] Bilder im Rezeptbuch-Export optional inkludieren.
-- [x] Rezept-Detailseite refactoren
+- [x] Rezept-Detailseite reSTehtr das jetzt auch in den Releasenotes?factoren
     - Bild in Mini-Ansicht per Klick vergrößern.
     - Portionen-Edit nur im Bearbeitungs-Modus
     - Rezept-PDF-Block einklappbar

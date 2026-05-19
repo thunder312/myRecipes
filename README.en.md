@@ -26,15 +26,16 @@
 - Recipe images: upload a photo or capture one automatically during import – shown in the detail view and in PDFs
 - **Star rating** with smiley icons (0–5), settable directly from the overview or the detail view
 - **Favourites** (heart icon) per user – "Favourites only" filter in the overview
+- **Cookbook quick-access** – button in the overview opens the recipe's cookbook directly
 - **Duplicate recipe** – copy button creates a variant as a starting template
 - Edit and delete recipes
 - "Cooked today" feature with a full history of cooking dates
-- Per-recipe notes with timestamps
+- Per-recipe notes with timestamps and user attribution
 
 ### Cooking Mode
 - Distraction-free step-by-step mode, opened directly from the detail view
 - Screen stays on automatically (WakeLock API)
-- Optimised for mobile devices
+- Optimised for mobile devices (including Safari/iOS)
 
 ### PDF Export
 - **A4** and **A5** (double-sided, cut-to-size) for individual recipes
@@ -47,6 +48,14 @@
 - Pantry staples (salt, oil, …) are pre-deselected automatically
 - **AI optimisation**: one click normalises quantities for the supermarket (e.g. "0.5 onions" → "1 onion", spice amounts are stripped)
 - Export as plain text, PDF or copy to clipboard
+- **Bring! integration** – if a Bring! account is configured, the shopping list is pushed directly to the selected Bring! list at the tap of a button. Without configuration: clipboard + web.getbring.com as fallback
+
+### Weekly Plan
+- Weekly meal planner under "What shall I cook?" – assign recipes to each day of the week
+- **AI fill**: let the AI automatically fill individual days or the entire week with suitable recipes from your collection
+- Clear the week plan with one click
+- **Weekly shopping list** – combine all ingredients from the week plan into a single shopping list, push directly to Bring! or export
+- Sort and filter the shopping list by store assignment
 
 ### AI Features (Claude by Anthropic)
 - Automatic extraction of title, ingredients, preparation steps, category, origin, main ingredient, tags, servings, difficulty and preparation time
@@ -54,6 +63,7 @@
 - Saved favourite questions for quick access
 - Handwriting recognition on photos
 - Shopping list optimisation (realistic quantities for grocery shopping)
+- Automatic weekly plan generation
 
 ### Cookbooks
 - Organise recipes into thematic cookbooks (e.g. "Italian", "Christmas")
@@ -66,6 +76,8 @@
 - Each user can create their own recipes; admins manage all
 - Password management by admin
 - Personal preferences per user: language (DE/EN) and **dark mode** – stored server-side, synced across devices
+- **Store assignments** – create your own grocery stores and assign shopping list items to them; personal per user
+- **Bring! account** – link a Bring! email and password, select the target shopping list; personal per user
 
 ### Backup & Data
 - Full database export and import as JSON
@@ -85,6 +97,7 @@
 | **PDF parsing** | pdf.js (`pdfjs-dist`) |
 | **AI analysis** | Anthropic Claude API (claude-sonnet) |
 | **Auth** | Token-based (Bearer token, 15 min TTL) |
+| **Bring! integration** | Bring! REST API (server-side proxy) |
 | **Web server (prod)** | nginx with SSL (Let's Encrypt) |
 | **Process manager** | systemd |
 
@@ -250,7 +263,7 @@ myRecipes/
 │   ├── index.js           ← Express server, auth, token management
 │   ├── db.js              ← SQLite database access
 │   ├── migrate.js         ← Database migrations
-│   └── routes/            ← API routes (recipes, auth, cookbooks, backup, …)
+│   └── routes/            ← API routes (recipes, auth, cookbooks, backup, bring, …)
 ├── css/
 │   └── style.css          ← Stylesheet
 ├── data/

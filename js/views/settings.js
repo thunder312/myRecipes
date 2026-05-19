@@ -330,8 +330,8 @@ async function renderSettings(container) {
 
   // --- News jetzt anzeigen ---
   $('#btnShowNewsNow', container)?.addEventListener('click', async () => {
-    const { maybeShowNewsPopup } = await import('../news-popup.js');
-    await maybeShowNewsPopup('2020-01-01T00:00:00.000Z');
+    const { showAllNewsPopup } = await import('../news-popup.js');
+    showAllNewsPopup();
   });
 
   // --- Stores ---

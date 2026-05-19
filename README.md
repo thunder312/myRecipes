@@ -26,15 +26,16 @@
 - Rezeptbilder: Foto hochladen oder beim Import automatisch erfassen – wird in der Detailansicht und im PDF angezeigt
 - **Bewertung** mit Smiley-Icons (0–5), direkt in der Übersicht und in der Detailansicht setzbar
 - **Favoritenmarkierung** (Herz-Icon) pro Benutzer – Filter „Nur Favoriten" in der Übersicht
+- **Kochbuch-Schnellzugriff** – Button in der Übersicht öffnet direkt das zugehörige Kochbuch des Rezepts
 - **Rezept duplizieren** – Kopieren-Button erstellt eine Variante als Vorlage
 - Rezept bearbeiten, löschen
 - „Heute gekocht"-Funktion mit Protokoll der Kochdaten
-- Notizen pro Rezept mit Zeitstempel
+- Notizen pro Rezept mit Zeitstempel und Benutzerzuordnung
 
 ### Koch-Modus
 - Ablenkungsfreier Schritt-für-Schritt-Modus direkt aus der Detailansicht
 - Bildschirm bleibt automatisch an (WakeLock API)
-- Optimiert für Mobilgeräte
+- Optimiert für Mobilgeräte (inkl. Safari/iOS)
 
 ### PDF-Export
 - **A4** und **A5** (doppelseitig druckbar, schneidbar) für einzelne Rezepte
@@ -47,6 +48,14 @@
 - Vorratsartikel (Salz, Öl, …) werden automatisch abgehakt
 - **KI-Optimierung**: ein Klick normalisiert Mengenangaben für den Supermarkt (z. B. „0,5 Zwiebeln" → „1 Zwiebel", Gewürzmengen werden entfernt)
 - Export als Text, PDF oder direkt in die Zwischenablage
+- **Bring!-Integration** – bei konfiguriertem Bring!-Account wird die Einkaufsliste per Knopfdruck direkt in die ausgewählte Bring!-Liste gepusht. Ohne Konfiguration: Zwischenablage + web.getbring.com als Fallback
+
+### Wochenplan
+- Wochenkochplan unter „Was koche ich?" – Rezepte für jeden Wochentag einplanen
+- **KI-Befüllung**: einzelne Tage oder die gesamte Woche automatisch mit passenden Rezepten aus der eigenen Sammlung füllen lassen
+- Wochenplan leeren mit einem Klick
+- **Wocheneinkaufsliste** – alle Zutaten des Wochenplans als kombinierte Einkaufsliste zusammenfassen, direkt in Bring! pushen oder exportieren
+- Filterung und Sortierung der Einkaufsliste nach Supermarkt-Zuordnung
 
 ### KI-Funktionen (Claude von Anthropic)
 - Automatische Extraktion von Titel, Zutaten, Zubereitung, Kategorie, Herkunft, Hauptzutat, Tags, Portionen, Schwierigkeit, Zubereitungszeit
@@ -54,6 +63,7 @@
 - Gespeicherte Lieblingsfragen für schnellen Zugriff
 - Erkennung von Handschrift auf Fotos
 - Einkaufszettel-Optimierung (Mengenangaben realistisch für den Einkauf)
+- Wochenplan automatisch befüllen
 
 ### Kochbücher
 - Rezepte in thematische Kochbücher sortieren (z. B. „Italienisch", „Weihnachten")
@@ -66,6 +76,8 @@
 - Jeder Benutzer kann eigene Rezepte anlegen; Admins verwalten alle
 - Passwort-Verwaltung durch Admin
 - Persönliche Einstellungen pro Benutzer: Sprache (DE/EN) und **Dark Mode** – serverseitig gespeichert, geräteübergreifend
+- **Supermarkt-Zuordnungen** – eigene Einkaufsläden anlegen und Einkaufszettel-Artikeln zuordnen; persönlich pro Benutzer
+- **Bring!-Account verknüpfen** – Bring!-E-Mail und Passwort hinterlegen, gewünschte Einkaufsliste auswählen; persönlich pro Benutzer
 
 ### Backup & Daten
 - Vollständiger Datenbank-Export und -Import als JSON
@@ -85,6 +97,7 @@
 | **PDF-Parsing** | pdf.js (`pdfjs-dist`) |
 | **KI-Analyse** | Anthropic Claude API (claude-sonnet) |
 | **Auth** | Token-basiert (Bearer Token, 15 min TTL) |
+| **Bring!-Integration** | Bring! REST API (server-seitiger Proxy) |
 | **Webserver (Prod)** | nginx mit SSL (Let's Encrypt) |
 | **Prozess-Manager** | systemd |
 
@@ -248,7 +261,7 @@ myRecipes/
 │   ├── index.js           ← Express-Server, Auth, Token-Verwaltung
 │   ├── db.js              ← SQLite-Datenbankzugriff
 │   ├── migrate.js         ← Datenbankmigrationen
-│   └── routes/            ← API-Routen (recipes, auth, cookbooks, backup, ...)
+│   └── routes/            ← API-Routen (recipes, auth, cookbooks, backup, bring, ...)
 ├── css/
 │   └── style.css          ← Stylesheet
 ├── data/

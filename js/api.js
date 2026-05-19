@@ -480,6 +480,32 @@ export async function enhanceRecipe(recipe) {
   }
 }
 
+export async function translateToEn(text) {
+  let apiKey;
+  try { apiKey = await getApiKey(); } catch { return text; }
+  try {
+    const response = await fetchWithTimeout(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 50,
+        messages: [{ role: 'user', content: `Translate this recipe name to English. Output only the translation, nothing else: ${text}` }],
+      }),
+    });
+    if (!response.ok) return text;
+    const data = await response.json();
+    return data.content?.[0]?.text?.trim() || text;
+  } catch {
+    return text;
+  }
+}
+
 /**
  * Filtert ungültige/sinnlose Rezepte aus den API-Ergebnissen.
  * Gibt { valid: [...], filtered: number } zurück.

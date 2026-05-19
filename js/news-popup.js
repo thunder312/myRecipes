@@ -3,6 +3,17 @@ import { getAuthToken } from './utils/auth.js';
 
 const CHANGELOG = [
   {
+    date: '2026-05-19',
+    highlight: true,
+    de: 'Eure Rezepte werden jetzt täglich automatisch gesichert – falls einmal etwas schiefläuft, können die Daten wiederhergestellt werden.',
+    en: 'Your recipes are now automatically backed up every day – if something ever goes wrong, your data can be restored.',
+  },
+  {
+    date: '2026-05-19',
+    de: 'Neuigkeiten-Pop-Up: Jetzt nach Datum blättern – mit Vor/Zurück-Navigation durch alle Release-Tage.',
+    en: 'News pop-up: Browse release notes by date – navigate forward and back through all release days.',
+  },
+  {
     date: '2026-05-16',
     de: 'Massenbildersuche: Nach dem Durchlauf erscheint eine Bildvorschau aller zugewiesenen Fotos – mit Entfernen-Button falls ein Bild nicht passt.',
     en: 'Bulk image search: After the run, a photo preview of all assigned images appears – with a remove button in case a photo doesn\'t fit.',
@@ -104,11 +115,26 @@ const CHANGELOG = [
   },
 ];
 
+export async function showAllNewsPopup() {
+  const oldestEntry = CHANGELOG[CHANGELOG.length - 1].date;
+  let recipes = [];
+  try {
+    const token = getAuthToken();
+    const res = await fetch(`/api/auth/news?since=${encodeURIComponent(oldestEntry + 'T00:00:00.000Z')}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (res.ok) {
+      const data = await res.json();
+      recipes = data.recipes || [];
+    }
+  } catch { /* ignore */ }
+  showNewsModal(CHANGELOG, recipes, new Date());
+}
+
 export async function maybeShowNewsPopup(lastLoginAt) {
   if (!lastLoginAt) return;
 
   const since = new Date(lastLoginAt);
-
   const newFeatures = CHANGELOG.filter(entry => new Date(entry.date) > since);
 
   let newRecipes = [];
@@ -125,26 +151,31 @@ export async function maybeShowNewsPopup(lastLoginAt) {
 
   if (newFeatures.length === 0 && newRecipes.length === 0) return;
 
-  showNewsModal(newFeatures, newRecipes, since);
+  showNewsModal(CHANGELOG, newRecipes, since);
 }
 
-function showNewsModal(features, recipes, since) {
+function showNewsModal(allFeatures, recipes, since) {
   const existing = document.getElementById('newsModal');
   if (existing) existing.remove();
 
   const lang = getLanguage();
 
-  const featuresHtml = features.length > 0 ? `
-    <div class="news-popup__section">
-      <h3 class="news-popup__section-title">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        ${t('news.featuresTitle')}
-      </h3>
-      <ul class="news-popup__list">
-        ${features.map(f => `<li>${escapeHtml(lang === 'en' ? f.en : f.de)}</li>`).join('')}
-      </ul>
-    </div>
-  ` : '';
+  // Group by date, newest first
+  const dateMap = {};
+  for (const entry of allFeatures) {
+    if (!dateMap[entry.date]) dateMap[entry.date] = [];
+    dateMap[entry.date].push(entry);
+  }
+  const days = Object.keys(dateMap).sort((a, b) => new Date(b) - new Date(a));
+  const total = days.length;
+
+  const firstNewIdx = days.findIndex(d => new Date(d) > since);
+  let currentIndex = firstNewIdx !== -1 ? firstNewIdx : 0;
+
+  const formatDate = (dateStr) => new Date(dateStr + 'T12:00:00').toLocaleDateString(
+    lang === 'en' ? 'en-GB' : 'de-DE',
+    { day: 'numeric', month: 'long', year: 'numeric' }
+  );
 
   const recipesHtml = recipes.length > 0 ? `
     <div class="news-popup__section">
@@ -159,7 +190,20 @@ function showNewsModal(features, recipes, since) {
     </div>
   ` : '';
 
-  const sinceStr = since.toLocaleDateString(lang === 'en' ? 'en-GB' : 'de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const navHtml = total > 1 ? `
+    <div class="news-popup__nav">
+      <button class="news-popup__nav-btn" id="btnNewsPrev">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="news-popup__nav-center">
+        <span class="news-popup__nav-date" id="newsNavDate"></span>
+        <span class="news-popup__new-badge" id="newsNewBadge">${t('news.newBadge')}</span>
+      </div>
+      <button class="news-popup__nav-btn" id="btnNewsNext">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  ` : '';
 
   const modal = document.createElement('div');
   modal.id = 'newsModal';
@@ -167,12 +211,12 @@ function showNewsModal(features, recipes, since) {
   modal.innerHTML = `
     <div class="modal__backdrop"></div>
     <div class="modal__box news-popup">
-      <div class="modal__header">
+      <div class="modal__header news-popup__header">
         <h2>${t('news.title')}</h2>
+        ${navHtml}
       </div>
       <div class="modal__body">
-        <p class="news-popup__since">${t('news.since', sinceStr)}</p>
-        ${featuresHtml}
+        <div class="news-popup__section" id="newsContent"></div>
         ${recipesHtml}
       </div>
       <div class="modal__footer">
@@ -181,6 +225,53 @@ function showNewsModal(features, recipes, since) {
     </div>
   `;
   document.body.appendChild(modal);
+
+  function renderDayContent(index) {
+    const entries = dateMap[days[index]];
+    const highlighted = entries.filter(f => f.highlight);
+    const normal = entries.filter(f => !f.highlight);
+
+    const highlightHtml = highlighted.map(f => `
+      <div class="news-popup__highlight">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>${escapeHtml(lang === 'en' ? f.en : f.de)}</span>
+      </div>
+    `).join('');
+
+    const normalHtml = normal.length > 0 ? `
+      <ul class="news-popup__list">
+        ${normal.map(f => `<li>${escapeHtml(lang === 'en' ? f.en : f.de)}</li>`).join('')}
+      </ul>
+    ` : '';
+
+    return highlightHtml + normalHtml;
+  }
+
+  function updatePage(index) {
+    currentIndex = index;
+    document.getElementById('newsContent').innerHTML = renderDayContent(index);
+
+    if (total > 1) {
+      document.getElementById('newsNavDate').textContent = formatDate(days[index]);
+
+      const badge = document.getElementById('newsNewBadge');
+      badge.style.display = new Date(days[index]) > since ? '' : 'none';
+
+      document.getElementById('btnNewsPrev').disabled = index >= total - 1;
+      document.getElementById('btnNewsNext').disabled = index <= 0;
+    }
+  }
+
+  updatePage(currentIndex);
+
+  if (total > 1) {
+    document.getElementById('btnNewsPrev').addEventListener('click', () => {
+      if (currentIndex < total - 1) updatePage(currentIndex + 1);
+    });
+    document.getElementById('btnNewsNext').addEventListener('click', () => {
+      if (currentIndex > 0) updatePage(currentIndex - 1);
+    });
+  }
 
   const close = () => modal.remove();
   modal.querySelector('.modal__backdrop').addEventListener('click', close);

@@ -444,6 +444,7 @@ export const de = {
     recipesTitle: (n) => `${n} neue${n === 1 ? 's' : ''} Rezept${n === 1 ? '' : 'e'}`,
     andMore: (n) => `… und ${n} weitere`,
     okBtn: 'OK',
+    newBadge: 'Neu',
   },
 
   shoppingList: {

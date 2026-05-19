@@ -444,6 +444,7 @@ export const en = {
     recipesTitle: (n) => `${n} new recipe${n === 1 ? '' : 's'}`,
     andMore: (n) => `… and ${n} more`,
     okBtn: 'OK',
+    newBadge: 'New',
   },
 
   shoppingList: {

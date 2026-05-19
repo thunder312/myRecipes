@@ -4838,6 +4838,28 @@ details[open] > .batch__log-heading::before,
 /* --- News Popup --- */
 .news-popup {
   max-width: 480px;
+  height: 88vh;
+  overflow: hidden;
+}
+
+.news-popup__header {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: var(--space-sm);
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.news-popup .modal__body {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  gap: var(--space-md);
+}
+
+.news-popup .modal__footer {
+  flex-shrink: 0;
 }
 
 .news-popup__since {
@@ -4885,6 +4907,86 @@ details[open] > .batch__log-heading::before,
   color: var(--color-text-secondary) !important;
   font-style: italic;
 }
+
+.news-popup__highlight {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  background: var(--color-success-light);
+  border: 1px solid var(--color-success);
+  border-left: 4px solid var(--color-success);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.news-popup__highlight svg {
+  color: var(--color-success);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.news-popup__nav {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.news-popup__nav-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.news-popup__nav-btn:hover:not(:disabled) {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+
+.news-popup__nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.news-popup__nav-center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  justify-content: center;
+}
+
+.news-popup__nav-date {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.news-popup__new-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--color-primary);
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+
 
 /* ======= KI-Ergänzung Modal ======= */
 .ai-suggestion {

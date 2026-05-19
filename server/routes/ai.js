@@ -5,7 +5,7 @@ const router = Router();
 
 // GET /api/ai/pixabay?q=<query>&lang=de
 router.get('/pixabay', async (req, res) => {
-  const { q, lang = 'de' } = req.query;
+  const { q, lang = 'en' } = req.query;
   if (!q) return res.status(400).json({ error: 'q Parameter fehlt' });
 
   const db = getDB();
