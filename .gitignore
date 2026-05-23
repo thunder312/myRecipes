@@ -10,3 +10,12 @@ data/
 deploy.md
 doc/deploy.md
 Bilder/
+
+# Editor temp files (Claude Code, VSCode, etc.)
+**/*.tmp.*
+
+# DB-Backup: nur die Anleitung ist versioniert, sonst nichts
+DB-Backup/*.txt
+DB-Backup/*.json
+DB-Backup/*.pdf
+DB-Backup/*.html
