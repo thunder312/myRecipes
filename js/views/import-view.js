@@ -687,15 +687,14 @@ async function renderImportForm(container) {
     const gallery = $('#previewImageGallery', container);
     if (!currentData) return;
 
-    const title = currentData.title || '';
+    const origHTML = btn.innerHTML;
     btn.disabled = true;
-    const origHtml = btn.innerHTML;
     btn.textContent = t('detail.aiImageSearching');
     gallery.classList.add('hidden');
 
     try {
       const token = getAuthToken();
-      const resp = await fetch(`/api/ai/pixabay?q=${encodeURIComponent(title)}`, {
+      const resp = await fetch(`/api/ai/chefkoch?q=${encodeURIComponent(currentData.title || '')}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!resp.ok) {
@@ -707,7 +706,7 @@ async function renderImportForm(container) {
         showToast(t('detail.aiImageNoResults'), 'warning');
         return;
       }
-      gallery.innerHTML = hits.map((h, i) => `
+      gallery.innerHTML = hits.map(h => `
         <button class="ai-image-thumb" data-webformat="${h.webformatURL}" type="button">
           <img src="${h.previewURL}" alt="" loading="lazy" />
         </button>
@@ -739,7 +738,7 @@ async function renderImportForm(container) {
       showToast(err.message, 'error');
     } finally {
       btn.disabled = false;
-      btn.innerHTML = origHtml;
+      btn.innerHTML = origHTML;
     }
   });
 

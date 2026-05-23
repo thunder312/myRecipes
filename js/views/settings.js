@@ -1,7 +1,7 @@
-import { getSetting, setSetting, exportAll, importAll, getAllUsers, createUser, resetUserPassword, deleteUser, changeUserRole, getAllStores, addStore, deleteStore, getBringConfig, connectBring, getBringLists, saveBringListConfig, disconnectBring, getAllRecipes, uploadRecipeImage, deleteRecipeImage, getAllCookbooks, getCookbookMemberships } from '../db.js';
+import { getSetting, setSetting, exportAll, importAll, getAllUsers, createUser, resetUserPassword, deleteUser, changeUserRole, getAllStores, addStore, deleteStore, getBringConfig, connectBring, getBringLists, saveBringListConfig, disconnectBring, uploadRecipeImage, deleteRecipeImage, getAllRecipes, getAllCookbooks, getCookbookMemberships } from '../db.js';
 import { $, showToast, getToastLog, clearToastLog } from '../utils/helpers.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
-import { validateApiKey, BILLING_URL, translateToEn } from '../api.js';
+import { validateApiKey, BILLING_URL } from '../api.js';
 import { getAuthToken, getAuthUser, isAdmin, getShowNewsPopup, setShowNewsPopup } from '../utils/auth.js';
 import { t, getLanguage, setLanguage, translateCategory } from '../i18n.js';
 import { loadPantryItems, savePantryItems, DEFAULT_PANTRY_DE, DEFAULT_PANTRY_EN } from '../shopping-list.js';
@@ -14,7 +14,6 @@ async function renderSettings(container) {
   const user = getAuthUser();
   const admin = isAdmin();
   const apiKey = admin ? (await getSetting('apiKey') || '') : '';
-  const pixabayKey = admin ? (await getSetting('pixabayKey') || '') : '';
   const allRecipes = admin ? await getAllRecipes() : [];
   const cookbooks = admin ? await getAllCookbooks() : [];
   const memberships = admin ? await getCookbookMemberships() : [];
@@ -38,16 +37,6 @@ async function renderSettings(container) {
         </div>
         <div class="settings__api-status" id="apiStatus"></div>
         <a href="${BILLING_URL}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">${t('settings.apiKeyBilling')}</a>
-      </section>
-
-      <section class="settings__section">
-        <h2>${t('settings.pixabaySection')}</h2>
-        <p class="settings__hint">${t('settings.pixabayHint')}</p>
-        <div class="form-group">
-          <label for="pixabayKeyInput">${t('settings.pixabayKeyLabel')}</label>
-          <input type="password" id="pixabayKeyInput" class="input" value="${escapeAttr(pixabayKey)}" placeholder="55887044-..." />
-          <button class="btn btn--primary" id="btnSavePixabayKey">${t('settings.pixabayKeySaveBtn')}</button>
-        </div>
       </section>
 
       <section class="settings__section">
@@ -375,15 +364,8 @@ async function renderSettings(container) {
     });
   }
 
-  // --- Pixabay API Key (admin only) ---
+  // --- Bulk Image Search (Chefkoch, admin only) ---
   if (admin) {
-    $('#btnSavePixabayKey', container).addEventListener('click', async () => {
-      const key = $('#pixabayKeyInput', container).value.trim().replace(/^["']|["']$/g, '');
-      await setSetting('pixabayKey', key);
-      showToast(t('settings.pixabayKeySaved'), 'success');
-    });
-
-    // --- Bulk Image Search ---
     const buildMembershipSet = (cookbookId) => {
       if (!cookbookId) return null;
       const cbId = parseInt(cookbookId, 10);
@@ -410,8 +392,7 @@ async function renderSettings(container) {
     function updateBulkCount() {
       const countEl = $('#bulkPreviewCount', container);
       if (!countEl) return;
-      const n = getBulkFilteredRecipes().length;
-      countEl.textContent = t('settings.bulkPreviewCount', n);
+      countEl.textContent = t('settings.bulkPreviewCount', getBulkFilteredRecipes().length);
     }
 
     ['bulkFilterCookbook', 'bulkFilterOrigin', 'bulkOnlyMissing', 'bulkOverwrite'].forEach(id => {
@@ -421,30 +402,26 @@ async function renderSettings(container) {
     updateBulkCount();
 
     $('#btnBulkImage', container).addEventListener('click', async () => {
-      const pixKey = ($('#pixabayKeyInput', container).value || pixabayKey).trim();
-      if (!pixKey) { showToast(t('settings.bulkImageNoKey'), 'warning'); return; }
-
       const progressEl = $('#bulkImageProgress', container);
       const barEl = $('#bulkImageBar', container);
       const textEl = $('#bulkImageText', container);
       const logEl = $('#bulkImageLog', container);
       const btn = $('#btnBulkImage', container);
 
+      const toProcess = getBulkFilteredRecipes();
+      if (toProcess.length === 0) {
+        showToast('Keine Rezepte entsprechen den Kriterien.', 'warning');
+        return;
+      }
+
       btn.disabled = true;
       progressEl.classList.remove('hidden');
       logEl.innerHTML = '';
 
-      const toProcess = getBulkFilteredRecipes();
-      if (toProcess.length === 0) {
-        showToast('Keine Rezepte entsprechen den Kriterien.', 'warning');
-        btn.disabled = false;
-        return;
-      }
-
       let ok = 0, skip = 0, err = 0;
       const total = toProcess.length;
       const noResultRecipes = [];
-      const resultPreviews = []; // { id, title, imageBlob }
+      const resultPreviews = [];
 
       function addLog(msg) {
         const line = document.createElement('div');
@@ -455,23 +432,13 @@ async function renderSettings(container) {
 
       for (let i = 0; i < toProcess.length; i++) {
         const recipe = toProcess[i];
-        const pct = Math.round(((i + 1) / total) * 100);
-        barEl.style.width = `${pct}%`;
+        barEl.style.width = `${Math.round(((i + 1) / total) * 100)}%`;
         textEl.textContent = t('settings.bulkImageRunning', i + 1, total);
 
         try {
-          const enTitle = await translateToEn(recipe.title);
-          const enCat = recipe.category ? translateCategory(recipe.category, 'en') : '';
-          const pixQuery = enCat ? `${enTitle} ${enCat}` : enTitle;
-          const searchResp = await fetch(`/api/ai/pixabay?q=${encodeURIComponent(pixQuery)}&lang=en`, {
+          const searchResp = await fetch(`/api/ai/chefkoch?q=${encodeURIComponent(recipe.title)}`, {
             headers: { Authorization: `Bearer ${getAuthToken()}` },
           });
-          if (searchResp.status === 429) {
-            addLog(`⏳ Rate limit – 10s warten…`);
-            await new Promise(r => setTimeout(r, 10000));
-            i--; // retry
-            continue;
-          }
           if (!searchResp.ok) {
             const errBody = await searchResp.json().catch(() => ({}));
             skip++;
@@ -496,16 +463,15 @@ async function renderSettings(container) {
           const compressed = await compressBase64(imgData.imageBlob, imgData.imageMimeType);
           await uploadRecipeImage(recipe.id, compressed, 'image/jpeg', 'auto');
           ok++;
-          resultPreviews.push({ id: recipe.id, title: recipe.title, imageBlob: compressed });
-          addLog(`✓ ${recipe.title} [${pixQuery}]`);
+          resultPreviews.push({ id: recipe.id, title: recipe.title, imageBlob: compressed, chefkochTitle: hits[0].chefkochTitle || '' });
+          addLog(`✓ ${recipe.title}${hits[0].chefkochTitle ? ` [${hits[0].chefkochTitle}]` : ''}`);
         } catch (e) {
           err++;
           addLog(`✗ ${recipe.title}: ${e.message}`);
         }
 
-        // 1.5s delay between requests
         if (i < toProcess.length - 1) {
-          await new Promise(r => setTimeout(r, 1500));
+          await new Promise(r => setTimeout(r, 1000));
         }
       }
 
@@ -514,24 +480,37 @@ async function renderSettings(container) {
       btn.disabled = false;
       showToast(t('settings.bulkImageDone', ok, skip, err), ok > 0 ? 'success' : 'info');
 
-      // Show result preview grid
+      // Ergebnis-Vorschau
       const resultSection = $('#bulkResultSection', container);
       const resultGrid = $('#bulkResultGrid', container);
       if (resultPreviews.length > 0 && resultSection && resultGrid) {
         $('#bulkResultTitle', container).textContent = t('settings.bulkResultTitle');
-        resultGrid.innerHTML = resultPreviews.map((item) => `
+        resultGrid.innerHTML = resultPreviews.map(item => `
           <div class="bulk-result-item" data-recipe-id="${item.id}">
-            <img class="bulk-result-thumb" src="data:image/jpeg;base64,${item.imageBlob}" alt="${escapeAttr(item.title)}" />
+            <img class="bulk-result-thumb" src="data:image/jpeg;base64,${item.imageBlob}" alt="${escapeAttr(item.title)}" data-caption="${escapeAttr(item.chefkochTitle)}" />
             <div class="bulk-result-label">${escapeAttr(item.title)}</div>
+            ${item.chefkochTitle ? `<div class="bulk-result-source" title="Chefkoch: ${escapeAttr(item.chefkochTitle)}">📷 ${escapeAttr(item.chefkochTitle)}</div>` : ''}
             <button class="btn btn--ghost btn--sm bulk-result-remove" data-recipe-id="${item.id}">${t('settings.bulkResultRemove')}</button>
           </div>
         `).join('');
         resultSection.classList.remove('hidden');
 
-        const sectionBody = resultSection.closest('.settings__section-body');
-        if (sectionBody) sectionBody.style.maxHeight = sectionBody.scrollHeight + 'px';
+        // Lightbox on thumbnail click
+        resultGrid.querySelectorAll('.bulk-result-thumb').forEach(img => {
+          img.addEventListener('click', () => {
+            const overlay = document.createElement('div');
+            overlay.className = 'bulk-lightbox';
+            overlay.innerHTML = `
+              <div class="bulk-lightbox__backdrop"></div>
+              <img class="bulk-lightbox__img" src="${img.src}" alt="" />
+              ${img.dataset.caption ? `<div class="bulk-lightbox__caption">Chefkoch: ${escapeAttr(img.dataset.caption)}</div>` : ''}
+            `;
+            overlay.addEventListener('click', () => overlay.remove());
+            document.body.appendChild(overlay);
+          });
+        });
 
-        resultGrid.querySelectorAll('.bulk-result-remove').forEach((btn2) => {
+        resultGrid.querySelectorAll('.bulk-result-remove').forEach(btn2 => {
           btn2.addEventListener('click', async () => {
             const recipeId = parseInt(btn2.dataset.recipeId, 10);
             btn2.disabled = true;
@@ -548,26 +527,22 @@ async function renderSettings(container) {
         });
       }
 
-      // Show manual URL entry for recipes where Pixabay found nothing
+      // Manuelle URL-Eingabe für nicht gefundene Rezepte
       const manualSection = $('#bulkManualSection', container);
       const manualList = $('#bulkManualList', container);
       if (noResultRecipes.length > 0) {
         $('#bulkManualTitle', container).textContent = t('settings.bulkManualSection');
         $('#bulkManualHint', container).textContent = t('settings.bulkManualHint');
-        manualList.innerHTML = noResultRecipes.map((r) => `
+        manualList.innerHTML = noResultRecipes.map(r => `
           <div class="bulk-manual-row" data-recipe-id="${r.id}">
-            <a class="bulk-manual-title" href="https://www.google.com/search?q=${encodeURIComponent(r.title)}&amp;tbm=isch" target="_blank" rel="noopener">${escapeAttr(r.title)}</a>
+            <a class="bulk-manual-title" href="https://www.google.com/search?q=${encodeURIComponent(r.title)}&tbm=isch" target="_blank" rel="noopener">${escapeAttr(r.title)}</a>
             <input type="text" class="input bulk-manual-url" placeholder="${t('settings.bulkManualUrlPlaceholder')}" />
             <button class="btn btn--ghost btn--sm bulk-manual-btn">${t('settings.bulkManualApply')}</button>
           </div>
         `).join('');
         manualSection.classList.remove('hidden');
 
-        // Let the section body grow to fit the newly added content
-        const sectionBody = manualSection.closest('.settings__section-body');
-        if (sectionBody) sectionBody.style.maxHeight = sectionBody.scrollHeight + 'px';
-
-        manualList.querySelectorAll('.bulk-manual-row').forEach((row) => {
+        manualList.querySelectorAll('.bulk-manual-row').forEach(row => {
           const recipeId = parseInt(row.dataset.recipeId, 10);
           const applyBtn = row.querySelector('.bulk-manual-btn');
           const urlInput = row.querySelector('.bulk-manual-url');
@@ -912,6 +887,10 @@ function initCollapsibleSections(container) {
     });
   });
 }
+
+// ---------------------------------------------------------------------------
+// Image compression helper
+// ---------------------------------------------------------------------------
 
 function compressBase64(base64, mimeType, maxPx = 1200) {
   return new Promise((resolve, reject) => {

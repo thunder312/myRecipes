@@ -148,7 +148,7 @@ export const de = {
     imageSaved: 'Bild gespeichert.',
     imageDeleted: 'Bild gelöscht.',
     imageAutoSearchBadge: 'Automatisch gesucht',
-    imageAutoSearchTooltip: 'Dieses Bild wurde automatisch per Pixabay-Suche zugewiesen und zeigt möglicherweise nicht das echte Gericht.',
+    imageAutoSearchTooltip: 'Dieses Bild wurde automatisch zugewiesen und zeigt möglicherweise nicht das echte Gericht.',
     imageUrlBtn: 'Von URL',
     imageUrlPlaceholder: 'Bild-URL eingeben...',
     imageUrlLoad: 'Laden',
@@ -414,7 +414,7 @@ export const de = {
     pixabayKeySaveBtn: 'Speichern',
     pixabayKeySaved: 'Pixabay API-Key gespeichert.',
     bulkImageSection: 'Bilder für alle Rezepte suchen',
-    bulkImageHint: 'Durchsucht Pixabay nach passenden Fotos für deine Rezepte.',
+    bulkImageHint: 'Durchsucht Chefkoch.de nach passenden Fotos für deine Rezepte.',
     bulkImageOnlyMissing: 'Nur Rezepte ohne Bild',
     bulkImageOverwrite: 'Vorhandene Bilder überschreiben',
     bulkImageBtn: 'Bilder suchen starten',
@@ -633,6 +633,7 @@ export const de = {
     error: 'Fehler',
     close: 'Schließen',
     cancel: 'Abbrechen',
+    notAvailable: 'Zur Zeit nicht verfügbar.',
   },
 
   apiErrors: {

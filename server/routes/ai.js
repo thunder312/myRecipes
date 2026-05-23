@@ -1,52 +1,53 @@
 const { Router } = require('express');
-const { getDB } = require('../db');
 
 const router = Router();
 
-// GET /api/ai/pixabay?q=<query>&lang=de
-router.get('/pixabay', async (req, res) => {
-  const { q, lang = 'en' } = req.query;
+const CHEFKOCH_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+// GET /api/ai/chefkoch?q=<query>
+router.get('/chefkoch', async (req, res) => {
+  const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'q Parameter fehlt' });
 
-  const db = getDB();
-  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('pixabayKey');
-  const apiKey = row?.value?.trim().replace(/^["']|["']$/g, '');
-  if (!apiKey) {
-    return res.status(503).json({ error: 'Pixabay API-Key nicht konfiguriert. Bitte in den Einstellungen eintragen.' });
-  }
-
-  const url = new URL('https://pixabay.com/api/');
-  url.searchParams.set('key', apiKey);
-  url.searchParams.set('q', q);
-  url.searchParams.set('image_type', 'photo');
-  url.searchParams.set('category', 'food');
-  url.searchParams.set('per_page', '5');
-  url.searchParams.set('safesearch', 'true');
-  url.searchParams.set('lang', lang);
-
   try {
-    const response = await fetch(url.toString(), {
+    const query = q.trim().replace(/\s+/g, '+');
+    const searchUrl = `https://www.chefkoch.de/rs/s0/${query}/Rezepte.html`;
+    const searchHtml = await fetch(searchUrl, {
+      headers: { 'User-Agent': CHEFKOCH_UA, 'Accept-Language': 'de-DE,de;q=0.9' },
       signal: AbortSignal.timeout(10000),
-    });
+    }).then(r => r.text());
 
-    if (response.status === 429) {
-      return res.status(429).json({ error: 'Pixabay Rate Limit erreicht. Bitte kurz warten.' });
-    }
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      return res.status(502).json({ error: `Pixabay Fehler ${response.status}: ${body.slice(0, 100)}` });
+    // Recipe ID → title from search result links
+    const recipeTitles = {};
+    for (const m of searchHtml.matchAll(/\/rezepte\/(\d+)\/([^"'\s]+)\.html/g)) {
+      if (!recipeTitles[m[1]]) {
+        recipeTitles[m[1]] = m[2].replace(/-/g, ' ');
+      }
     }
 
-    const data = await response.json();
-    const hits = (data.hits || []).map(h => ({
-      id: h.id,
-      previewURL: h.previewURL,
-      webformatURL: h.webformatURL,
-      tags: h.tags,
-    }));
-    res.json({ hits, total: data.totalHits || 0 });
+    const allUrls = searchHtml.match(
+      /https:\/\/img\.chefkoch-cdn\.de\/rezepte\/\d+\/bilder\/\d+\/[^"'\s]+\.jpg/g
+    ) || [];
+
+    const seen = new Set();
+    const hits = [];
+    for (const url of allUrls) {
+      const m = url.match(/(https:\/\/img\.chefkoch-cdn\.de\/rezepte\/(\d+)\/bilder\/\d+)\/[^/]+\/(.+\.jpg)/);
+      if (!m) continue;
+      const key = m[1];
+      if (seen.has(key)) continue;
+      seen.add(key);
+      hits.push({
+        previewURL: `${key}/crop-240x300/${m[3]}`,
+        webformatURL: `${key}/fit-960x720/${m[3]}`,
+        chefkochTitle: recipeTitles[m[2]] || '',
+      });
+      if (hits.length >= 5) break;
+    }
+
+    res.json({ hits, total: hits.length });
   } catch (err) {
-    const msg = err.name === 'TimeoutError' ? 'Timeout bei Pixabay-Anfrage' : err.message;
+    const msg = err.name === 'TimeoutError' ? 'Timeout bei Chefkoch-Anfrage' : err.message;
     res.status(502).json({ error: msg });
   }
 });

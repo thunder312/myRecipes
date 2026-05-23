@@ -148,7 +148,7 @@ export const en = {
     imageSaved: 'Photo saved.',
     imageDeleted: 'Photo deleted.',
     imageAutoSearchBadge: 'Auto-searched',
-    imageAutoSearchTooltip: 'This photo was automatically assigned via Pixabay and may not show the actual dish.',
+    imageAutoSearchTooltip: 'This photo was automatically assigned and may not show the actual dish.',
     imageUrlBtn: 'From URL',
     imageUrlPlaceholder: 'Enter image URL...',
     imageUrlLoad: 'Load',
@@ -414,7 +414,7 @@ export const en = {
     pixabayKeySaveBtn: 'Save',
     pixabayKeySaved: 'Pixabay API key saved.',
     bulkImageSection: 'Find photos for all recipes',
-    bulkImageHint: 'Searches Pixabay for matching photos for your recipes.',
+    bulkImageHint: 'Searches Chefkoch.de for matching photos for your recipes.',
     bulkImageOnlyMissing: 'Only recipes without a photo',
     bulkImageOverwrite: 'Overwrite existing photos',
     bulkImageBtn: 'Start image search',
@@ -633,6 +633,7 @@ export const en = {
     error: 'Error',
     close: 'Close',
     cancel: 'Cancel',
+    notAvailable: 'Currently not available.',
   },
 
   apiErrors: {

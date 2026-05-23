@@ -3,6 +3,17 @@ import { getAuthToken } from './utils/auth.js';
 
 const CHANGELOG = [
   {
+    date: '2026-05-23',
+    highlight: true,
+    de: 'Neue Bildsuche via Chefkoch.de: Im KI-Ergänzungs-Dialog und beim Import kann jetzt ein passendes Bild von Chefkoch gesucht und direkt übernommen werden. Admins können die Suche auch als Massen-Import für alle Rezepte nutzen.',
+    en: 'New image search via Chefkoch.de: In the AI enhancement dialog and during import, you can now search for a matching photo on Chefkoch and apply it directly. Admins can also run this as a bulk import for all recipes.',
+  },
+  {
+    date: '2026-05-23',
+    de: 'Pixabay-Bildersuche entfernt – die Ergebnisse waren zu ungenau. Alle automatisch zugewiesenen Bilder wurden bereinigt.',
+    en: 'Pixabay image search removed – results were too inaccurate. All automatically assigned images have been cleaned up.',
+  },
+  {
     date: '2026-05-19',
     highlight: true,
     de: 'Eure Rezepte werden jetzt täglich automatisch gesichert – falls einmal etwas schiefläuft, können die Daten wiederhergestellt werden.',
@@ -137,11 +148,10 @@ export async function maybeShowNewsPopup(lastLoginAt) {
   const since = new Date(lastLoginAt);
   const newFeatures = CHANGELOG.filter(entry => new Date(entry.date) > since);
 
-  const oldestEntry = CHANGELOG[CHANGELOG.length - 1].date;
   let newRecipes = [];
   try {
     const token = getAuthToken();
-    const res = await fetch(`/api/auth/news?since=${encodeURIComponent(oldestEntry + 'T00:00:00.000Z')}`, {
+    const res = await fetch(`/api/auth/news?since=${encodeURIComponent(lastLoginAt)}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (res.ok) {

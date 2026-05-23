@@ -397,15 +397,13 @@ Antworte NUR mit einem JSON-Objekt:
 {
   "sides": ["Beilage 1", "Beilage 2"],
   "tags": ["Tag 1", "Tag 2"],
-  "description": "Kurze Beschreibung in 1-2 Sätzen",
-  "imageQuery": "Englischer Suchbegriff für Pixabay (z.B. 'beef goulash bowl')"
+  "description": "Kurze Beschreibung in 1-2 Sätzen"
 }
 
 Regeln:
 - sides: 2-4 passende Beilagen; leeres Array wenn bereits vorhanden und gut
 - tags: ergänze sinnvolle Tags (vegetarisch, vegan, schnell, festlich, low-carb etc.); leeres Array wenn bereits gut
-- description: immer eine kurze, prägnante Beschreibung in 1-2 Sätzen (auch wenn bereits eine vorhanden ist)
-- imageQuery: immer einen englischen Begriff für ein passendes Lebensmittel-/Gericht-Foto`;
+- description: immer eine kurze, prägnante Beschreibung in 1-2 Sätzen (auch wenn bereits eine vorhanden ist)`;
 }
 
 function buildEnhancePromptEN(recipe) {
@@ -424,15 +422,13 @@ Respond ONLY with a JSON object:
 {
   "sides": ["Side 1", "Side 2"],
   "tags": ["Tag 1", "Tag 2"],
-  "description": "Short description in 1-2 sentences",
-  "imageQuery": "English search term for Pixabay (e.g. 'beef goulash bowl')"
+  "description": "Short description in 1-2 sentences"
 }
 
 Rules:
 - sides: 2-4 suitable side dishes; empty array if already present and good
 - tags: add meaningful tags (vegetarian, vegan, quick, festive, low-carb etc.); empty array if already good
-- description: always provide a short, concise description in 1-2 sentences (even if one already exists)
-- imageQuery: always provide an English term for a matching food/dish photo`;
+- description: always provide a short, concise description in 1-2 sentences (even if one already exists)`;
 }
 
 export async function enhanceRecipe(recipe) {

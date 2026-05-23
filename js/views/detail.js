@@ -660,8 +660,6 @@ async function openAiModal(container, recipe) {
   const hasSides = suggestions.sides?.length > 0;
   const hasTags = suggestions.tags?.length > 0;
   const descText = suggestions.description?.trim() || '';
-  const imageQuery = suggestions.imageQuery || recipe.title || '';
-
   if (!hasSides && !hasTags && !descText) {
     body.innerHTML = `<p>${t('detail.aiNoSuggestions')}</p>`;
     footer.classList.remove('hidden');
@@ -719,11 +717,12 @@ async function openAiModal(container, recipe) {
   $('#btnAiImageSearch', container)?.addEventListener('click', async () => {
     const btn = $('#btnAiImageSearch', container);
     const section = $('#aiImageSection', container);
+    const origHTML = btn.innerHTML;
     btn.disabled = true;
     btn.textContent = t('detail.aiImageSearching');
     try {
       const token = getAuthToken();
-      const resp = await fetch(`/api/ai/pixabay?q=${encodeURIComponent(imageQuery)}`, {
+      const resp = await fetch(`/api/ai/chefkoch?q=${encodeURIComponent(recipe.title)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!resp.ok) {
@@ -739,7 +738,7 @@ async function openAiModal(container, recipe) {
         <div class="ai-image-gallery">
           ${hits.map((h, i) => `
             <button class="ai-image-thumb" data-img-idx="${i}" type="button">
-              <img src="${h.previewURL}" alt="${esc(h.tags || '')}" loading="lazy" />
+              <img src="${h.previewURL}" alt="" loading="lazy" />
             </button>
           `).join('')}
         </div>
@@ -751,13 +750,15 @@ async function openAiModal(container, recipe) {
           btn2.classList.add('ai-image-thumb--selected');
           selectedImageBlob = null;
           selectedImageMime = null;
-          // Store the webformat URL for download on apply
           btn2.dataset.webformatUrl = hits[i].webformatURL;
           $('#aiImageHint', section).classList.remove('hidden');
         });
       });
     } catch (err) {
       section.innerHTML = `<p class="error-msg">${err.message}</p>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = origHTML;
     }
   });
 
