@@ -27,11 +27,10 @@ editierbar, erweiterbar und exportierbar als Text und PDF.
 - [x] Der Import soll optional auch nach einem passenden Bild im Internet suchen (Rezeptname), und dies gleich mit importieren. Falls die neue Option im Import ausgewählt wurde.
 - [x] Es soll in den Optionen eine Möglichkeit geben, für sein eigenes Kochbuch für alle Rezepte ein Bild im Internet zu suchen (bestehende werden überschrieben.
 - [x] Selbsterfasste und bestehende Rezepte sollen nach der Eingabe auch die Möglichkeit haben, von der KI in den Punkten Beilagen, Tags, Beschreibung und Bild ergänzt werden können.
-- [x] Der Button Kochmodus soll oben unter der Überschrift plaziert werdn
+- [x] Der Button Kochmodus soll oben unter der Überschrift plaziert werden
 - [x] Es soll ein News-Pop-Up geben, das die neuen Rezepte und Features auflistet, die seit dem letzten Login hinzugekommen sind.
       Es soll mit OK bestätigt werden können oder in den Einstellungen komplett pro User abschaltbar sein.
 - [x] Auto-Backup der DB nach Dropbox alle 24h 2 Saves reichen (ältere löschen).
-- [ ] Pixabay Massen-Import ist kacke. -> Google Bilder suche oder Chefkoch?
 - [ ] Bilder im Rezeptbuch-Export optional inkludieren.
 - [x] Rezept-Detailseite reSTehtr das jetzt auch in den Releasenotes?factoren
     - Bild in Mini-Ansicht per Klick vergrößern.
@@ -47,6 +46,10 @@ editierbar, erweiterbar und exportierbar als Text und PDF.
 - [x] Teste alle bestehenden Features auch für Apple bzw. Safari. Sollte es Probleme geben, baue diese gegebenenfalls um.
 ## KI
 - [x] Nach KI sind gleiche Zutaten wieder getrennt.
+- [x] KI auf Chefkoch trainieren, um Bilder zu finden.
+  - [x] Pixabay Massen-Import ist kacke. -> Google Bilder suche oder Chefkoch?
+  - [x] unpassende Bilder (KI gefunden) aus der DB entfernen
+
 ## Handschrift trainieren
 
 ## Claude
