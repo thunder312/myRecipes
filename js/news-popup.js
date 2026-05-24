@@ -3,6 +3,22 @@ import { getAuthToken } from './utils/auth.js';
 
 const CHANGELOG = [
   {
+    date: '2026-05-24',
+    highlight: true,
+    de: 'Quelle/Link direkt neben „Von wem/Woher" in der Rezeptansicht – URLs sind klickbar und öffnen sich in einem neuen Tab. Die Quelle erscheint jetzt auch auf allen PDF-Exporten.',
+    en: 'Source/link shown directly next to "From whom/where" in the recipe view – URLs are clickable and open in a new tab. The source now also appears on all PDF exports.',
+  },
+  {
+    date: '2026-05-24',
+    de: 'Kochbuch-PDF-Export: Rezeptbilder können jetzt optional eingebunden werden (Checkbox auf jeder Kochbuch-Karte).',
+    en: 'Cookbook PDF export: Recipe photos can now be optionally included (checkbox on each cookbook card).',
+  },
+  {
+    date: '2026-05-24',
+    de: 'Neuigkeiten-Popup: Neue Rezepte sind jetzt direkte Links – einfach klicken, um das Rezept zu öffnen. Die Liste wird nicht mehr abgekürzt.',
+    en: 'News popup: New recipes are now direct links – click to open the recipe. The list is no longer truncated.',
+  },
+  {
     date: '2026-05-23',
     highlight: true,
     de: 'Neue Bildsuche via Chefkoch.de: Im KI-Ergänzungs-Dialog und beim Import kann jetzt ein passendes Bild von Chefkoch gesucht und direkt übernommen werden. Admins können die Suche auch als Massen-Import für alle Rezepte nutzen.',
@@ -232,43 +248,83 @@ function showNewsModal(allFeatures, recipes, since) {
   `;
   document.body.appendChild(modal);
 
+  const chevronSvg = `<svg class="news-popup__section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>`;
+
   function renderDayContent(index) {
     const { features, recipes: dayRecipes } = dateMap[days[index]];
     const highlighted = features.filter(f => f.highlight);
     const normal = features.filter(f => !f.highlight);
 
-    const highlightHtml = highlighted.map(f => `
-      <div class="news-popup__highlight">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        <span>${escapeHtml(lang === 'en' ? f.en : f.de)}</span>
-      </div>
-    `).join('');
+    let recipesSection = '';
+    if (dayRecipes.length > 0) {
+      recipesSection = `
+        <div class="news-popup__section news-popup__section--collapsible" data-key="news_sec_recipes">
+          <h3 class="news-popup__section-title news-popup__section-title--collapsible">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2h18v20l-9-5-9 5V2z"/></svg>
+            ${t('news.recipesTitle', dayRecipes.length)}
+            ${chevronSvg}
+          </h3>
+          <div class="news-popup__section-body">
+            <ul class="news-popup__list">
+              ${dayRecipes.map(r => `<li><a href="#detail/${r.id}" class="news-popup__recipe-link">${escapeHtml(r.title)}</a></li>`).join('')}
+            </ul>
+          </div>
+        </div>
+      `;
+    }
 
-    const normalHtml = normal.length > 0 ? `
-      <ul class="news-popup__list">
-        ${normal.map(f => `<li>${escapeHtml(lang === 'en' ? f.en : f.de)}</li>`).join('')}
-      </ul>
-    ` : '';
+    let featuresSection = '';
+    if (highlighted.length > 0 || normal.length > 0) {
+      const highlightHtml = highlighted.map(f => `
+        <div class="news-popup__highlight">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>${escapeHtml(lang === 'en' ? f.en : f.de)}</span>
+        </div>
+      `).join('');
 
-    const recipesHtml = dayRecipes.length > 0 ? `
-      <div class="news-popup__section">
-        <h3 class="news-popup__section-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2h18v20l-9-5-9 5V2z"/></svg>
-          ${t('news.recipesTitle', dayRecipes.length)}
-        </h3>
+      const normalHtml = normal.length > 0 ? `
         <ul class="news-popup__list">
-          ${dayRecipes.slice(0, 10).map(r => `<li>${escapeHtml(r.title)}</li>`).join('')}
-          ${dayRecipes.length > 10 ? `<li class="news-popup__more">… ${t('news.andMore', dayRecipes.length - 10)}</li>` : ''}
+          ${normal.map(f => `<li>${escapeHtml(lang === 'en' ? f.en : f.de)}</li>`).join('')}
         </ul>
-      </div>
-    ` : '';
+      ` : '';
 
-    return highlightHtml + normalHtml + recipesHtml;
+      featuresSection = `
+        <div class="news-popup__section news-popup__section--collapsible" data-key="news_sec_features">
+          <h3 class="news-popup__section-title news-popup__section-title--collapsible">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            ${t('news.featuresTitle')}
+            ${chevronSvg}
+          </h3>
+          <div class="news-popup__section-body">
+            ${highlightHtml}${normalHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    return recipesSection + featuresSection;
+  }
+
+  function initNewsCollapsible(container) {
+    container.querySelectorAll('.news-popup__section--collapsible').forEach(section => {
+      const key = section.dataset.key;
+      const stored = localStorage.getItem(key);
+      if (stored === '1') section.classList.add('news-popup__section--collapsed');
+
+      const title = section.querySelector('.news-popup__section-title--collapsible');
+      if (!title) return;
+
+      title.addEventListener('click', () => {
+        const now = section.classList.toggle('news-popup__section--collapsed');
+        localStorage.setItem(key, now ? '1' : '0');
+      });
+    });
   }
 
   function updatePage(index) {
     currentIndex = index;
     document.getElementById('newsContent').innerHTML = renderDayContent(index);
+    initNewsCollapsible(document.getElementById('newsContent'));
 
     if (total > 1) {
       document.getElementById('newsNavDate').textContent = formatDate(days[index]);

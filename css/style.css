@@ -1293,12 +1293,23 @@ button.nav__profile {
 
 .detail__source-note {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--space-xs);
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   margin-top: calc(-1 * var(--space-md));
   margin-bottom: var(--space-xl);
+  flex-wrap: wrap;
+}
+
+.source-note__link {
+  color: var(--color-primary);
+  word-break: break-all;
+  text-decoration: none;
+}
+
+.source-note__link:hover {
+  text-decoration: underline;
 }
 
 .detail__tags,
@@ -1486,13 +1497,6 @@ details[open] .detail__pdf-summary::before { transform: rotate(90deg); }
   columns: auto;
 }
 
-.detail__source {
-  margin-top: var(--space-2xl);
-  padding-top: var(--space-md);
-  border-top: 1px solid var(--color-border-light);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-}
 
 /* Notes */
 .detail__notes {
@@ -3255,6 +3259,17 @@ details[open] > .batch__log-heading::before,
   margin-left: auto;
 }
 
+.cookbook-card__pdf-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  width: 100%;
+  margin-top: var(--space-xs);
+}
+
 /* Modal */
 .modal {
   position: fixed;
@@ -4914,6 +4929,15 @@ details[open] > .batch__log-heading::before,
   font-style: italic;
 }
 
+.news-popup__recipe-link {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.news-popup__recipe-link:hover {
+  text-decoration: underline;
+}
+
 .news-popup__highlight {
   display: flex;
   gap: 8px;
@@ -4990,6 +5014,43 @@ details[open] > .batch__log-heading::before,
   border-radius: 10px;
   letter-spacing: 0.3px;
   text-transform: uppercase;
+}
+
+.news-popup__section-title--collapsible {
+  cursor: pointer;
+  user-select: none;
+  justify-content: space-between;
+}
+
+.news-popup__section-title--collapsible:hover {
+  color: var(--color-primary);
+}
+
+.news-popup__section-chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  color: var(--color-text-secondary);
+}
+
+.news-popup__section--collapsed .news-popup__section-chevron {
+  transform: rotate(-90deg);
+}
+
+.news-popup__section-body {
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+  max-height: 2000px;
+  opacity: 1;
+}
+
+.news-popup__section--collapsed .news-popup__section-body {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.news-popup__section--collapsed .news-popup__section-title {
+  margin-bottom: 0;
 }
 
 
