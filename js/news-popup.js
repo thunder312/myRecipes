@@ -253,6 +253,16 @@ function showNewsModal(allFeatures, recipes, since) {
   `;
   document.body.appendChild(modal);
 
+  // Event delegation: one stable listener handles all collapsible section clicks
+  modal.addEventListener('click', (e) => {
+    const title = e.target.closest('.news-popup__section-title--collapsible');
+    if (!title) return;
+    const section = title.closest('.news-popup__section--collapsible');
+    if (!section) return;
+    const now = section.classList.toggle('news-popup__section--collapsed');
+    localStorage.setItem(section.dataset.key, now ? '1' : '0');
+  });
+
   const chevronSvg = `<svg class="news-popup__section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>`;
 
   function renderDayContent(index) {
@@ -310,26 +320,18 @@ function showNewsModal(allFeatures, recipes, since) {
     return recipesSection + featuresSection;
   }
 
-  function initNewsCollapsible(container) {
+  function restoreCollapseState(container) {
     container.querySelectorAll('.news-popup__section--collapsible').forEach(section => {
-      const key = section.dataset.key;
-      const stored = localStorage.getItem(key);
-      if (stored === '1') section.classList.add('news-popup__section--collapsed');
-
-      const title = section.querySelector('.news-popup__section-title--collapsible');
-      if (!title) return;
-
-      title.addEventListener('click', () => {
-        const now = section.classList.toggle('news-popup__section--collapsed');
-        localStorage.setItem(key, now ? '1' : '0');
-      });
+      if (localStorage.getItem(section.dataset.key) === '1') {
+        section.classList.add('news-popup__section--collapsed');
+      }
     });
   }
 
   function updatePage(index) {
     currentIndex = index;
     document.getElementById('newsContent').innerHTML = renderDayContent(index);
-    initNewsCollapsible(document.getElementById('newsContent'));
+    restoreCollapseState(document.getElementById('newsContent'));
 
     if (total > 1) {
       document.getElementById('newsNavDate').textContent = formatDate(days[index]);
