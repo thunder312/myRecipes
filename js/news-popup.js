@@ -4,6 +4,11 @@ import { getAuthToken } from './utils/auth.js';
 const CHANGELOG = [
   {
     date: '2026-05-24',
+    de: 'Neuigkeiten-Popup: Rezepte stehen jetzt ganz oben. Beide Kategorien (Rezepte & Updates) lassen sich ein- und ausklappen.',
+    en: 'News popup: Recipes now appear at the top. Both categories (recipes & updates) can be collapsed and expanded.',
+  },
+  {
+    date: '2026-05-24',
     highlight: true,
     de: 'Quelle/Link direkt neben „Von wem/Woher" in der Rezeptansicht – URLs sind klickbar und öffnen sich in einem neuen Tab. Die Quelle erscheint jetzt auch auf allen PDF-Exporten.',
     en: 'Source/link shown directly next to "From whom/where" in the recipe view – URLs are clickable and open in a new tab. The source now also appears on all PDF exports.',
