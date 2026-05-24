@@ -31,13 +31,14 @@ editierbar, erweiterbar und exportierbar als Text und PDF.
 - [x] Es soll ein News-Pop-Up geben, das die neuen Rezepte und Features auflistet, die seit dem letzten Login hinzugekommen sind.
       Es soll mit OK bestätigt werden können oder in den Einstellungen komplett pro User abschaltbar sein.
 - [x] Auto-Backup der DB nach Dropbox alle 24h 2 Saves reichen (ältere löschen).
-- [ ] Bilder im Rezeptbuch-Export optional inkludieren.
+- [x] Bilder im Rezeptbuch-Export optional inkludieren.
 - [x] Rezept-Detailseite reSTehtr das jetzt auch in den Releasenotes?factoren
     - Bild in Mini-Ansicht per Klick vergrößern.
     - Portionen-Edit nur im Bearbeitungs-Modus
     - Rezept-PDF-Block einklappbar
     - Notizen: Texte: "Halte fest, was dir beim Kochen aufgefallen ist." und "Noch keine Notizen vorhanden." entfernen, da selbsterklärend.
     - Koch-Statistik, deutlich kleiner formatieren, weil nicht so wichtig.
+- [x] Die neuen Rezepte in den Releasenotes sollen Links direkt auf das Rezept sein und die Liste auch bei vielen Rezepten nicht abgekürzt werden.
 ## Bugs
 ### Desktop
 ### Mobil

@@ -203,7 +203,7 @@ function renderToc(doc, tocData, startPage, tocPageCount, pageWidth, pageHeight,
   }
 }
 
-export function generateCookbookPDF(cookbook, recipes) {
+export function generateCookbookPDF(cookbook, recipes, { includeImages = false } = {}) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -239,7 +239,7 @@ export function generateCookbookPDF(cookbook, recipes) {
       doc.addPage();
       const recipeDisplayPage = doc.internal.getNumberOfPages() - 1;
       entry.recipes.push({ title: recipe.title || t('pdf.unknownRecipe'), page: recipeDisplayPage });
-      addRecipeToDoc(doc, recipe);
+      addRecipeToDoc(doc, recipe, { includeImages });
       // addRecipeToDoc may add overflow pages via checkPageBreak — those get numbers below
     }
 
@@ -262,7 +262,7 @@ export function generateCookbookPDF(cookbook, recipes) {
   return doc.output('blob');
 }
 
-function addRecipeToDoc(doc, recipeData) {
+function addRecipeToDoc(doc, recipeData, { includeImages = false } = {}) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
   const contentWidth = pageWidth - 2 * margin;
@@ -290,6 +290,22 @@ function addRecipeToDoc(doc, recipeData) {
   if (metaParts.length) {
     doc.text(metaParts.join('  |  '), margin, y);
     y += 8;
+  }
+
+  // Recipe image
+  if (includeImages && recipeData.imageBlob) {
+    const imgData = `data:${recipeData.imageMimeType || 'image/jpeg'};base64,${recipeData.imageBlob}`;
+    try {
+      const props = doc.getImageProperties(imgData);
+      const maxW = contentWidth;
+      const maxH = 75;
+      const ratio = props.width / props.height;
+      let imgW = maxW, imgH = imgW / ratio;
+      if (imgH > maxH) { imgH = maxH; imgW = imgH * ratio; }
+      y = checkPageBreak(doc, y, imgH + 4, margin);
+      doc.addImage(imgData, 'JPEG', margin, y, imgW, imgH);
+      y += imgH + 6;
+    } catch { /* skip image on error */ }
   }
 
   // Description
@@ -378,6 +394,21 @@ function addRecipeToDoc(doc, recipeData) {
     doc.setFontSize(9);
     doc.setTextColor(120);
     doc.text(t('pdf.sides') + ': ' + recipeData.sides.join(', '), margin, y);
+    y += 5;
+  }
+
+  // Source info
+  if (recipeData.sourceNote || recipeData.sourceRef) {
+    y = checkPageBreak(doc, y, 7, margin);
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    const srcParts = [recipeData.sourceNote, recipeData.sourceRef].filter(Boolean);
+    const srcText = t('detail.sourceNote') + ': ' + srcParts.join(' – ');
+    doc.text(srcText, margin, y);
+    if (recipeData.sourceRef && /^https?:\/\//i.test(recipeData.sourceRef)) {
+      const prefixW = doc.getTextWidth(t('detail.sourceNote') + ': ' + (recipeData.sourceNote ? recipeData.sourceNote + ' – ' : ''));
+      doc.link(margin + prefixW, y - 3.2, doc.getTextWidth(recipeData.sourceRef), 3.8, { url: recipeData.sourceRef });
+    }
   }
 }
 
@@ -547,6 +578,21 @@ export function generateRecipePDF(recipeData, { includeImage = false, includeTag
     doc.setFontSize(9);
     doc.setTextColor(120);
     doc.text(t('pdf.sides') + ': ' + recipeData.sides.join(', '), margin, y);
+    y += 5;
+  }
+
+  // Source info
+  if (recipeData.sourceNote || recipeData.sourceRef) {
+    y = checkPageBreak(doc, y, 7, margin);
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    const srcParts = [recipeData.sourceNote, recipeData.sourceRef].filter(Boolean);
+    const srcText = t('detail.sourceNote') + ': ' + srcParts.join(' – ');
+    doc.text(srcText, margin, y);
+    if (recipeData.sourceRef && /^https?:\/\//i.test(recipeData.sourceRef)) {
+      const prefixW = doc.getTextWidth(t('detail.sourceNote') + ': ' + (recipeData.sourceNote ? recipeData.sourceNote + ' – ' : ''));
+      doc.link(margin + prefixW, y - 3.2, doc.getTextWidth(recipeData.sourceRef), 3.8, { url: recipeData.sourceRef });
+    }
   }
 
   return doc.output('blob');
@@ -875,6 +921,21 @@ export function generateRecipeA5PDF(recipeData, { includeImage = false, includeT
     doc.setFontSize(fs.small);
     doc.setTextColor(120);
     doc.text(t('pdf.sides') + ': ' + recipeData.sides.join(', '), x, y);
+    y += 4;
+  }
+
+  // Source info
+  if (recipeData.sourceNote || recipeData.sourceRef) {
+    ensureSpace(6);
+    doc.setFontSize(fs.small);
+    doc.setTextColor(120);
+    const srcParts = [recipeData.sourceNote, recipeData.sourceRef].filter(Boolean);
+    const srcText = t('detail.sourceNote') + ': ' + srcParts.join(' – ');
+    doc.text(srcText, x, y);
+    if (recipeData.sourceRef && /^https?:\/\//i.test(recipeData.sourceRef)) {
+      const prefixW = doc.getTextWidth(t('detail.sourceNote') + ': ' + (recipeData.sourceNote ? recipeData.sourceNote + ' – ' : ''));
+      doc.link(x + prefixW, y - 3.0, doc.getTextWidth(recipeData.sourceRef), 3.5, { url: recipeData.sourceRef });
+    }
   }
 
   return doc.output('blob');
@@ -896,7 +957,7 @@ export function generateRecipeA5PDF(recipeData, { includeImage = false, includeT
 
 // Build an array of page-render-functions (doc, x) => void for one recipe.
 // Measurement (splitTextToSize) uses the live doc; fonts must be set before each call.
-function buildRecipeA5Pages(doc, recipe, colWidth, fs, topY, availH) {
+function buildRecipeA5Pages(doc, recipe, colWidth, fs, topY, availH, { includeImages = false, includeNotes = true, includeTags = true } = {}) {
   const pages = [];
   let blocks = [];   // pending render-fns for the current logical page
   let usedH = 0;
@@ -943,6 +1004,24 @@ function buildRecipeA5Pages(doc, recipe, colWidth, fs, topY, availH) {
       doc.text(metaStr, x, y);
       return y + 5;
     });
+  }
+
+  // --- Image ---
+  if (includeImages && recipe.imageBlob) {
+    const imgData = `data:${recipe.imageMimeType || 'image/jpeg'};base64,${recipe.imageBlob}`;
+    try {
+      const props = doc.getImageProperties(imgData);
+      const maxW = colWidth;
+      const maxH = 50;
+      const ratio = props.width / props.height;
+      let imgW = maxW, imgH = imgW / ratio;
+      if (imgH > maxH) { imgH = maxH; imgW = imgH * ratio; }
+      const capturedW = imgW, capturedH = imgH;
+      addBlock(capturedH + 4, (doc, x, y) => {
+        doc.addImage(imgData, 'JPEG', x, y, capturedW, capturedH);
+        return y + capturedH + 4;
+      });
+    } catch { /* skip image on error */ }
   }
 
   // --- Description ---
@@ -1062,6 +1141,24 @@ function buildRecipeA5Pages(doc, recipe, colWidth, fs, topY, availH) {
     });
   }
 
+  // Source info
+  if (recipe.sourceNote || recipe.sourceRef) {
+    doc.setFontSize(fs.small);
+    const srcParts = [recipe.sourceNote, recipe.sourceRef].filter(Boolean);
+    const srcText = t('detail.sourceNote') + ': ' + srcParts.join(' – ');
+    const srcLines = doc.splitTextToSize(srcText, colWidth);
+    const srcH = srcLines.length * 4 + 2;
+    addBlock(srcH, (doc, x, y) => {
+      doc.setFontSize(fs.small); doc.setTextColor(120);
+      doc.text(srcLines, x, y);
+      if (recipe.sourceRef && /^https?:\/\//i.test(recipe.sourceRef)) {
+        const prefixW = doc.getTextWidth(t('detail.sourceNote') + ': ' + (recipe.sourceNote ? recipe.sourceNote + ' – ' : ''));
+        doc.link(x + prefixW, y - 3.0, doc.getTextWidth(recipe.sourceRef), 3.5, { url: recipe.sourceRef });
+      }
+      return y + srcH;
+    });
+  }
+
   flush();
   return pages.length ? pages : [(doc, x) => {}]; // at least one page per recipe
 }
@@ -1123,7 +1220,7 @@ function buildTocA5Pages(doc, tocEntries, colWidth, fs, topY, availH) {
   return pages;
 }
 
-export function generateCookbookA5PDF(cookbook, recipes) {
+export function generateCookbookA5PDF(cookbook, recipes, { includeImages = false } = {}) {
   // Layout constants – same as generateRecipeA5PDF
   const pageWidth  = 297, pageHeight = 210;
   const marginLeft = 15, marginRight = 14, marginTop = 4, marginBottom = 4;
@@ -1173,7 +1270,7 @@ export function generateCookbookA5PDF(cookbook, recipes) {
 
     for (const recipe of catRecipes) {
       const recipePageNum = nextLogicalPage;
-      const recipeFns = buildRecipeA5Pages(doc, recipe, colWidth, fs, topY, availH);
+      const recipeFns = buildRecipeA5Pages(doc, recipe, colWidth, fs, topY, availH, { includeImages });
       nextLogicalPage += recipeFns.length;
       contentFns.push(...recipeFns);
       catEntry.recipes.push({ title: recipe.title, pageNum: recipePageNum });

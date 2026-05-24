@@ -109,6 +109,10 @@ async function renderCookbooks(container) {
                 ${t('cookbooks.a5Btn')}
               </button>
             </div>
+            <label class="cookbook-card__pdf-option">
+              <input type="checkbox" class="cb-include-images" data-cb-id="${cb.id}" />
+              ${t('detail.pdfIncludeImage')}
+            </label>
             <div class="cookbook-card__actions-secondary">
               <button class="btn btn--ghost btn--sm" data-action="edit" data-id="${cb.id}" title="${t('cookbooks.editBtn')}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -197,6 +201,10 @@ async function renderCookbooks(container) {
 
   // --- Export cookbook as PDF ---
 
+  function getIncludeImages(cookbookId) {
+    return !!container.querySelector(`.cb-include-images[data-cb-id="${cookbookId}"]`)?.checked;
+  }
+
   async function exportCookbookPDF(cookbookId) {
     const cb = cookbooks.find(c => c.id === cookbookId);
     if (!cb) return;
@@ -204,7 +212,7 @@ async function renderCookbooks(container) {
       showToast(t('cookbooks.pdfCreating'), 'info');
       const recipes = await getCookbookRecipes(cookbookId);
       if (recipes.length === 0) { showToast(t('cookbooks.empty'), 'warning'); return; }
-      const blob = generateCookbookPDF(cb, recipes);
+      const blob = generateCookbookPDF(cb, recipes, { includeImages: getIncludeImages(cookbookId) });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -224,7 +232,7 @@ async function renderCookbooks(container) {
       showToast(t('cookbooks.pdfCreating'), 'info');
       const recipes = await getCookbookRecipes(cookbookId);
       if (recipes.length === 0) { showToast(t('cookbooks.empty'), 'warning'); return; }
-      const blob = generateCookbookA5PDF(cb, recipes);
+      const blob = generateCookbookA5PDF(cb, recipes, { includeImages: getIncludeImages(cookbookId) });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

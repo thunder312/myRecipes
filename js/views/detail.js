@@ -95,6 +95,27 @@ function esc(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+function isUrl(str) {
+  return /^https?:\/\//i.test(str || '');
+}
+
+function renderSourceNote(recipe) {
+  const note = recipe.sourceNote;
+  const ref = recipe.sourceRef;
+  if (!note && !ref) return '';
+  const svg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>';
+  const parts = [];
+  if (note) parts.push(`<em>${esc(note)}</em>`);
+  if (ref) {
+    if (isUrl(ref)) {
+      parts.push(`<a href="${esc(ref)}" target="_blank" rel="noopener noreferrer" class="source-note__link">${esc(ref)}</a>`);
+    } else {
+      parts.push(`<em>${esc(ref)}</em>`);
+    }
+  }
+  return `<p class="detail__source-note">${svg} <span>${t('detail.sourceNote')}: ${parts.join(' – ')}</span></p>`;
+}
+
 function renderDetailView(container, recipe) {
   const user = getAuthUser();
   const loggedIn = isAuthenticated();
@@ -188,10 +209,7 @@ function renderDetailView(container, recipe) {
 
       ${recipe.description ? `<p class="detail__desc">${esc(recipe.description)}</p>` : ''}
 
-      ${recipe.sourceNote ? `<p class="detail__source-note">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-        ${t('detail.sourceNote')}: <em>${esc(recipe.sourceNote)}</em>
-      </p>` : ''}
+      ${renderSourceNote(recipe)}
 
       ${recipe.tags?.length ? `
         <div class="detail__tags">
@@ -302,9 +320,6 @@ function renderDetailView(container, recipe) {
         ` : ''}
       </div>
 
-      <div class="detail__source">
-        <small>${t('detail.source')}: ${esc(recipe.sourceType)} – ${esc(recipe.sourceRef) || '–'}</small>
-      </div>
     </div>
 
     <!-- KI-Ergänzungs-Modal -->
