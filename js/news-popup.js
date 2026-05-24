@@ -259,8 +259,7 @@ function showNewsModal(allFeatures, recipes, since) {
     if (!title) return;
     const section = title.closest('.news-popup__section--collapsible');
     if (!section) return;
-    const now = section.classList.toggle('news-popup__section--collapsed');
-    localStorage.setItem(section.dataset.key, now ? '1' : '0');
+    section.classList.toggle('news-popup__section--collapsed');
   });
 
   const chevronSvg = `<svg class="news-popup__section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>`;
@@ -273,7 +272,7 @@ function showNewsModal(allFeatures, recipes, since) {
     let recipesSection = '';
     if (dayRecipes.length > 0) {
       recipesSection = `
-        <div class="news-popup__section news-popup__section--collapsible" data-key="news_sec_recipes">
+        <div class="news-popup__section news-popup__section--collapsible">
           <h3 class="news-popup__section-title news-popup__section-title--collapsible">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2h18v20l-9-5-9 5V2z"/></svg>
             ${t('news.recipesTitle', dayRecipes.length)}
@@ -304,7 +303,7 @@ function showNewsModal(allFeatures, recipes, since) {
       ` : '';
 
       featuresSection = `
-        <div class="news-popup__section news-popup__section--collapsible" data-key="news_sec_features">
+        <div class="news-popup__section news-popup__section--collapsible">
           <h3 class="news-popup__section-title news-popup__section-title--collapsible">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             ${t('news.featuresTitle')}
@@ -320,18 +319,9 @@ function showNewsModal(allFeatures, recipes, since) {
     return recipesSection + featuresSection;
   }
 
-  function restoreCollapseState(container) {
-    container.querySelectorAll('.news-popup__section--collapsible').forEach(section => {
-      if (localStorage.getItem(section.dataset.key) === '1') {
-        section.classList.add('news-popup__section--collapsed');
-      }
-    });
-  }
-
   function updatePage(index) {
     currentIndex = index;
     document.getElementById('newsContent').innerHTML = renderDayContent(index);
-    restoreCollapseState(document.getElementById('newsContent'));
 
     if (total > 1) {
       document.getElementById('newsNavDate').textContent = formatDate(days[index]);
