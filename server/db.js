@@ -170,6 +170,15 @@ function migrateSchema() {
   if (!cols.includes('rating')) {
     db.exec('ALTER TABLE recipes ADD COLUMN rating REAL');
   }
+  if (!cols.includes('workTime')) {
+    db.exec('ALTER TABLE recipes ADD COLUMN workTime INTEGER');
+  }
+  if (!cols.includes('cookTime')) {
+    db.exec('ALTER TABLE recipes ADD COLUMN cookTime INTEGER');
+  }
+  if (!cols.includes('restTime')) {
+    db.exec('ALTER TABLE recipes ADD COLUMN restTime INTEGER');
+  }
 
   // Ensure passwordHash column exists in users table (added in multi-user migration)
   const statsColsCheck = db.pragma('table_info(user_recipe_stats)').map(r => r.name);
@@ -423,8 +432,8 @@ function mergeUserStats(recipe, userId) {
 function getAllRecipes(userId = null) {
   // Exclude imageBlob from list to keep response small; fetched individually in getRecipe
   const rows = getDB().prepare(`
-    SELECT r.id, r.title, r.category, r.origin, r.prepTime, r.mainIngredient,
-           r.sides, r.tags, r.ingredients, r.description, r.servings, r.difficulty,
+    SELECT r.id, r.title, r.category, r.origin, r.prepTime, r.workTime, r.cookTime, r.restTime,
+           r.mainIngredient, r.sides, r.tags, r.ingredients, r.description, r.servings, r.difficulty,
            r.recipeText, r.sourceType, r.sourceRef, r.sourceNote, r.createdAt, r.updatedAt,
            r.cookedDates, r.cookedCount, r.notes, r.pdfBlob, r.thumbnailBlob,
            r.imageMimeType, r.rating, r.createdBy, u.username AS createdByUsername

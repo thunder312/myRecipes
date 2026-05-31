@@ -104,7 +104,10 @@ Jedes Rezept-Objekt hat folgende Felder:
   "title": "Name des Gerichts",
   "category": "Eine von: Vorspeise, Hauptspeise, Nachspeise, Fingerfood, Suppe, Salat, Beilage, Getränk, Snack, Brot/Gebäck, Gewürzmischungen, Kuchen, Soße, Sauerkonserven, Wurstrezept",
   "origin": "Länderküche z.B. Deutschland, Italien, USA, Ungarn, Frankreich, etc. oder 'International' wenn unklar",
-  "prepTime": Gesamtzeit in Minuten als Zahl (Summe aus Vorbereitungszeit + Zubereitungszeit + Ruhezeit/Wartezeit/Marinierzeit/Backzeit – addiere ALLE genannten Zeitangaben). null nur wenn wirklich keine Zeitangabe vorhanden,
+  "workTime": Aktive Arbeitszeit in Minuten als Zahl (Schälen, Schneiden, Anrühren, Mischen – nicht die passive Wartezeit). null wenn nicht explizit angegeben,
+  "cookTime": Koch-/Backzeit in Minuten als Zahl (Zeit am Herd, im Ofen, in der Pfanne). null wenn nicht explizit angegeben,
+  "restTime": Ruhezeit in Minuten als Zahl (Marinierzeit, Kühlzeit, Gehzeit bei Teig, Ziehzeit, Wartezeit über Nacht etc.). null wenn nicht explizit angegeben,
+  "prepTime": Gesamtzeit in Minuten als Zahl (Summe aus workTime + cookTime + restTime – addiere ALLE genannten Zeitangaben). null nur wenn wirklich keine Zeitangabe vorhanden,
   "mainIngredient": "Hauptzutat z.B. Rind, Huhn, Schwein, Fisch, Gemüse, Pasta, etc.",
   "sides": ["Passende Beilagen als Array, z.B. Reis, Kartoffeln, Knödel, Salat, Brot"],
   "tags": ["Relevante Tags als Array, z.B. vegetarisch, vegan, Fisch, schnell, glutenfrei, laktosefrei, festlich, Comfort Food, low-carb"],
@@ -120,7 +123,7 @@ Wichtige Regeln:
 - Das Feld 'recipeText' darf NIEMALS leer sein – extrahiere alle Schritte vollständig aus dem Abschnitt 'Zubereitung'
 - Wenn das Rezept kein Fleisch enthält, füge "vegetarisch" zu den Tags hinzu; wenn es Fisch oder Meeresfrüchte enthält, füge stattdessen "Fisch" hinzu
 - Wenn die Zubereitungszeit unter 30 Minuten ist, füge "schnell" zu den Tags hinzu
-- Für 'prepTime': Summiere ALLE Zeitangaben (Vorbereitungszeit + Zubereitungszeit + Ruhezeit + Marinierzeit + Backzeit etc.). Wenn z.B. "Vorbereitungszeit: 20 Min, Zubereitungszeit: 15 Min, Ruhezeit: 30 Min" steht, ist prepTime = 65. Schätze die Gesamtzeit wenn keine expliziten Angaben vorhanden
+- Für die Zeitfelder: Unterscheide 'workTime' (aktive Handarbeit: Schälen, Schneiden, Rühren), 'cookTime' (am Herd/Ofen/Pfanne), 'restTime' (passives Warten: Marinieren, Kühlen, Gehen lassen, Ziehen). 'prepTime' ist immer die Summe aller drei. Wenn nur eine Gesamtzeit angegeben ist und keine Aufteilung erkennbar ist, setze nur 'prepTime' und lasse 'workTime'/'cookTime'/'restTime' null. Wenn z.B. "Vorbereitungszeit: 20 Min, Zubereitungszeit: 15 Min, Ruhezeit: 30 Min", dann workTime=20, cookTime=15, restTime=30, prepTime=65
 - Gewürzmischungen (z.B. Hähnchen-Gewürz, Gyros-Gewürz, Rubs, Marinaden-Mischungen) gehören in die Kategorie "Gewürzmischungen" – NICHT in "Beilage" oder "Snack". Bei Gewürzmischungen ist "sides" ein leeres Array.
 - Trenne die Rezepte sauber voneinander – jedes bekommt seinen eigenen recipeText nur mit den Zubereitungsschritten
 - Antworte NUR mit dem JSON, kein anderer Text`;
@@ -146,7 +149,10 @@ Each recipe object has the following fields:
   "title": "Name of the dish",
   "category": "One of: Starter, Main Course, Dessert, Finger Food, Soup, Salad, Side Dish, Drink, Snack, Bread & Pastry, Spice Blend, Cake, Sauce, Preserves, Sausage",
   "origin": "Cuisine origin e.g. Germany, Italy, USA, Hungary, France, etc. or 'International' if unclear",
-  "prepTime": Total time in minutes as a number (sum of prep time + cooking time + resting/marinating/baking time – add ALL mentioned times). null only if truly no time is given,
+  "workTime": Active hands-on time in minutes as a number (peeling, chopping, mixing – not passive waiting). null if not explicitly stated,
+  "cookTime": Cooking/baking time in minutes as a number (time on hob, in oven, in pan). null if not explicitly stated,
+  "restTime": Resting time in minutes as a number (marinating, chilling, proving dough, steeping, overnight waiting etc.). null if not explicitly stated,
+  "prepTime": Total time in minutes as a number (sum of workTime + cookTime + restTime – add ALL mentioned times). null only if truly no time is given,
   "mainIngredient": "Main ingredient e.g. beef, chicken, pork, fish, vegetables, pasta, etc.",
   "sides": ["Suitable side dishes as array, e.g. rice, potatoes, salad, bread"],
   "tags": ["Relevant tags as array, e.g. vegetarian, vegan, fish, quick, gluten-free, lactose-free, festive, comfort food, low-carb"],
@@ -162,7 +168,7 @@ Important rules:
 - The field 'recipeText' must NEVER be empty – extract all steps completely from the preparation section
 - If the recipe contains no meat, add "vegetarian" to the tags; if it contains fish or seafood, add "fish" instead
 - If the preparation time is under 30 minutes, add "quick" to the tags
-- For 'prepTime': Sum ALL time values (prep time + cooking time + resting time + marinating time + baking time etc.). If e.g. "Prep: 20 min, Cook: 15 min, Rest: 30 min" is stated, prepTime = 65. Estimate total time if no explicit values are given
+- For time fields: Distinguish 'workTime' (active hands-on: peeling, chopping, mixing), 'cookTime' (hob/oven/pan), 'restTime' (passive waiting: marinating, chilling, proving, steeping). 'prepTime' is always the sum of all three. If only a total time is given with no breakdown, set only 'prepTime' and leave 'workTime'/'cookTime'/'restTime' null. If e.g. "Prep: 20 min, Cook: 15 min, Rest: 30 min", then workTime=20, cookTime=15, restTime=30, prepTime=65
 - Spice blends (e.g. chicken seasoning, gyros spice, rubs, marinade mixes) belong in category "Spice Blend" – NOT in "Side Dish" or "Snack". For spice blends, "sides" is an empty array.
 - Separate recipes cleanly – each gets its own recipeText with only its preparation steps
 - Respond ONLY with the JSON, no other text`;

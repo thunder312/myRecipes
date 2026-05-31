@@ -1,5 +1,19 @@
 import { t, getCategoryList, getDifficultyOptions, translateCategory, translateDifficulty } from '../i18n.js';
 
+export function initTimeListeners(formEl) {
+  const update = () => {
+    const w = parseInt(formEl.querySelector('[data-field="workTime"]')?.value) || 0;
+    const c = parseInt(formEl.querySelector('[data-field="cookTime"]')?.value) || 0;
+    const r = parseInt(formEl.querySelector('[data-field="restTime"]')?.value) || 0;
+    const total = w + c + r;
+    const el = formEl.querySelector('[data-time-total]');
+    if (el) el.textContent = total > 0 ? `${total} Min.` : '–';
+  };
+  for (const field of ['workTime', 'cookTime', 'restTime']) {
+    formEl.querySelector(`[data-field="${field}"]`)?.addEventListener('input', update);
+  }
+}
+
 export function renderRecipeForm(targetEl, data) {
   const categories = getCategoryList();
   const difficulties = getDifficultyOptions();
@@ -8,8 +22,7 @@ export function renderRecipeForm(targetEl, data) {
   const currentCat = translateCategory(data.category);
   const currentDiff = data.difficulty; // always stored as DE key (leicht/mittel/schwer)
 
-  targetEl.innerHTML = `
-    <div class="form-group">
+  targetEl.innerHTML = `<div class="form-group">
       <label>${t('recipeForm.titleLabel')}</label>
       <input type="text" class="input" data-field="title" value="${esc(data.title || '')}" />
     </div>
@@ -26,11 +39,28 @@ export function renderRecipeForm(targetEl, data) {
         <input type="text" class="input" data-field="origin" value="${esc(data.origin || '')}" />
       </div>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>${t('recipeForm.prepTimeLabel')}</label>
-        <input type="number" class="input" data-field="prepTime" value="${data.prepTime || ''}" />
+    <div class="form-group">
+      <label>${t('recipeForm.timeLabel')}</label>
+      <div class="form-row form-row--time">
+        <div class="form-group">
+          <label class="label--sub">${t('recipeForm.workTimeLabel')}</label>
+          <input type="number" class="input" data-field="workTime" value="${data.workTime || ''}" min="0" />
+        </div>
+        <div class="form-group">
+          <label class="label--sub">${t('recipeForm.cookTimeLabel')}</label>
+          <input type="number" class="input" data-field="cookTime" value="${data.cookTime || ''}" min="0" />
+        </div>
+        <div class="form-group">
+          <label class="label--sub">${t('recipeForm.restTimeLabel')}</label>
+          <input type="number" class="input" data-field="restTime" value="${data.restTime || ''}" min="0" />
+        </div>
+        <div class="form-group form-group--total-time">
+          <label class="label--sub">${t('recipeForm.totalTimeLabel')}</label>
+          <span class="time-total" data-time-total>${data.prepTime ? data.prepTime + ' Min.' : '–'}</span>
+        </div>
       </div>
+    </div>
+    <div class="form-row">
       <div class="form-group">
         <label>${t('recipeForm.servingsLabel')}</label>
         <input type="number" class="input" data-field="servings" value="${data.servings || ''}" />
@@ -74,6 +104,7 @@ export function renderRecipeForm(targetEl, data) {
              placeholder="${t('recipeForm.sourcePlaceholder')}" />
     </div>
   `;
+  initTimeListeners(targetEl);
 }
 
 export function readRecipeForm(formEl) {
@@ -81,11 +112,18 @@ export function readRecipeForm(formEl) {
     const el = formEl.querySelector(`[data-field="${field}"]`);
     return el ? el.value : '';
   };
+  const workTime = parseInt(get('workTime')) || null;
+  const cookTime = parseInt(get('cookTime')) || null;
+  const restTime = parseInt(get('restTime')) || null;
+  const prepTime = (workTime || 0) + (cookTime || 0) + (restTime || 0) || null;
   return {
     title: get('title'),
     category: get('category'),
     origin: get('origin'),
-    prepTime: parseInt(get('prepTime')) || null,
+    workTime,
+    cookTime,
+    restTime,
+    prepTime,
     mainIngredient: get('mainIngredient'),
     sides: get('sides').split(',').map(s => s.trim()).filter(Boolean),
     tags: get('tags').split(',').map(s => s.trim()).filter(Boolean),

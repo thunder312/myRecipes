@@ -3,6 +3,12 @@ import { getAuthToken } from './utils/auth.js';
 
 const CHANGELOG = [
   {
+    date: '2026-05-31',
+    highlight: true,
+    de: 'Zubereitungszeit aufgeteilt: Rezepte haben jetzt separate Felder für Arbeitszeit, Koch-/Backzeit und Ruhezeit (z. B. Marinieren, Teig gehen lassen). Die Einzelzeiten erscheinen in der Rezeptansicht und auf PDFs.',
+    en: 'Preparation time split: Recipes now have separate fields for active time, cook/bake time, and rest time (e.g. marinating, proving dough). Individual times appear in the recipe view and on PDFs.',
+  },
+  {
     date: '2026-05-24',
     de: 'Neuigkeiten-Popup: Rezepte stehen jetzt ganz oben. Beide Kategorien (Rezepte & Updates) lassen sich ein- und ausklappen.',
     en: 'News popup: Recipes now appear at the top. Both categories (recipes & updates) can be collapsed and expanded.',

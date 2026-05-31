@@ -201,7 +201,10 @@ function renderDetailView(container, recipe) {
       <div class="detail__meta">
         ${recipe.category ? `<span class="chip ${categoryChipClass(recipe.category)}">${esc(displayCat)}</span>` : ''}
         ${recipe.origin ? `<span class="chip chip--origin">${esc(recipe.origin)}</span>` : ''}
-        ${recipe.prepTime ? `<span class="chip chip--time">${t('detail.minutes', recipe.prepTime)}</span>` : ''}
+        ${recipe.workTime ? `<span class="chip chip--time">${t('detail.workTime')}: ${t('detail.minutes', recipe.workTime)}</span>` : ''}
+        ${recipe.cookTime ? `<span class="chip chip--time">${t('detail.cookTime')}: ${t('detail.minutes', recipe.cookTime)}</span>` : ''}
+        ${recipe.restTime ? `<span class="chip chip--time">${t('detail.restTime')}: ${t('detail.minutes', recipe.restTime)}</span>` : ''}
+        ${recipe.prepTime ? `<span class="chip chip--time chip--time-total">${(recipe.workTime || recipe.cookTime || recipe.restTime) ? t('detail.totalTime') + ': ' : ''}${t('detail.minutes', recipe.prepTime)}</span>` : ''}
         ${recipe.difficulty ? `<span class="chip chip--difficulty">${esc(displayDiff)}</span>` : ''}
         ${recipe.mainIngredient ? `<span class="chip chip--ingredient">${esc(recipe.mainIngredient)}</span>` : ''}
         ${recipe.servings ? `<span class="chip chip--servings">${t('detail.servingsScaled', recipe.servings)}</span>` : ''}

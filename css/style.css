@@ -583,6 +583,10 @@ button.nav__profile {
   color: #065f46;
 }
 
+.chip--time-total {
+  font-weight: 600;
+}
+
 .chip--difficulty {
   background: #fce7f3;
   color: #9d174d;
@@ -669,6 +673,34 @@ button.nav__profile {
 
 .form-row .form-group {
   flex: 1;
+}
+
+.form-row--time {
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.form-row--time .form-group {
+  flex: 1 1 90px;
+  min-width: 80px;
+}
+
+.form-group--total-time {
+  flex: 0 0 auto;
+}
+
+.label--sub {
+  font-size: 0.82em;
+  color: var(--color-text-muted, #6b7280);
+}
+
+.time-total {
+  display: block;
+  padding: 6px 2px;
+  font-weight: 600;
+  font-size: 0.95em;
+  white-space: nowrap;
 }
 
 /* ==========================================================================

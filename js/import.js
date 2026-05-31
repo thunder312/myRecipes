@@ -211,8 +211,8 @@ function formatLdJsonAsText(ld) {
   const prep = parseIsoDuration(ld.prepTime);
   const cook = parseIsoDuration(ld.cookTime);
   const total = parseIsoDuration(ld.totalTime);
-  if (prep)  lines.push(`Vorbereitungszeit: ${prep} Minuten`);
-  if (cook)  lines.push(`Zubereitungszeit: ${cook} Minuten`);
+  if (prep)  lines.push(`Arbeitszeit (aktive Vorbereitungszeit): ${prep} Minuten`);
+  if (cook)  lines.push(`Koch-/Backzeit: ${cook} Minuten`);
   if (total) lines.push(`Gesamtzeit: ${total} Minuten`);
 
   const yield_ = ld.recipeYield;

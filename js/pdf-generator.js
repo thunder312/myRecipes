@@ -284,7 +284,10 @@ function addRecipeToDoc(doc, recipeData, { includeImages = false } = {}) {
   const metaParts = [];
   if (recipeData.category) metaParts.push(translateCategory(recipeData.category));
   if (recipeData.origin) metaParts.push(recipeData.origin);
-  if (recipeData.prepTime) metaParts.push(t('detail.minutes', recipeData.prepTime));
+  if (recipeData.workTime) metaParts.push(t('detail.workTime') + ': ' + t('detail.minutes', recipeData.workTime));
+  if (recipeData.cookTime) metaParts.push(t('detail.cookTime') + ': ' + t('detail.minutes', recipeData.cookTime));
+  if (recipeData.restTime) metaParts.push(t('detail.restTime') + ': ' + t('detail.minutes', recipeData.restTime));
+  if (recipeData.prepTime) metaParts.push(((recipeData.workTime || recipeData.cookTime || recipeData.restTime) ? t('detail.totalTime') + ': ' : '') + t('detail.minutes', recipeData.prepTime));
   if (recipeData.difficulty) metaParts.push(translateDifficulty(recipeData.difficulty));
   if (recipeData.servings) metaParts.push(t('pdf.servings') + ': ' + recipeData.servings);
   if (metaParts.length) {
@@ -434,7 +437,10 @@ export function generateRecipePDF(recipeData, { includeImage = false, includeTag
   const metaParts = [];
   if (recipeData.category) metaParts.push(translateCategory(recipeData.category));
   if (recipeData.origin) metaParts.push(recipeData.origin);
-  if (recipeData.prepTime) metaParts.push(t('detail.minutes', recipeData.prepTime));
+  if (recipeData.workTime) metaParts.push(t('detail.workTime') + ': ' + t('detail.minutes', recipeData.workTime));
+  if (recipeData.cookTime) metaParts.push(t('detail.cookTime') + ': ' + t('detail.minutes', recipeData.cookTime));
+  if (recipeData.restTime) metaParts.push(t('detail.restTime') + ': ' + t('detail.minutes', recipeData.restTime));
+  if (recipeData.prepTime) metaParts.push(((recipeData.workTime || recipeData.cookTime || recipeData.restTime) ? t('detail.totalTime') + ': ' : '') + t('detail.minutes', recipeData.prepTime));
   if (recipeData.difficulty) metaParts.push(translateDifficulty(recipeData.difficulty));
   if (recipeData.servings) metaParts.push(t('pdf.servings') + ': ' + recipeData.servings);
   if (metaParts.length) {
@@ -766,7 +772,10 @@ export function generateRecipeA5PDF(recipeData, { includeImage = false, includeT
   const metaParts = [];
   if (recipeData.category) metaParts.push(translateCategory(recipeData.category));
   if (recipeData.origin) metaParts.push(recipeData.origin);
-  if (recipeData.prepTime) metaParts.push(t('detail.minutes', recipeData.prepTime));
+  if (recipeData.workTime) metaParts.push(t('detail.workTime') + ': ' + t('detail.minutes', recipeData.workTime));
+  if (recipeData.cookTime) metaParts.push(t('detail.cookTime') + ': ' + t('detail.minutes', recipeData.cookTime));
+  if (recipeData.restTime) metaParts.push(t('detail.restTime') + ': ' + t('detail.minutes', recipeData.restTime));
+  if (recipeData.prepTime) metaParts.push(((recipeData.workTime || recipeData.cookTime || recipeData.restTime) ? t('detail.totalTime') + ': ' : '') + t('detail.minutes', recipeData.prepTime));
   if (recipeData.difficulty) metaParts.push(translateDifficulty(recipeData.difficulty));
   if (recipeData.servings) metaParts.push(t('pdf.servings') + ': ' + recipeData.servings);
   if (metaParts.length > 0) {
