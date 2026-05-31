@@ -736,7 +736,7 @@ async function openAiModal(container, recipe) {
         ${timeSplit.cookTime ? `<span class="chip chip--time">${t('detail.cookTime')}: ${t('detail.minutes', timeSplit.cookTime)}</span>` : ''}
         ${timeSplit.restTime ? `<span class="chip chip--time">${t('detail.restTime')}: ${t('detail.minutes', timeSplit.restTime)}</span>` : ''}
       </div>
-      <p class="ai-suggestion__hint">${t('detail.aiTimesHint', recipe.prepTime)}</p>
+      ${recipe.prepTime ? `<p class="ai-suggestion__hint">${t('detail.aiTimesHint', recipe.prepTime)}</p>` : ''}
     </div>` : ''}
     <div class="ai-suggestion">
       <strong>${t('detail.aiModalImage')}</strong>
