@@ -5124,6 +5124,12 @@ details[open] > .batch__log-heading::before,
   padding-left: 1.6rem;
 }
 
+.ai-suggestion__hint {
+  margin: var(--space-xs) 0 0 1.6rem;
+  color: var(--color-text-muted, #6b7280);
+  font-size: var(--font-size-xs);
+}
+
 .ai-suggestion__text {
   margin: var(--space-xs) 0 0 1.6rem;
   color: var(--color-text);

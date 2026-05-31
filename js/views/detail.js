@@ -7,7 +7,7 @@ import { t, translateCategory, translateDifficulty } from '../i18n.js';
 import { openShoppingListModal } from '../shopping-list.js';
 import { openCookingMode } from '../cooking-mode.js';
 import { scaleIngredient } from '../utils/ingredient-scaler.js';
-import { enhanceRecipe } from '../api.js';
+import { enhanceRecipe, splitRecipeTimes } from '../api.js';
 
 export async function render(container, recipeId) {
   const id = parseInt(recipeId, 10);
@@ -664,21 +664,31 @@ async function openAiModal(container, recipe) {
   body.innerHTML = '<div class="spinner"></div>';
   footer.classList.add('hidden');
 
-  let suggestions;
-  try {
-    suggestions = await enhanceRecipe(recipe);
-  } catch (err) {
-    body.innerHTML = `<p class="error-msg">${t('detail.aiEnhanceError')}: ${err.message}</p>`;
+  const needsTimeSplit = recipe.prepTime > 0
+    && !recipe.workTime && !recipe.cookTime && !recipe.restTime
+    && (recipe.recipeText || '').trim().length > 30;
+
+  const [enhanceResult, timesResult] = await Promise.allSettled([
+    enhanceRecipe(recipe),
+    needsTimeSplit ? splitRecipeTimes(recipe) : Promise.resolve(null),
+  ]);
+
+  if (enhanceResult.status === 'rejected') {
+    body.innerHTML = `<p class="error-msg">${t('detail.aiEnhanceError')}: ${enhanceResult.reason?.message}</p>`;
     footer.classList.remove('hidden');
     footer.querySelector('#btnAiApply').classList.add('hidden');
     setupAiModalClose(container, modal);
     return;
   }
 
+  const suggestions = enhanceResult.value;
+  const timeSplit = timesResult.status === 'fulfilled' ? timesResult.value : null;
+
   const hasSides = suggestions.sides?.length > 0;
   const hasTags = suggestions.tags?.length > 0;
   const descText = suggestions.description?.trim() || '';
-  if (!hasSides && !hasTags && !descText) {
+  const hasTimeSplit = timeSplit && (timeSplit.workTime || timeSplit.cookTime || timeSplit.restTime);
+  if (!hasSides && !hasTags && !descText && !hasTimeSplit) {
     body.innerHTML = `<p>${t('detail.aiNoSuggestions')}</p>`;
     footer.classList.remove('hidden');
     footer.querySelector('#btnAiApply').classList.add('hidden');
@@ -714,6 +724,19 @@ async function openAiModal(container, recipe) {
         <strong>${t('detail.aiModalDesc')}</strong>
       </label>
       <p class="ai-suggestion__text">${esc(descText)}</p>
+    </div>` : ''}
+    ${hasTimeSplit ? `
+    <div class="ai-suggestion">
+      <label class="ai-suggestion__label">
+        <input type="checkbox" id="aiUseTimes" checked />
+        <strong>${t('detail.aiModalTimes')}</strong>
+      </label>
+      <div class="ai-suggestion__chips">
+        ${timeSplit.workTime ? `<span class="chip chip--time">${t('detail.workTime')}: ${t('detail.minutes', timeSplit.workTime)}</span>` : ''}
+        ${timeSplit.cookTime ? `<span class="chip chip--time">${t('detail.cookTime')}: ${t('detail.minutes', timeSplit.cookTime)}</span>` : ''}
+        ${timeSplit.restTime ? `<span class="chip chip--time">${t('detail.restTime')}: ${t('detail.minutes', timeSplit.restTime)}</span>` : ''}
+      </div>
+      <p class="ai-suggestion__hint">${t('detail.aiTimesHint', recipe.prepTime)}</p>
     </div>` : ''}
     <div class="ai-suggestion">
       <strong>${t('detail.aiModalImage')}</strong>
@@ -827,7 +850,16 @@ async function openAiModal(container, recipe) {
       }
     }
 
-    if (Object.keys(patches).length > 0) {
+    const useTimeSplit = hasTimeSplit && $('#aiUseTimes', container)?.checked;
+    if (useTimeSplit) {
+      // Merge all changes (times + any other patches) into one PUT
+      Object.assign(recipe, patches, {
+        workTime: timeSplit.workTime || null,
+        cookTime: timeSplit.cookTime || null,
+        restTime: timeSplit.restTime || null,
+      });
+      await updateRecipe(recipe);
+    } else if (Object.keys(patches).length > 0) {
       Object.assign(recipe, patches);
       await patchRecipe(recipe.id, patches);
     }

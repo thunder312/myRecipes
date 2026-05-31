@@ -168,6 +168,8 @@ export const de = {
     aiModalImage: 'Passendes Bild suchen',
     aiNoSuggestions: 'Keine neuen Vorschläge – das Rezept ist bereits gut ausgefüllt.',
     aiApplied: 'KI-Vorschläge übernommen.',
+    aiModalTimes: 'Zeiten aufteilen',
+    aiTimesHint: (total) => `Gesamtzeit ${total} Min. bleibt unverändert`,
     aiImageSearchBtn: 'Bild aus Internet suchen',
     aiImageSearching: 'Suche Bilder…',
     aiImageNoResults: 'Keine Bilder gefunden.',

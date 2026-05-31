@@ -437,6 +437,85 @@ Rules:
 - description: always provide a short, concise description in 1-2 sentences (even if one already exists)`;
 }
 
+function buildTimeSplitPromptDE(recipe) {
+  return `Du analysierst ein Rezept und schätzt, wie sich die Gesamtzeit auf drei Kategorien aufteilt.
+
+Rezept: "${recipe.title}"
+Gesamtzeit: ${recipe.prepTime} Minuten
+
+Zubereitungstext:
+${(recipe.recipeText || '').slice(0, 1500)}
+
+Teile die ${recipe.prepTime} Minuten auf diese drei Kategorien auf:
+- workTime: Aktive Arbeitszeit (Schneiden, Rühren, Formen – nicht passives Warten)
+- cookTime: Koch-/Backzeit (Herd, Ofen, Pfanne)
+- restTime: Ruhezeit (Marinieren, Kühlen, Gehzeit, Ziehen lassen, Übernacht)
+
+Regeln:
+- workTime + cookTime + restTime muss EXAKT ${recipe.prepTime} ergeben
+- Kategorien die nicht zutreffen: auf 0 setzen
+- Antworte NUR mit JSON: {"workTime": X, "cookTime": Y, "restTime": Z}`;
+}
+
+function buildTimeSplitPromptEN(recipe) {
+  return `You analyse a recipe and estimate how the total time is split across three categories.
+
+Recipe: "${recipe.title}"
+Total time: ${recipe.prepTime} minutes
+
+Preparation text:
+${(recipe.recipeText || '').slice(0, 1500)}
+
+Split the ${recipe.prepTime} minutes across these three categories:
+- workTime: Active hands-on time (chopping, stirring, shaping – not passive waiting)
+- cookTime: Cook/bake time (hob, oven, pan)
+- restTime: Rest time (marinating, chilling, proving dough, steeping, overnight)
+
+Rules:
+- workTime + cookTime + restTime must EXACTLY equal ${recipe.prepTime}
+- Categories that don't apply: set to 0
+- Respond ONLY with JSON: {"workTime": X, "cookTime": Y, "restTime": Z}`;
+}
+
+export async function splitRecipeTimes(recipe) {
+  const apiKey = await getApiKey();
+  const prompt = getLanguage() === 'en'
+    ? buildTimeSplitPromptEN(recipe)
+    : buildTimeSplitPromptDE(recipe);
+
+  let response;
+  try {
+    response = await fetchWithTimeout(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 128,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+  } catch (fetchErr) {
+    const msg = fetchErr.name === 'AbortError' ? t('apiErrors.timeout') : fetchErr.message;
+    throw new ApiError(msg, 0, false);
+  }
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    handleApiError(response, err);
+  }
+
+  const data = await response.json();
+  const text = data.content?.[0]?.text || '';
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error(t('apiErrors.parseError'));
+  return JSON.parse(match[0]);
+}
+
 export async function enhanceRecipe(recipe) {
   const apiKey = await getApiKey();
   const prompt = getLanguage() === 'en'

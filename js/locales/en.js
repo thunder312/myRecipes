@@ -168,6 +168,8 @@ export const en = {
     aiModalImage: 'Find matching photo',
     aiNoSuggestions: 'No new suggestions – the recipe is already well filled.',
     aiApplied: 'AI suggestions applied.',
+    aiModalTimes: 'Split time breakdown',
+    aiTimesHint: (total) => `Total time ${total} min stays unchanged`,
     aiImageSearchBtn: 'Search photo online',
     aiImageSearching: 'Searching photos…',
     aiImageNoResults: 'No photos found.',
