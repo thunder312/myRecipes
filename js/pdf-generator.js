@@ -291,8 +291,9 @@ function addRecipeToDoc(doc, recipeData, { includeImages = false } = {}) {
   if (recipeData.difficulty) metaParts.push(translateDifficulty(recipeData.difficulty));
   if (recipeData.servings) metaParts.push(t('pdf.servings') + ': ' + recipeData.servings);
   if (metaParts.length) {
-    doc.text(metaParts.join('  |  '), margin, y);
-    y += 8;
+    const metaLines = doc.splitTextToSize(metaParts.join('  |  '), contentWidth);
+    doc.text(metaLines, margin, y);
+    y += metaLines.length * 5 + 3;
   }
 
   // Recipe image
@@ -402,15 +403,18 @@ function addRecipeToDoc(doc, recipeData, { includeImages = false } = {}) {
 
   // Source info
   if (recipeData.sourceNote || recipeData.sourceRef) {
-    y = checkPageBreak(doc, y, 7, margin);
-    doc.setFontSize(9);
-    doc.setTextColor(120);
-    const srcParts = [recipeData.sourceNote, recipeData.sourceRef].filter(Boolean);
-    const srcText = t('detail.sourceNote') + ': ' + srcParts.join(' – ');
-    doc.text(srcText, margin, y);
-    if (recipeData.sourceRef && /^https?:\/\//i.test(recipeData.sourceRef)) {
-      const prefixW = doc.getTextWidth(t('detail.sourceNote') + ': ' + (recipeData.sourceNote ? recipeData.sourceNote + ' – ' : ''));
-      doc.link(margin + prefixW, y - 3.2, doc.getTextWidth(recipeData.sourceRef), 3.8, { url: recipeData.sourceRef });
+    const srcUrl = /^https?:\/\//i.test(recipeData.sourceRef || '') ? recipeData.sourceRef : null;
+    const srcParts = [recipeData.sourceNote, srcUrl].filter(Boolean);
+    if (srcParts.length) {
+      y = checkPageBreak(doc, y, 7, margin);
+      doc.setFontSize(9);
+      doc.setTextColor(120);
+      const srcText = t('detail.sourceNote') + ': ' + srcParts.join(' – ');
+      doc.text(srcText, margin, y);
+      if (srcUrl) {
+        const prefixW = doc.getTextWidth(t('detail.sourceNote') + ': ' + (recipeData.sourceNote ? recipeData.sourceNote + ' – ' : ''));
+        doc.link(margin + prefixW, y - 3.2, doc.getTextWidth(srcUrl), 3.8, { url: srcUrl });
+      }
     }
   }
 }
@@ -444,8 +448,9 @@ export function generateRecipePDF(recipeData, { includeImage = false, includeTag
   if (recipeData.difficulty) metaParts.push(translateDifficulty(recipeData.difficulty));
   if (recipeData.servings) metaParts.push(t('pdf.servings') + ': ' + recipeData.servings);
   if (metaParts.length) {
-    doc.text(metaParts.join('  |  '), margin, y);
-    y += 8;
+    const metaLines = doc.splitTextToSize(metaParts.join('  |  '), contentWidth);
+    doc.text(metaLines, margin, y);
+    y += metaLines.length * 5 + 3;
   }
 
   // Recipe image
@@ -589,15 +594,18 @@ export function generateRecipePDF(recipeData, { includeImage = false, includeTag
 
   // Source info
   if (recipeData.sourceNote || recipeData.sourceRef) {
-    y = checkPageBreak(doc, y, 7, margin);
-    doc.setFontSize(9);
-    doc.setTextColor(120);
-    const srcParts = [recipeData.sourceNote, recipeData.sourceRef].filter(Boolean);
-    const srcText = t('detail.sourceNote') + ': ' + srcParts.join(' – ');
-    doc.text(srcText, margin, y);
-    if (recipeData.sourceRef && /^https?:\/\//i.test(recipeData.sourceRef)) {
-      const prefixW = doc.getTextWidth(t('detail.sourceNote') + ': ' + (recipeData.sourceNote ? recipeData.sourceNote + ' – ' : ''));
-      doc.link(margin + prefixW, y - 3.2, doc.getTextWidth(recipeData.sourceRef), 3.8, { url: recipeData.sourceRef });
+    const srcUrl = /^https?:\/\//i.test(recipeData.sourceRef || '') ? recipeData.sourceRef : null;
+    const srcParts = [recipeData.sourceNote, srcUrl].filter(Boolean);
+    if (srcParts.length) {
+      y = checkPageBreak(doc, y, 7, margin);
+      doc.setFontSize(9);
+      doc.setTextColor(120);
+      const srcText = t('detail.sourceNote') + ': ' + srcParts.join(' – ');
+      doc.text(srcText, margin, y);
+      if (srcUrl) {
+        const prefixW = doc.getTextWidth(t('detail.sourceNote') + ': ' + (recipeData.sourceNote ? recipeData.sourceNote + ' – ' : ''));
+        doc.link(margin + prefixW, y - 3.2, doc.getTextWidth(srcUrl), 3.8, { url: srcUrl });
+      }
     }
   }
 
