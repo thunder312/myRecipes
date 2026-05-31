@@ -787,12 +787,13 @@ export function generateRecipeA5PDF(recipeData, { includeImage = false, includeT
   if (recipeData.difficulty) metaParts.push(translateDifficulty(recipeData.difficulty));
   if (recipeData.servings) metaParts.push(t('pdf.servings') + ': ' + recipeData.servings);
   if (metaParts.length > 0) {
-    ensureSpace(7);
+    const metaLines = doc.splitTextToSize(metaParts.join('  |  '), colWidth);
+    ensureSpace(metaLines.length * 4.5);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(fs.meta);
     doc.setTextColor(100);
-    doc.text(metaParts.join('  |  '), x, y);
-    y += 5;
+    doc.text(metaLines, x, y);
+    y += metaLines.length * 4.5;
   }
 
   doc.setTextColor(0);
@@ -943,15 +944,18 @@ export function generateRecipeA5PDF(recipeData, { includeImage = false, includeT
 
   // Source info
   if (recipeData.sourceNote || recipeData.sourceRef) {
-    ensureSpace(6);
-    doc.setFontSize(fs.small);
-    doc.setTextColor(120);
-    const srcParts = [recipeData.sourceNote, recipeData.sourceRef].filter(Boolean);
-    const srcText = t('detail.sourceNote') + ': ' + srcParts.join(' – ');
-    doc.text(srcText, x, y);
-    if (recipeData.sourceRef && /^https?:\/\//i.test(recipeData.sourceRef)) {
-      const prefixW = doc.getTextWidth(t('detail.sourceNote') + ': ' + (recipeData.sourceNote ? recipeData.sourceNote + ' – ' : ''));
-      doc.link(x + prefixW, y - 3.0, doc.getTextWidth(recipeData.sourceRef), 3.5, { url: recipeData.sourceRef });
+    const srcUrl = /^https?:\/\//i.test(recipeData.sourceRef || '') ? recipeData.sourceRef : null;
+    const srcParts = [recipeData.sourceNote, srcUrl].filter(Boolean);
+    if (srcParts.length) {
+      ensureSpace(6);
+      doc.setFontSize(fs.small);
+      doc.setTextColor(120);
+      const srcText = t('detail.sourceNote') + ': ' + srcParts.join(' – ');
+      doc.text(srcText, x, y);
+      if (srcUrl) {
+        const prefixW = doc.getTextWidth(t('detail.sourceNote') + ': ' + (recipeData.sourceNote ? recipeData.sourceNote + ' – ' : ''));
+        doc.link(x + prefixW, y - 3.0, doc.getTextWidth(srcUrl), 3.5, { url: srcUrl });
+      }
     }
   }
 
