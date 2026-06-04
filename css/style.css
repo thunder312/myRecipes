@@ -1259,6 +1259,47 @@ button.nav__profile {
   margin-bottom: var(--space-lg);
 }
 
+.detail__info-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-md);
+  margin-bottom: var(--space-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.detail__info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+}
+
+.detail__info-item svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.detail__info-item strong {
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.detail__info-cookbooks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25em;
+}
+
+.detail__info-cookbook-chip {
+  background: var(--color-border-light);
+  border-radius: 999px;
+  padding: 0.05em 0.5em;
+  font-size: 0.85em;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
 .detail__title-actions {
   display: flex;
   align-items: center;

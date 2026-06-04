@@ -1,4 +1,4 @@
-import { getRecipe, addRecipe, updateRecipe, patchRecipe, deleteRecipe, uploadRecipeImage, deleteRecipeImage, setFavorite, fetchImageByUrl } from '../db.js';
+import { getRecipe, addRecipe, updateRecipe, patchRecipe, deleteRecipe, uploadRecipeImage, deleteRecipeImage, setFavorite, fetchImageByUrl, getRecipeCookbooks } from '../db.js';
 import { generateRecipePDF, generateRecipeA5PDF } from '../pdf-generator.js';
 import { $, createElement, formatDate, formatDateTime, todayISO, showToast, categoryChipClass } from '../utils/helpers.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
@@ -11,7 +11,7 @@ import { enhanceRecipe, splitRecipeTimes } from '../api.js';
 
 export async function render(container, recipeId) {
   const id = parseInt(recipeId, 10);
-  const recipe = await getRecipe(id);
+  const [recipe, cookbooks] = await Promise.all([getRecipe(id), getRecipeCookbooks(id)]);
 
   if (!recipe) {
     container.innerHTML = `<div class="error-state"><h2>${t('detail.notFound')}</h2><a href="#overview" class="btn">${t('detail.backToOverview')}</a></div>`;
@@ -23,7 +23,7 @@ export async function render(container, recipeId) {
     recipe.notes = [];
   }
 
-  renderDetailView(container, recipe);
+  renderDetailView(container, recipe, cookbooks || []);
 }
 
 function isMobileDevice() {
@@ -99,6 +99,24 @@ function isUrl(str) {
   return /^https?:\/\//i.test(str || '');
 }
 
+function renderInfoBar(recipe, cookbooks) {
+  const parts = [];
+
+  if (recipe.createdByUsername) {
+    const iconUser = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    parts.push(`<span class="detail__info-item">${iconUser} ${t('detail.importedBy')}: <strong>${esc(recipe.createdByUsername)}</strong></span>`);
+  }
+
+  if (cookbooks && cookbooks.length > 0) {
+    const iconBook = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>';
+    const chips = cookbooks.map(cb => `<span class="detail__info-cookbook-chip">${esc(cb.name)}</span>`).join('');
+    parts.push(`<span class="detail__info-item">${iconBook} ${t('detail.inCookbooks')}: <span class="detail__info-cookbooks">${chips}</span></span>`);
+  }
+
+  if (!parts.length) return '';
+  return `<div class="detail__info-bar">${parts.join('')}</div>`;
+}
+
 function linkify(str) {
   if (!str) return '';
   const urlPattern = /https?:\/\/[^\s"'<>]+/g;
@@ -132,7 +150,7 @@ function renderSourceNote(recipe) {
   return `<p class="detail__source-note">${svg} <span>${t('detail.sourceNote')}: ${parts.join(' – ')}</span></p>`;
 }
 
-function renderDetailView(container, recipe) {
+function renderDetailView(container, recipe, cookbooks = []) {
   const user = getAuthUser();
   const loggedIn = isAuthenticated();
   const canEdit = loggedIn && (
@@ -213,6 +231,8 @@ function renderDetailView(container, recipe) {
           </button>` : ''}
         </div>
       </div>
+
+      ${renderInfoBar(recipe, cookbooks)}
 
       <div class="detail__meta">
         ${recipe.category ? `<span class="chip ${categoryChipClass(recipe.category)}">${esc(displayCat)}</span>` : ''}

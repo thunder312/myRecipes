@@ -617,8 +617,11 @@ function getCookbookRecipes(cookbookId) {
 
 function getRecipeCookbooks(recipeId) {
   return getDB().prepare(
-    'SELECT cookbookId FROM recipe_cookbooks WHERE recipeId = ?'
-  ).all(recipeId).map(r => r.cookbookId);
+    `SELECT c.id, c.name FROM cookbooks c
+     JOIN recipe_cookbooks rc ON c.id = rc.cookbookId
+     WHERE rc.recipeId = ?
+     ORDER BY c.id ASC`
+  ).all(recipeId);
 }
 
 function getAllRecipeCookbooks() {

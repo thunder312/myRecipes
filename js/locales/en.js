@@ -134,6 +134,8 @@ export const en = {
     noteDeleteTitle: 'Delete note',
     timesCooked: '× cooked',
     importedOn: 'Imported on',
+    importedBy: 'Imported by',
+    inCookbooks: 'Cookbook',
     cookingHistory: (n) => `Cooking history (${n} ${n !== 1 ? 'entries' : 'entry'})`,
     tags: 'Tags',
     notFound: 'Recipe not found',
