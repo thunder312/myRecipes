@@ -91,7 +91,7 @@ export async function render(container, initialTab) {
     queries.forEach(q => {
       const chip = createElement('button', { className: 'chip chip--clickable', textContent: q.question });
       chip.addEventListener('click', () => { questionInput.value = q.question; performSearch(); });
-      if (admin) {
+      if (loggedIn) {
         const del = createElement('button', { className: 'chip__delete', innerHTML: '&times;' });
         del.addEventListener('click', async (e) => { e.stopPropagation(); await deleteSavedQuery(q.id); renderChips(); });
         chip.appendChild(del);

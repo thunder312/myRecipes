@@ -39,6 +39,9 @@ editierbar, erweiterbar und exportierbar als Text und PDF.
     - Notizen: Texte: "Halte fest, was dir beim Kochen aufgefallen ist." und "Noch keine Notizen vorhanden." entfernen, da selbsterklärend.
     - Koch-Statistik, deutlich kleiner formatieren, weil nicht so wichtig.
 - [x] Die neuen Rezepte in den Releasenotes sollen Links direkt auf das Rezept sein und die Liste auch bei vielen Rezepten nicht abgekürzt werden.
+- [x] gespeicherte Fragen in der "Was koche ich"- Kategorie sollen gelöscht werden können.
+- [x] URLs in den Feldern Von wem/woher und Notizen sollen erkannt werden und als klickbare Links gerendert werden in der Rezept-Detail-Sicht
+-
 ## Bugs
 ### Desktop
 ### Mobil

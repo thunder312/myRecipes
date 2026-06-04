@@ -99,13 +99,29 @@ function isUrl(str) {
   return /^https?:\/\//i.test(str || '');
 }
 
+function linkify(str) {
+  if (!str) return '';
+  const urlPattern = /https?:\/\/[^\s"'<>]+/g;
+  let result = '';
+  let lastIndex = 0;
+  let match;
+  while ((match = urlPattern.exec(str)) !== null) {
+    result += esc(str.slice(lastIndex, match.index));
+    const url = match[0];
+    result += `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" class="source-note__link">${esc(url)}</a>`;
+    lastIndex = match.index + url.length;
+  }
+  result += esc(str.slice(lastIndex));
+  return result;
+}
+
 function renderSourceNote(recipe) {
   const note = recipe.sourceNote;
   const ref = recipe.sourceRef;
   if (!note && !ref) return '';
   const svg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>';
   const parts = [];
-  if (note) parts.push(`<em>${esc(note)}</em>`);
+  if (note) parts.push(`<em>${linkify(note)}</em>`);
   if (ref) {
     if (isUrl(ref)) {
       parts.push(`<a href="${esc(ref)}" target="_blank" rel="noopener noreferrer" class="source-note__link">${esc(ref)}</a>`);
@@ -299,7 +315,7 @@ function renderDetailView(container, recipe) {
                   <span class="note-card__date">${formatDateTime(note.date)}</span>
                   ${canDeleteNote ? `<button class="note-card__delete" data-delete-note="${idx}" title="${t('detail.noteDeleteTitle')}">&times;</button>` : ''}
                 </div>
-                <div class="note-card__text">${esc(note.text)}</div>
+                <div class="note-card__text">${linkify(note.text)}</div>
               </div>`;
               }).join('')}
         </div>
