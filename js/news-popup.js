@@ -3,6 +3,11 @@ import { getAuthToken } from './utils/auth.js';
 
 const CHANGELOG = [
   {
+    date: '2026-06-04',
+    de: 'Gespeicherte Fragen in „Was koche ich?" können jetzt von allen eingeloggten Usern gelöscht werden. URLs im Freitextfeld „Von wem/woher" und in Notizen werden automatisch als klickbare Links dargestellt.',
+    en: 'Saved questions in "What should I cook?" can now be deleted by all logged-in users. URLs in the "From whom/where" text field and in notes are now automatically rendered as clickable links.',
+  },
+  {
     date: '2026-05-31',
     highlight: true,
     de: 'Zubereitungszeit aufgeteilt: Rezepte haben jetzt separate Felder für Arbeitszeit, Koch-/Backzeit und Ruhezeit (z. B. Marinieren, Teig gehen lassen). Die Einzelzeiten erscheinen in der Rezeptansicht und auf PDFs.',
