@@ -4,6 +4,11 @@ import { getAuthToken } from './utils/auth.js';
 const CHANGELOG = [
   {
     date: '2026-06-04',
+    de: 'In der Rezeptansicht wird jetzt oben angezeigt, wer das Rezept importiert hat und in welchen Kochbüchern es enthalten ist.',
+    en: 'The recipe detail view now shows who imported the recipe and which cookbooks it belongs to.',
+  },
+  {
+    date: '2026-06-04',
     de: 'Gespeicherte Fragen in „Was koche ich?" können jetzt von allen eingeloggten Usern gelöscht werden. URLs im Freitextfeld „Von wem/woher" und in Notizen werden automatisch als klickbare Links dargestellt.',
     en: 'Saved questions in "What should I cook?" can now be deleted by all logged-in users. URLs in the "From whom/where" text field and in notes are now automatically rendered as clickable links.',
   },
