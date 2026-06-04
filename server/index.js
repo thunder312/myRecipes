@@ -126,7 +126,7 @@ app.use('/api/fetch-image', fetchImageRouter);
 // Suggest queries: GET public, POST requires auth, DELETE requires admin
 app.use('/api/suggest-queries', (req, res, next) => {
   if (req.method === 'GET') return next();
-  if (req.method === 'DELETE') return requireAdmin(req, res, next);
+  if (req.method === 'DELETE') return requireAuth(req, res, next);
   requireAuth(req, res, next);
 }, suggestQueriesRouter);
 app.use('/api/weekplan', requireAuth, weekplanRouter);
