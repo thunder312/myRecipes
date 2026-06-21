@@ -340,7 +340,7 @@ export async function processImage(file, { multiHint = false } = {}) {
 
 export async function processImages(files, { multiHint = false } = {}) {
   const images = [];
-  let firstDisplayImg = null;
+  const displayImages = [];
 
   for (let fi = 0; fi < files.length; fi++) {
     const file = files[fi];
@@ -365,10 +365,9 @@ export async function processImages(files, { multiHint = false } = {}) {
       mediaType = 'image/jpeg';
     }
 
-    // Capture display image from the first file
-    if (fi === 0) {
-      firstDisplayImg = await compressForDisplay(base64, mediaType);
-    }
+    // Capture display version of every file (before handwriting enhancement)
+    const displayImg = await compressForDisplay(base64, mediaType);
+    displayImages.push(displayImg);
 
     base64 = await enhanceForHandwriting(base64, mediaType);
     images.push({ base64, mediaType: 'image/jpeg' });
@@ -376,7 +375,15 @@ export async function processImages(files, { multiHint = false } = {}) {
 
   const results = await analyzeRecipeImages(images, { multiHint: multiHint || files.length > 1 });
   const tagged = tagResults(results, 'image', files.map(f => f.name).join(', '));
-  if (firstDisplayImg) tagImageData(tagged, firstDisplayImg.base64, firstDisplayImg.mimeType);
+  // First image as primary display, all images stored for gallery
+  if (displayImages.length > 0) {
+    tagImageData(tagged, displayImages[0].base64, displayImages[0].mimeType);
+    if (displayImages.length > 1) {
+      for (const r of tagged) {
+        r._allImages = displayImages.map((d, i) => ({ blob: d.base64, mimeType: d.mimeType, isDefault: i === 0 }));
+      }
+    }
+  }
   return applyFilter(tagged);
 }
 

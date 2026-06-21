@@ -1,4 +1,4 @@
-import { getSetting, addRecipe, getAllRecipes, updateRecipe, deleteRecipe, getAllCookbooks } from '../db.js';
+import { getSetting, addRecipe, getAllRecipes, updateRecipe, deleteRecipe, getAllCookbooks, addRecipeImageEntry } from '../db.js';
 import { processURL, processPDF, processImage, processImages, processText, extractSearchResults } from '../import.js';
 import { parseVoiceIntent, ApiError } from '../api.js';
 import { $, showToast, categoryChipClass } from '../utils/helpers.js';
@@ -667,7 +667,15 @@ async function renderImportForm(container) {
     const extraCookbookIds = getSelectedImportCookbookIds(container);
 
     try {
-      await addRecipe(recipe, extraCookbookIds);
+      const newId = await addRecipe(recipe, extraCookbookIds);
+      // Post additional images (from multi-camera import)
+      const allImages = currentData._allImages;
+      if (Array.isArray(allImages) && allImages.length > 1) {
+        for (let i = 1; i < allImages.length; i++) {
+          const img = allImages[i];
+          await addRecipeImageEntry(newId, img.blob, img.mimeType, 'user', false).catch(() => {});
+        }
+      }
       showToast(t('import.importSuccess', recipe.title), 'success');
       currentData = null;
       window.location.hash = '#overview';
@@ -901,7 +909,13 @@ async function renderImportForm(container) {
         recipe.imageBlob = r._imageBlob || null;
         recipe.imageMimeType = r._imageMimeType || null;
 
-        await addRecipe(recipe, extraCookbookIds);
+        const newId = await addRecipe(recipe, extraCookbookIds);
+        if (Array.isArray(r._allImages) && r._allImages.length > 1) {
+          for (let j = 1; j < r._allImages.length; j++) {
+            const img = r._allImages[j];
+            await addRecipeImageEntry(newId, img.blob, img.mimeType, 'user', false).catch(() => {});
+          }
+        }
         imported.push(recipe.title);
         success++;
       } catch (err) {
@@ -1129,6 +1143,12 @@ async function processBatchFiles(files, delay) {
         recipe.imageBlob = analysisResult._imageBlob || null;
         recipe.imageMimeType = analysisResult._imageMimeType || null;
         const newId = await addRecipe(recipe, batchJob.extraCookbookIds || []);
+        if (Array.isArray(analysisResult._allImages) && analysisResult._allImages.length > 1) {
+          for (let j = 1; j < analysisResult._allImages.length; j++) {
+            const img = analysisResult._allImages[j];
+            await addRecipeImageEntry(newId, img.blob, img.mimeType, 'user', false).catch(() => {});
+          }
+        }
         batchJob.results.success.push({ file: filePath, title: recipe.title, id: newId });
         batchJob.importedIds.push(newId);
         appendLiveLog('success', `${i + 1}/${total}: ${recipe.title} (${filePath})`);

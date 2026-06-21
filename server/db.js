@@ -131,6 +131,18 @@ function initSchema() {
       PRIMARY KEY (productName, userId),
       FOREIGN KEY (storeId) REFERENCES stores(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS recipe_images (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      recipeId INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+      imageBlob BLOB NOT NULL,
+      imageMimeType TEXT NOT NULL,
+      imageSource TEXT,
+      isDefault INTEGER DEFAULT 0,
+      sortOrder INTEGER DEFAULT 0,
+      createdAt TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_recipe_images_recipeId ON recipe_images(recipeId);
   `);
 }
 
@@ -346,6 +358,23 @@ function migrateSchema() {
     });
     if (changed) noteUpdateStmt.run(JSON.stringify(notes), row.id);
   }
+
+  // Migrate existing single images from recipes.imageBlob → recipe_images (isDefault=1)
+  const toMigrate = db.prepare(`
+    SELECT r.id, r.imageBlob, r.imageMimeType, r.imageSource
+    FROM recipes r
+    WHERE r.imageBlob IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM recipe_images WHERE recipeId = r.id)
+  `).all();
+  if (toMigrate.length > 0) {
+    const now = new Date().toISOString();
+    const migInsert = db.prepare(
+      'INSERT INTO recipe_images (recipeId, imageBlob, imageMimeType, imageSource, isDefault, sortOrder, createdAt) VALUES (?, ?, ?, ?, 1, 0, ?)'
+    );
+    for (const r of toMigrate) {
+      migInsert.run(r.id, r.imageBlob, r.imageMimeType || 'image/jpeg', r.imageSource || 'user', now);
+    }
+  }
 }
 
 // --- JSON array fields ---
@@ -410,6 +439,62 @@ function deserializeRecipe(row) {
   return recipe;
 }
 
+// --- Recipe Images ---
+
+function getRecipeImages(recipeId) {
+  const rows = getDB().prepare(
+    'SELECT id, imageMimeType, imageSource, isDefault, sortOrder, imageBlob FROM recipe_images WHERE recipeId = ? ORDER BY isDefault DESC, sortOrder ASC, id ASC'
+  ).all(recipeId);
+  return rows.map(r => ({
+    id: r.id,
+    imageMimeType: r.imageMimeType,
+    imageSource: r.imageSource,
+    isDefault: r.isDefault === 1,
+    sortOrder: r.sortOrder,
+    imageBlob: Buffer.isBuffer(r.imageBlob) ? r.imageBlob.toString('base64') : null,
+  }));
+}
+
+function addRecipeImage(recipeId, blob, mimeType, source, isDefault = false) {
+  const imgBuffer = typeof blob === 'string' ? Buffer.from(blob, 'base64') : blob;
+  const now = new Date().toISOString();
+  const d = getDB();
+  let newId;
+  d.transaction(() => {
+    const count = d.prepare('SELECT COUNT(*) as c FROM recipe_images WHERE recipeId = ?').get(recipeId).c;
+    const makeDefault = isDefault || count === 0;
+    if (makeDefault) {
+      d.prepare('UPDATE recipe_images SET isDefault = 0 WHERE recipeId = ?').run(recipeId);
+    }
+    const result = d.prepare(
+      'INSERT INTO recipe_images (recipeId, imageBlob, imageMimeType, imageSource, isDefault, sortOrder, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).run(recipeId, imgBuffer, mimeType || 'image/jpeg', source || 'user', makeDefault ? 1 : 0, count, now);
+    newId = result.lastInsertRowid;
+  })();
+  return newId;
+}
+
+function setDefaultImage(recipeId, imageId) {
+  const d = getDB();
+  d.transaction(() => {
+    d.prepare('UPDATE recipe_images SET isDefault = 0 WHERE recipeId = ?').run(recipeId);
+    d.prepare('UPDATE recipe_images SET isDefault = 1 WHERE id = ? AND recipeId = ?').run(imageId, recipeId);
+  })();
+}
+
+function removeRecipeImage(recipeId, imageId) {
+  const d = getDB();
+  d.transaction(() => {
+    const img = d.prepare('SELECT isDefault FROM recipe_images WHERE id = ? AND recipeId = ?').get(imageId, recipeId);
+    if (!img) return;
+    d.prepare('DELETE FROM recipe_images WHERE id = ?').run(imageId);
+    if (img.isDefault) {
+      const next = d.prepare('SELECT id FROM recipe_images WHERE recipeId = ? ORDER BY sortOrder ASC, id ASC LIMIT 1').get(recipeId);
+      if (next) d.prepare('UPDATE recipe_images SET isDefault = 1 WHERE id = ?').run(next.id);
+    }
+  })();
+}
+
 // --- Recipes ---
 
 function mergeUserStats(recipe, userId) {
@@ -430,13 +515,17 @@ function mergeUserStats(recipe, userId) {
 }
 
 function getAllRecipes(userId = null) {
-  // Exclude imageBlob from list to keep response small; fetched individually in getRecipe
+  // Exclude imageBlob from list to keep response small; imageMimeType from default image for badge
   const rows = getDB().prepare(`
     SELECT r.id, r.title, r.category, r.origin, r.prepTime, r.workTime, r.cookTime, r.restTime,
            r.mainIngredient, r.sides, r.tags, r.ingredients, r.description, r.servings, r.difficulty,
            r.recipeText, r.sourceType, r.sourceRef, r.sourceNote, r.createdAt, r.updatedAt,
            r.cookedDates, r.cookedCount, r.notes, r.pdfBlob, r.thumbnailBlob,
-           r.imageMimeType, r.rating, r.createdBy, u.username AS createdByUsername
+           COALESCE(
+             (SELECT imageMimeType FROM recipe_images WHERE recipeId = r.id AND isDefault = 1 LIMIT 1),
+             r.imageMimeType
+           ) AS imageMimeType,
+           r.rating, r.createdBy, u.username AS createdByUsername
     FROM recipes r LEFT JOIN users u ON u.id = r.createdBy
     ORDER BY r.createdAt DESC
   `).all();
@@ -452,6 +541,13 @@ function getRecipe(id, userId = null) {
     WHERE r.id = ?
   `).get(id);
   const recipe = deserializeRecipe(row);
+  if (!recipe) return null;
+  const images = getRecipeImages(id);
+  recipe.images = images;
+  const defaultImg = images.find(img => img.isDefault) || images[0] || null;
+  recipe.imageBlob = defaultImg ? defaultImg.imageBlob : null;
+  recipe.imageMimeType = defaultImg ? defaultImg.imageMimeType : null;
+  recipe.imageSource = defaultImg ? defaultImg.imageSource : null;
   if (userId) mergeUserStats(recipe, userId);
   return recipe;
 }
@@ -476,32 +572,41 @@ function setFavorite(userId, recipeId, value) {
 
 function addRecipe(recipe, extraCookbookIds = [], userId = null) {
   const now = new Date().toISOString();
+  // Extract image data before serialization (stored in separate table)
+  const imageBlob = recipe.imageBlob || null;
+  const imageMimeType = recipe.imageMimeType || null;
+  const imageSource = recipe.imageSource || null;
+
   const data = serializeRecipe({
     ...recipe,
+    imageBlob: null,
+    imageMimeType: null,
+    imageSource: null,
     createdAt: now,
     updatedAt: now,
     cookedDates: recipe.cookedDates || [],
     cookedCount: recipe.cookedCount || 0,
     notes: recipe.notes || [],
   });
-  // Remove id so AUTOINCREMENT assigns one
   delete data.id;
-  // Track creator
   if (userId) data.createdBy = userId;
-  delete data.createdByUsername; // virtual JOIN field, not a column
+  delete data.createdByUsername;
+  delete data.images;
 
   const columns = Object.keys(data);
   const placeholders = columns.map(() => '?').join(', ');
   const values = columns.map(c => data[c]);
 
   const d = getDB();
-  const stmt = d.prepare(
+  const result = d.prepare(
     `INSERT INTO recipes (${columns.join(', ')}) VALUES (${placeholders})`
-  );
-  const result = stmt.run(...values);
+  ).run(...values);
   const newId = result.lastInsertRowid;
 
-  // Always assign to Standard (id=1), user's personal cookbook, plus any extras
+  if (imageBlob) {
+    addRecipeImage(newId, imageBlob, imageMimeType || 'image/jpeg', imageSource || 'user', true);
+  }
+
   const cookbookIds = new Set([1, ...extraCookbookIds]);
   if (userId) {
     const userCookbook = d.prepare('SELECT id FROM cookbooks WHERE userId = ?').get(userId);
@@ -522,8 +627,12 @@ function updateRecipe(recipe) {
   });
   const id = data.id;
   delete data.id;
-  delete data.createdByUsername; // virtual JOIN field, not a column
-  delete data.favorite;          // user_recipe_stats field, not a recipes column
+  delete data.createdByUsername;
+  delete data.favorite;
+  delete data.images;       // virtual field
+  delete data.imageBlob;    // managed via recipe_images
+  delete data.imageMimeType;
+  delete data.imageSource;
 
   const columns = Object.keys(data);
   const setClause = columns.map(c => `${c} = ?`).join(', ');
@@ -669,16 +778,22 @@ function setSetting(key, value) {
 // --- Backup ---
 
 function exportAll(includeImages = false) {
-  // Always fetch full recipes (including imageBlob) for export
   const rows = getDB().prepare(`
     SELECT r.*, u.username AS createdByUsername
     FROM recipes r LEFT JOIN users u ON u.id = r.createdBy
     ORDER BY r.createdAt DESC
   `).all();
-  const recipes = rows.map(deserializeRecipe);
-  if (!includeImages) {
-    for (const r of recipes) { r.imageBlob = null; }
-  }
+  const recipes = rows.map(row => {
+    const recipe = deserializeRecipe(row);
+    const images = getRecipeImages(recipe.id);
+    recipe.images = includeImages
+      ? images
+      : images.map(({ imageBlob: _b, ...rest }) => rest);
+    recipe.imageBlob = null;
+    recipe.imageMimeType = null;
+    recipe.imageSource = null;
+    return recipe;
+  });
   const settingRows = getDB().prepare('SELECT * FROM settings').all();
   const settings = settingRows.map(r => {
     let value = r.value;
@@ -692,13 +807,12 @@ function importAll(data) {
   const d = getDB();
   const run = d.transaction(() => {
     d.prepare('DELETE FROM recipes').run();
+    d.prepare('DELETE FROM recipe_images').run();
     d.prepare('DELETE FROM settings').run();
 
     for (const recipe of data.recipes) {
-      // Handle base64 data-URL blobs from legacy export format
       const r = { ...recipe };
       if (r._pdfBlobType === 'base64' && typeof r.pdfBlob === 'string') {
-        // Strip data:...;base64, prefix if present
         const match = r.pdfBlob.match(/^data:[^;]+;base64,(.+)$/);
         r.pdfBlob = match ? match[1] : r.pdfBlob;
         delete r._pdfBlobType;
@@ -708,11 +822,39 @@ function importAll(data) {
         r.thumbnailBlob = match ? match[1] : r.thumbnailBlob;
         delete r._thumbnailBlobType;
       }
+      // Capture legacy single image before stripping
       if (typeof r.imageBlob === 'string' && r.imageBlob.startsWith('data:')) {
         const match = r.imageBlob.match(/^data:[^;]+;base64,(.+)$/);
         r.imageBlob = match ? match[1] : null;
       }
-      addRecipeRaw(r);
+      const legacyBlob = r.imageBlob || null;
+      const legacyMime = r.imageMimeType || null;
+      const legacySrc = r.imageSource || null;
+      const importedImages = Array.isArray(r.images) ? r.images : null;
+
+      r.imageBlob = null;
+      r.imageMimeType = null;
+      r.imageSource = null;
+      delete r.images;
+
+      const recipeId = addRecipeRaw(r);
+      const now = new Date().toISOString();
+
+      if (importedImages && importedImages.length > 0) {
+        const insertImg = d.prepare(
+          'INSERT INTO recipe_images (recipeId, imageBlob, imageMimeType, imageSource, isDefault, sortOrder, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        );
+        for (const img of importedImages) {
+          if (!img.imageBlob) continue;
+          const blob = typeof img.imageBlob === 'string' ? Buffer.from(img.imageBlob, 'base64') : img.imageBlob;
+          insertImg.run(recipeId, blob, img.imageMimeType || 'image/jpeg', img.imageSource || 'user', img.isDefault ? 1 : 0, img.sortOrder || 0, img.createdAt || now);
+        }
+      } else if (legacyBlob) {
+        const blob = Buffer.from(legacyBlob, 'base64');
+        d.prepare(
+          'INSERT INTO recipe_images (recipeId, imageBlob, imageMimeType, imageSource, isDefault, sortOrder, createdAt) VALUES (?, ?, ?, ?, 1, 0, ?)'
+        ).run(recipeId, blob, legacyMime || 'image/jpeg', legacySrc || 'user', now);
+      }
     }
 
     for (const s of data.settings) {
@@ -722,16 +864,21 @@ function importAll(data) {
   run();
 }
 
-// Insert recipe preserving original id and timestamps
+// Insert recipe preserving original id and timestamps; returns the inserted id
 function addRecipeRaw(recipe) {
-  const data = serializeRecipe(recipe);
+  const data = serializeRecipe({ ...recipe });
+  delete data.images;
+  delete data.imageBlob;
+  delete data.imageMimeType;
+  delete data.imageSource;
   const columns = Object.keys(data);
   const placeholders = columns.map(() => '?').join(', ');
   const values = columns.map(c => data[c]);
 
-  getDB().prepare(
+  const result = getDB().prepare(
     `INSERT INTO recipes (${columns.join(', ')}) VALUES (${placeholders})`
   ).run(...values);
+  return recipe.id || result.lastInsertRowid;
 }
 
 // --- Password utilities (server-side) ---
@@ -965,6 +1112,10 @@ module.exports = {
   addRecipe,
   updateRecipe,
   deleteRecipe,
+  getRecipeImages,
+  addRecipeImage,
+  setDefaultImage,
+  removeRecipeImage,
   getSetting,
   setSetting,
   exportAll,

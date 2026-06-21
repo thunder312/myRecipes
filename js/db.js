@@ -267,8 +267,28 @@ export async function deleteSavedQuery(id) {
   await apiFetch(`/suggest-queries/${id}`, { method: 'DELETE' });
 }
 
-// --- Recipe image ---
+// --- Recipe images ---
 
+export async function addRecipeImageEntry(id, imageBase64, mimeType, imageSource = 'user', isDefault = false) {
+  const res = await apiFetch(`/recipes/${id}/images`, {
+    method: 'POST',
+    body: JSON.stringify({ imageBlob: imageBase64, imageMimeType: mimeType, imageSource, isDefault }),
+  });
+  return res.json(); // { id }
+}
+
+export async function setDefaultRecipeImage(id, imageId) {
+  await apiFetch(`/recipes/${id}/images/${imageId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isDefault: true }),
+  });
+}
+
+export async function deleteRecipeImageById(id, imageId) {
+  await apiFetch(`/recipes/${id}/images/${imageId}`, { method: 'DELETE' });
+}
+
+// Legacy wrappers kept for backward compat (used by import flow and old code paths)
 export async function uploadRecipeImage(id, imageBase64, mimeType, imageSource = 'user') {
   await apiFetch(`/recipes/${id}/image`, {
     method: 'PATCH',

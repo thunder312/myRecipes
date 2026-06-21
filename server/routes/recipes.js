@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { getAllRecipes, getRecipe, addRecipe, updateRecipe, deleteRecipe, upsertUserRecipeStats, setFavorite, getDB } = require('../db');
+const { getAllRecipes, getRecipe, addRecipe, updateRecipe, deleteRecipe, upsertUserRecipeStats, setFavorite, getDB, getRecipeImages, addRecipeImage, setDefaultImage, removeRecipeImage } = require('../db');
 
 const router = Router();
 
@@ -91,7 +91,56 @@ router.patch('/:id/favorite', (req, res) => {
   res.json({ success: true });
 });
 
-// PATCH /api/recipes/:id/image - add, replace, or delete recipe image (requires ownership)
+// GET /api/recipes/:id/images - list all images for a recipe
+router.get('/:id/images', (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!getRecipe(id)) return res.status(404).json({ error: 'Rezept nicht gefunden' });
+  res.json(getRecipeImages(id));
+});
+
+// POST /api/recipes/:id/images - add a new image (requires ownership)
+router.post('/:id/images', (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const existing = getRecipe(id);
+  if (!existing) return res.status(404).json({ error: 'Rezept nicht gefunden' });
+  if (req.user.role !== 'admin' && existing.createdBy && existing.createdBy !== req.user.userId) {
+    return res.status(403).json({ error: 'Keine Berechtigung' });
+  }
+  const { imageBlob, imageMimeType, imageSource, isDefault } = req.body;
+  if (!imageBlob) return res.status(400).json({ error: 'imageBlob fehlt' });
+  const imageId = addRecipeImage(id, imageBlob, imageMimeType || 'image/jpeg', imageSource || 'user', !!isDefault);
+  res.status(201).json({ id: Number(imageId) });
+});
+
+// PATCH /api/recipes/:id/images/:imageId - set as default or reorder (requires ownership)
+router.patch('/:id/images/:imageId', (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const imageId = parseInt(req.params.imageId, 10);
+  const existing = getRecipe(id);
+  if (!existing) return res.status(404).json({ error: 'Rezept nicht gefunden' });
+  if (req.user.role !== 'admin' && existing.createdBy && existing.createdBy !== req.user.userId) {
+    return res.status(403).json({ error: 'Keine Berechtigung' });
+  }
+  if (req.body.isDefault) {
+    setDefaultImage(id, imageId);
+  }
+  res.json({ success: true });
+});
+
+// DELETE /api/recipes/:id/images/:imageId - delete a specific image (requires ownership)
+router.delete('/:id/images/:imageId', (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const imageId = parseInt(req.params.imageId, 10);
+  const existing = getRecipe(id);
+  if (!existing) return res.status(404).json({ error: 'Rezept nicht gefunden' });
+  if (req.user.role !== 'admin' && existing.createdBy && existing.createdBy !== req.user.userId) {
+    return res.status(403).json({ error: 'Keine Berechtigung' });
+  }
+  removeRecipeImage(id, imageId);
+  res.json({ success: true });
+});
+
+// PATCH /api/recipes/:id/image - legacy: replace/delete the default image (backward compat)
 router.patch('/:id/image', (req, res) => {
   const id = parseInt(req.params.id, 10);
   const existing = getRecipe(id);
@@ -102,12 +151,17 @@ router.patch('/:id/image', (req, res) => {
     return res.status(403).json({ error: 'Keine Berechtigung' });
   }
   const { imageBlob, imageMimeType, imageSource } = req.body;
-  const imgBuffer = (typeof imageBlob === 'string' && imageBlob.length > 0)
-    ? Buffer.from(imageBlob, 'base64')
-    : null;
-  const srcValue = imgBuffer ? (imageSource || 'user') : null;
-  getDB().prepare('UPDATE recipes SET imageBlob = ?, imageMimeType = ?, imageSource = ?, updatedAt = ? WHERE id = ?')
-    .run(imgBuffer, imageMimeType || null, srcValue, new Date().toISOString(), id);
+  if (typeof imageBlob === 'string' && imageBlob.length > 0) {
+    // If a default image already exists, delete it first, then add new one
+    const images = getRecipeImages(id);
+    const defaultImg = images.find(img => img.isDefault) || images[0];
+    if (defaultImg) removeRecipeImage(id, defaultImg.id);
+    addRecipeImage(id, imageBlob, imageMimeType || 'image/jpeg', imageSource || 'user', true);
+  } else {
+    // Delete all images (legacy "clear image" behavior)
+    const images = getRecipeImages(id);
+    for (const img of images) removeRecipeImage(id, img.id);
+  }
   res.json({ success: true });
 });
 

@@ -1,4 +1,4 @@
-import { getRecipe, addRecipe, updateRecipe, patchRecipe, deleteRecipe, uploadRecipeImage, deleteRecipeImage, setFavorite, fetchImageByUrl, getRecipeCookbooks } from '../db.js';
+import { getRecipe, addRecipe, updateRecipe, patchRecipe, deleteRecipe, uploadRecipeImage, deleteRecipeImage, addRecipeImageEntry, setDefaultRecipeImage, deleteRecipeImageById, setFavorite, fetchImageByUrl, getRecipeCookbooks } from '../db.js';
 import { generateRecipePDF, generateRecipeA5PDF } from '../pdf-generator.js';
 import { $, createElement, formatDate, formatDateTime, todayISO, showToast, categoryChipClass } from '../utils/helpers.js';
 import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
@@ -150,6 +150,72 @@ function renderSourceNote(recipe) {
   return `<p class="detail__source-note">${svg} <span>${t('detail.sourceNote')}: ${parts.join(' – ')}</span></p>`;
 }
 
+function renderImageGalleryHTML(recipe, canEdit) {
+  const images = Array.isArray(recipe.images) ? recipe.images : (recipe.imageBlob ? [{ id: 0, imageBlob: recipe.imageBlob, imageMimeType: recipe.imageMimeType, imageSource: recipe.imageSource, isDefault: true }] : []);
+  if (images.length === 0 && !canEdit) return '';
+  if (images.length === 0) {
+    return `
+      <div class="detail__gallery detail__gallery--empty">
+        <label class="btn btn--ghost detail__image-upload-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          ${t('detail.imageUpload')}
+          <input type="file" id="imageFileInput" accept="image/*" class="hidden" />
+        </label>
+        <div class="detail__gallery-url-row">
+          <input type="url" id="imageUrlInput" placeholder="${t('detail.imageUrlPlaceholder')}" class="input" />
+          <button class="btn btn--ghost btn--sm" id="btnConfirmImageUrl">${t('detail.imageUrlLoad')}</button>
+        </div>
+      </div>`;
+  }
+  const multi = images.length > 1;
+  const firstImg = images[0];
+  return `
+    <div class="detail__gallery" data-image-count="${images.length}">
+      <div class="detail__gallery-stage">
+        ${multi ? `<button class="detail__gallery-arrow detail__gallery-arrow--prev" id="galleryPrev" aria-label="Vorheriges Bild">&#8249;</button>` : ''}
+        <div class="detail__gallery-slides">
+          ${images.map((img, i) => `
+            <div class="detail__gallery-slide${i === 0 ? ' detail__gallery-slide--active' : ''}" data-slide-idx="${i}" data-image-id="${img.id}">
+              <img src="data:${img.imageMimeType || 'image/jpeg'};base64,${img.imageBlob}"
+                   alt="${esc(recipe.title)}" class="detail__gallery-img" id="galleryImg${i}" loading="lazy" />
+              ${img.imageSource === 'auto' ? `<div class="detail__image-auto-badge" title="${t('detail.imageAutoSearchTooltip')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> ${t('detail.imageAutoSearchBadge')}</div>` : ''}
+              ${img.isDefault && multi ? `<div class="detail__gallery-default-badge">${t('detail.imageDefaultBadge')}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+        ${multi ? `<button class="detail__gallery-arrow detail__gallery-arrow--next" id="galleryNext" aria-label="Nächstes Bild">&#8250;</button>` : ''}
+      </div>
+      ${multi ? `
+      <div class="detail__gallery-footer">
+        <span class="detail__gallery-counter" id="galleryCounter">1 / ${images.length}</span>
+        <div class="detail__gallery-dots">
+          ${images.map((_, i) => `<button class="detail__gallery-dot${i === 0 ? ' detail__gallery-dot--active' : ''}" data-dot-idx="${i}"></button>`).join('')}
+        </div>
+      </div>` : ''}
+      ${canEdit ? `
+      <div class="detail__gallery-actions">
+        ${multi ? `<button class="btn btn--ghost btn--sm" id="btnSetDefault">${t('detail.imageSetDefault')}</button>` : ''}
+        <label class="btn btn--ghost btn--sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          ${t('detail.imageAdd')}
+          <input type="file" id="imageFileInput" accept="image/*" class="hidden" />
+        </label>
+        <button class="btn btn--ghost btn--sm" id="btnImageFromUrl">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          ${t('detail.imageUrlBtn')}
+        </button>
+        <button class="btn btn--ghost btn--sm" id="btnDeleteImage">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+          ${t('detail.imageDelete')}
+        </button>
+      </div>
+      <div class="detail__gallery-url-row hidden" id="imageUrlRow">
+        <input type="url" id="imageUrlInput" placeholder="${t('detail.imageUrlPlaceholder')}" class="input" />
+        <button class="btn btn--primary btn--sm" id="btnConfirmImageUrl">${t('detail.imageUrlLoad')}</button>
+      </div>` : ''}
+    </div>`;
+}
+
 function renderDetailView(container, recipe, cookbooks = []) {
   const user = getAuthUser();
   const loggedIn = isAuthenticated();
@@ -175,45 +241,7 @@ function renderDetailView(container, recipe, cookbooks = []) {
         </div>
       </div>
 
-      ${recipe.imageBlob ? `
-      <div class="detail__image">
-        <div class="detail__image-inner">
-          <div class="detail__image-img-wrap">
-            <img src="data:${recipe.imageMimeType || 'image/jpeg'};base64,${recipe.imageBlob}" alt="${esc(recipe.title)}" class="detail__image-img" id="detailImageThumb" loading="lazy" />
-            ${recipe.imageSource === 'auto' ? `<div class="detail__image-auto-badge" title="${t('detail.imageAutoSearchTooltip')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> ${t('detail.imageAutoSearchBadge')}</div>` : ''}
-          </div>
-          ${canEdit ? `<div class="detail__image-actions">
-            <label class="btn btn--ghost btn--sm detail__image-btn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              ${t('detail.imageChange')}
-              <input type="file" id="imageFileInput" accept="image/*" class="hidden" />
-            </label>
-            <button class="btn btn--ghost btn--sm detail__image-btn" id="btnImageFromUrl">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-              ${t('detail.imageUrlBtn')}
-            </button>
-            <button class="btn btn--ghost btn--sm detail__image-btn" id="btnDeleteImage">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
-              ${t('detail.imageDelete')}
-            </button>
-          </div>` : ''}
-        </div>
-        ${canEdit ? `<div class="detail__image-url-row hidden" id="imageUrlRow">
-          <input type="url" id="imageUrlInput" placeholder="${t('detail.imageUrlPlaceholder')}" class="input" />
-          <button class="btn btn--primary btn--sm" id="btnConfirmImageUrl">${t('detail.imageUrlLoad')}</button>
-        </div>` : ''}
-      </div>` : `
-      ${canEdit ? `<div class="detail__image detail__image--empty">
-        <label class="btn btn--ghost detail__image-upload-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          ${t('detail.imageUpload')}
-          <input type="file" id="imageFileInput" accept="image/*" class="hidden" />
-        </label>
-        <div class="detail__image-url-row detail__image-url-row--standalone">
-          <input type="url" id="imageUrlInput" placeholder="${t('detail.imageUrlPlaceholder')}" class="input" />
-          <button class="btn btn--ghost btn--sm" id="btnConfirmImageUrl">${t('detail.imageUrlLoad')}</button>
-        </div>
-      </div>` : ''}`}
+      ${renderImageGalleryHTML(recipe, canEdit)}
 
       <div class="detail__title-row">
         <h1 class="detail__title">${esc(recipe.title)}</h1>
@@ -386,17 +414,64 @@ function renderDetailView(container, recipe, cookbooks = []) {
     </div>
   `;
 
-  // Lightbox for hero image
-  const thumb = $('#detailImageThumb', container);
-  if (thumb) {
-    thumb.addEventListener('click', () => {
-      const lb = $('#detailLightbox', container);
-      $('#lightboxImg', container).src = thumb.src;
-      lb.classList.remove('hidden');
+  // Gallery navigation
+  const gallery = container.querySelector('.detail__gallery');
+  if (gallery) {
+    const images = Array.isArray(recipe.images) ? recipe.images : [];
+    let currentIdx = 0;
+
+    function showSlide(idx) {
+      const slides = gallery.querySelectorAll('.detail__gallery-slide');
+      if (!slides.length) return;
+      currentIdx = ((idx % slides.length) + slides.length) % slides.length;
+      slides.forEach((s, i) => s.classList.toggle('detail__gallery-slide--active', i === currentIdx));
+      const dots = gallery.querySelectorAll('.detail__gallery-dot');
+      dots.forEach((d, i) => d.classList.toggle('detail__gallery-dot--active', i === currentIdx));
+      const counter = gallery.querySelector('#galleryCounter');
+      if (counter) counter.textContent = `${currentIdx + 1} / ${slides.length}`;
+      const setDefaultBtn = gallery.querySelector('#btnSetDefault');
+      if (setDefaultBtn) {
+        const currentImg = images[currentIdx];
+        setDefaultBtn.classList.toggle('hidden', currentImg?.isDefault === true);
+      }
+    }
+
+    gallery.querySelector('#galleryPrev')?.addEventListener('click', () => showSlide(currentIdx - 1));
+    gallery.querySelector('#galleryNext')?.addEventListener('click', () => showSlide(currentIdx + 1));
+    gallery.querySelectorAll('.detail__gallery-dot').forEach(dot => {
+      dot.addEventListener('click', () => showSlide(parseInt(dot.dataset.dotIdx, 10)));
     });
+
+    // Set initial button state
+    showSlide(0);
+
+    // Lightbox on image click
     const closeLightbox = () => $('#detailLightbox', container)?.classList.add('hidden');
+    gallery.querySelectorAll('.detail__gallery-img').forEach(img => {
+      img.addEventListener('click', () => {
+        const lb = $('#detailLightbox', container);
+        if (!lb) return;
+        $('#lightboxImg', container).src = img.src;
+        lb.classList.remove('hidden');
+      });
+    });
     $('#lightboxBackdrop', container)?.addEventListener('click', closeLightbox);
     $('#lightboxImg', container)?.addEventListener('click', closeLightbox);
+
+    // "Set as default" button
+    gallery.querySelector('#btnSetDefault')?.addEventListener('click', async () => {
+      const currentImg = images[currentIdx];
+      if (!currentImg) return;
+      try {
+        await setDefaultRecipeImage(recipe.id, currentImg.id);
+        images.forEach((img, i) => { img.isDefault = i === currentIdx; });
+        recipe.images = images;
+        showToast(t('detail.imageDefaultSet'), 'success');
+        renderDetailView(container, recipe, cookbooks);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
   }
 
   // PDF on demand – cache invalidated when "include image" checkbox changes
@@ -576,6 +651,8 @@ function renderDetailView(container, recipe, cookbooks = []) {
 
   // Image upload/delete (authorized users only)
   if (canEdit) {
+    const images = Array.isArray(recipe.images) ? recipe.images : [];
+
     const imageFileInput = $('#imageFileInput', container);
     if (imageFileInput) {
       imageFileInput.addEventListener('change', async (e) => {
@@ -583,12 +660,14 @@ function renderDetailView(container, recipe, cookbooks = []) {
         if (!file) return;
         try {
           const base64 = await compressImageForStorage(file);
-          await uploadRecipeImage(recipe.id, base64, 'image/jpeg', 'user');
+          const result = await addRecipeImageEntry(recipe.id, base64, 'image/jpeg', 'user', images.length === 0);
+          const newImg = { id: result.id, imageBlob: base64, imageMimeType: 'image/jpeg', imageSource: 'user', isDefault: images.length === 0 };
+          if (newImg.isDefault) images.forEach(img => { img.isDefault = false; });
+          images.push(newImg);
+          recipe.images = images;
+          recipe.imageBlob = newImg.isDefault ? base64 : recipe.imageBlob;
           showToast(t('detail.imageSaved'), 'success');
-          recipe.imageBlob = base64;
-          recipe.imageMimeType = 'image/jpeg';
-          recipe.imageSource = 'user';
-          renderDetailView(container, recipe);
+          renderDetailView(container, recipe, cookbooks);
         } catch (err) {
           showToast(err.message, 'error');
         }
@@ -599,12 +678,20 @@ function renderDetailView(container, recipe, cookbooks = []) {
     if (btnDeleteImage) {
       btnDeleteImage.addEventListener('click', async () => {
         if (!confirm(t('detail.imageDeleteConfirm'))) return;
+        const galleryEl = container.querySelector('.detail__gallery');
+        const slides = galleryEl ? galleryEl.querySelectorAll('.detail__gallery-slide') : [];
+        const activeSlide = galleryEl ? galleryEl.querySelector('.detail__gallery-slide--active') : null;
+        const imageId = activeSlide ? parseInt(activeSlide.dataset.imageId, 10) : (images[0]?.id);
+        if (!imageId) return;
         try {
-          await deleteRecipeImage(recipe.id);
+          await deleteRecipeImageById(recipe.id, imageId);
+          recipe.images = images.filter(img => img.id !== imageId);
+          if (recipe.images.length > 0 && !recipe.images.some(img => img.isDefault)) {
+            recipe.images[0].isDefault = true;
+          }
+          recipe.imageBlob = recipe.images.find(img => img.isDefault)?.imageBlob || null;
           showToast(t('detail.imageDeleted'), 'info');
-          recipe.imageBlob = null;
-          recipe.imageMimeType = null;
-          renderDetailView(container, recipe);
+          renderDetailView(container, recipe, cookbooks);
         } catch (err) {
           showToast(err.message, 'error');
         }
@@ -630,12 +717,13 @@ function renderDetailView(container, recipe, cookbooks = []) {
         try {
           const { imageBlob, imageMimeType } = await fetchImageByUrl(url);
           const compressed = await compressBase64ForStorage(imageBlob, imageMimeType);
-          await uploadRecipeImage(recipe.id, compressed, 'image/jpeg', 'user');
+          const result = await addRecipeImageEntry(recipe.id, compressed, 'image/jpeg', 'user', images.length === 0);
+          const newImg = { id: result.id, imageBlob: compressed, imageMimeType: 'image/jpeg', imageSource: 'user', isDefault: images.length === 0 };
+          if (newImg.isDefault) images.forEach(img => { img.isDefault = false; });
+          images.push(newImg);
+          recipe.images = images;
           showToast(t('detail.imageSaved'), 'success');
-          recipe.imageBlob = compressed;
-          recipe.imageMimeType = 'image/jpeg';
-          recipe.imageSource = 'user';
-          renderDetailView(container, recipe);
+          renderDetailView(container, recipe, cookbooks);
         } catch (err) {
           showToast(err.message, 'error');
           btnConfirmImageUrl.disabled = false;
@@ -865,7 +953,7 @@ async function openAiModal(container, recipe) {
       patches.description = descText;
     }
 
-    // Download selected image if any
+    // Download selected image and add to gallery
     const selectedThumb = body.querySelector('.ai-image-thumb--selected');
     if (selectedThumb?.dataset.webformatUrl) {
       try {
@@ -876,10 +964,18 @@ async function openAiModal(container, recipe) {
         if (imgResp.ok) {
           const imgData = await imgResp.json();
           const compressed = await compressBase64ForStorage(imgData.imageBlob, imgData.imageMimeType);
-          await uploadRecipeImage(recipe.id, compressed, 'image/jpeg', 'auto');
-          recipe.imageBlob = compressed;
-          recipe.imageMimeType = 'image/jpeg';
-          recipe.imageSource = 'auto';
+          const existingImages = Array.isArray(recipe.images) ? recipe.images : [];
+          const makeDefault = existingImages.length === 0;
+          const result = await addRecipeImageEntry(recipe.id, compressed, 'image/jpeg', 'auto', makeDefault);
+          const newImg = { id: result.id, imageBlob: compressed, imageMimeType: 'image/jpeg', imageSource: 'auto', isDefault: makeDefault };
+          if (makeDefault) existingImages.forEach(img => { img.isDefault = false; });
+          existingImages.push(newImg);
+          recipe.images = existingImages;
+          if (makeDefault) {
+            recipe.imageBlob = compressed;
+            recipe.imageMimeType = 'image/jpeg';
+            recipe.imageSource = 'auto';
+          }
         }
       } catch (e) {
         showToast(e.message, 'error');
