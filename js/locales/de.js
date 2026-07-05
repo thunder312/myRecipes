@@ -228,6 +228,7 @@ export const de = {
     sourcePlaceholder: 'z. B. Von Oma, Aus dem Koch-Kurs…',
     selectCategory: '– Kategorie wählen –',
     selectDifficulty: '– Schwierigkeit –',
+    imageLabel: 'Bild',
   },
 
   import: {
@@ -239,6 +240,7 @@ export const de = {
     urlLabel: 'Rezept-URL',
     urlPlaceholder: 'https://www.chefkoch.de/rezepte/…',
     multiHint: 'Mehrere Rezepte in dieser Quelle',
+    keepOpenHint: 'Weitere Rezepte mit diesen Einstellungen',
     sourceNoteLabel: 'Quelle (optional)',
     sourceNotePlaceholder: 'z. B. Von Oma, Aus dem Koch-Kurs',
     btnUrl: 'URL importieren',

@@ -22,7 +22,12 @@ export function renderRecipeForm(targetEl, data) {
   const currentCat = translateCategory(data.category);
   const currentDiff = data.difficulty; // always stored as DE key (leicht/mittel/schwer)
 
-  targetEl.innerHTML = `<div class="form-group">
+  targetEl.innerHTML = `<div class="form-group recipe-form__image-group ${data._imageBlob ? '' : 'hidden'}" data-image-group>
+      <label>${t('recipeForm.imageLabel')}</label>
+      <img class="recipe-form__image-preview" data-image-preview alt=""
+           src="${data._imageBlob ? `data:${data._imageMimeType || 'image/jpeg'};base64,${data._imageBlob}` : ''}" />
+    </div>
+    <div class="form-group">
       <label>${t('recipeForm.titleLabel')}</label>
       <input type="text" class="input" data-field="title" value="${esc(data.title || '')}" />
     </div>
@@ -105,6 +110,20 @@ export function renderRecipeForm(targetEl, data) {
     </div>
   `;
   initTimeListeners(targetEl);
+}
+
+/** Updates the image shown in a rendered recipe form (e.g. after picking an AI image search result). */
+export function updateFormImage(formEl, imageBlob, imageMimeType) {
+  const group = formEl.querySelector('[data-image-group]');
+  const img = formEl.querySelector('[data-image-preview]');
+  if (!group || !img) return;
+  if (imageBlob) {
+    img.src = `data:${imageMimeType || 'image/jpeg'};base64,${imageBlob}`;
+    group.classList.remove('hidden');
+  } else {
+    img.src = '';
+    group.classList.add('hidden');
+  }
 }
 
 export function readRecipeForm(formEl) {

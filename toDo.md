@@ -42,6 +42,8 @@ editierbar, erweiterbar und exportierbar als Text und PDF.
 - [x] gespeicherte Fragen in der "Was koche ich"- Kategorie sollen gelöscht werden können.
 - [x] URLs in den Feldern Von wem/woher und Notizen sollen erkannt werden und als klickbare Links gerendert werden in der Rezept-Detail-Sicht
 - [x] In den Rezept-Details soll es oben eine kleine Anzeige geben wer das Rezept importiert hat und in welchen Rezeptbüchern das Rezept ist.
+- [x] Weitere Rezepte mit diesen Einstellungen; Im Import soll neben dem Haken "mehrere Rezepte in dieser Quelle" ein Haken sein, der die Import-Sicht nach dem bestätigten Import offen hält und Das optional gewählte Kochbuch beibehält auch das Feld "Quelle (optional)" mit dem letzten Wert befüllt stehen lässt.
+- [x] In der Import-Vorschau soll auch das gewählte/importiere Rezept-Bild angezeigt werden.
 ## Bugs
 ### Desktop
 ### Mobil

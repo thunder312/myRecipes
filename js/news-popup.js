@@ -3,6 +3,17 @@ import { getAuthToken } from './utils/auth.js';
 
 const CHANGELOG = [
   {
+    date: '2026-07-05',
+    de: 'Import verbessert: Ein neuer Haken „Weitere Rezepte mit diesen Einstellungen" hält die Import-Ansicht nach dem Speichern offen und behält Kochbuch- und Quellenauswahl bei. Außerdem wird das gefundene bzw. ausgewählte Rezeptbild jetzt direkt in der Import-Vorschau angezeigt.',
+    en: 'Import improved: A new "More recipes with these settings" checkbox keeps the import view open after saving and retains the cookbook and source selection. The found or selected recipe image is now also shown directly in the import preview.',
+  },
+  {
+    date: '2026-06-21',
+    highlight: true,
+    de: 'Mehrfachbilder pro Rezept: Rezepte können jetzt mehrere Fotos in einer Galerie haben, mit Karussell in der Detailansicht und der Möglichkeit, das Titelbild auszuwählen.',
+    en: 'Multi-image gallery per recipe: Recipes can now have multiple photos in a gallery, with a carousel in the detail view and the option to pick the cover image.',
+  },
+  {
     date: '2026-06-04',
     de: 'In der Rezeptansicht wird jetzt oben angezeigt, wer das Rezept importiert hat und in welchen Kochbüchern es enthalten ist.',
     en: 'The recipe detail view now shows who imported the recipe and which cookbooks it belongs to.',

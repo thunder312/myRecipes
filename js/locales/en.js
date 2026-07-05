@@ -228,6 +228,7 @@ export const en = {
     sourcePlaceholder: 'e.g. Grandma, cooking class…',
     selectCategory: '– Select category –',
     selectDifficulty: '– Difficulty –',
+    imageLabel: 'Image',
   },
 
   import: {
@@ -239,6 +240,7 @@ export const en = {
     urlLabel: 'Recipe URL',
     urlPlaceholder: 'https://www.allrecipes.com/recipe/…',
     multiHint: 'Multiple recipes in this source',
+    keepOpenHint: 'More recipes with these settings',
     sourceNoteLabel: 'Source (optional)',
     sourceNotePlaceholder: 'e.g. Grandma, cooking class',
     btnUrl: 'Import URL',

@@ -5336,6 +5336,15 @@ details[open] > .batch__log-heading::before,
   font-size: var(--font-size-sm);
 }
 
+.recipe-form__image-preview {
+  max-width: 220px;
+  max-height: 160px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+  display: block;
+}
+
 .ai-image-gallery {
   display: flex;
   flex-wrap: wrap;

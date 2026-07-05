@@ -4,7 +4,7 @@ import { parseVoiceIntent, ApiError } from '../api.js';
 import { $, showToast, categoryChipClass } from '../utils/helpers.js';
 import { setImportRunning, getAuthToken } from '../utils/auth.js';
 import { ensureAuthenticated } from '../utils/auth-ui.js';
-import { renderRecipeForm, readRecipeForm } from '../utils/recipe-form.js';
+import { renderRecipeForm, readRecipeForm, updateFormImage } from '../utils/recipe-form.js';
 import { t, getLanguage } from '../i18n.js';
 
 const SUPPORTED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.txt', '.text', '.md'];
@@ -144,6 +144,10 @@ async function renderImportForm(container) {
           <input type="checkbox" id="multiHintUrl" />
           ${t('import.multiHint')}
         </label>
+        <label class="import__multi-hint">
+          <input type="checkbox" id="keepOpenUrl" />
+          ${t('import.keepOpenHint')}
+        </label>
         <button class="btn btn--primary" id="btnImportUrl">${t('import.btnUrl')}</button>
       </div>
 
@@ -186,6 +190,10 @@ async function renderImportForm(container) {
           <input type="checkbox" id="multiHintFile" />
           ${t('import.multiHint')}
         </label>
+        <label class="import__multi-hint">
+          <input type="checkbox" id="keepOpenFile" />
+          ${t('import.keepOpenHint')}
+        </label>
         <button class="btn btn--primary" id="btnImportFile">${t('import.btnFile')}</button>
       </div>
 
@@ -202,6 +210,10 @@ async function renderImportForm(container) {
         <label class="import__multi-hint">
           <input type="checkbox" id="multiHintText" />
           ${t('import.multiHint')}
+        </label>
+        <label class="import__multi-hint">
+          <input type="checkbox" id="keepOpenText" />
+          ${t('import.keepOpenHint')}
         </label>
         <button class="btn btn--primary" id="btnImportText">${t('import.btnText')}</button>
       </div>
@@ -338,6 +350,13 @@ async function renderImportForm(container) {
 
   let currentData = null;       // single recipe data for preview
   let currentMultiData = null;  // array of recipe data for multi-review
+  let lastImportMeta = { tab: null, keepOpen: false }; // which tab/settings triggered the current single import
+
+  function resetSingleImportInput(tab) {
+    if (tab === 'url') $('#recipeUrl', container).value = '';
+    else if (tab === 'file') $('#recipeFile', container).value = '';
+    else if (tab === 'text') $('#recipeText', container).value = '';
+  }
 
   // --- Single import handlers ---
 
@@ -346,6 +365,7 @@ async function renderImportForm(container) {
     if (!url) { showToast(t('import.noUrlError'), 'warning'); return; }
     const multiHint = $('#multiHintUrl', container).checked;
     const sourceNote = $('#sourceNoteUrl', container).value.trim();
+    lastImportMeta = { tab: 'url', keepOpen: $('#keepOpenUrl', container).checked };
     await doImport(() => processURL(url, { multiHint }), sourceNote);
   });
 
@@ -426,6 +446,7 @@ async function renderImportForm(container) {
                 urlInput.value = results[0].url;
                 const multiHint = $('#multiHintUrl', container).checked;
                 const sourceNote = $('#sourceNoteUrl', container).value.trim();
+                lastImportMeta = { tab: 'url', keepOpen: $('#keepOpenUrl', container).checked };
                 await doImport(() => processURL(results[0].url, { multiHint }), sourceNote);
               } else {
                 urlInput.value = '';
@@ -435,6 +456,7 @@ async function renderImportForm(container) {
               urlInput.value = finalUrl;
               const multiHint = $('#multiHintUrl', container).checked;
               const sourceNote = $('#sourceNoteUrl', container).value.trim();
+              lastImportMeta = { tab: 'url', keepOpen: $('#keepOpenUrl', container).checked };
               await doImport(() => processURL(finalUrl, { multiHint }), sourceNote);
             }
           } else {
@@ -479,6 +501,7 @@ async function renderImportForm(container) {
       urlInput.value = chosen.url;
       const multiHint = $('#multiHintUrl', container).checked;
       const sourceNote = $('#sourceNoteUrl', container).value.trim();
+      lastImportMeta = { tab: 'url', keepOpen: $('#keepOpenUrl', container).checked };
       await doImport(() => processURL(chosen.url, { multiHint }), sourceNote);
     }, { once: true });
   }
@@ -493,6 +516,7 @@ async function renderImportForm(container) {
     const multiHint = $('#multiHintFile', container).checked;
     const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf');
     const sourceNote = $('#sourceNoteFile', container).value.trim();
+    lastImportMeta = { tab: 'file', keepOpen: $('#keepOpenFile', container).checked };
     await doImport(() => isPdf ? processPDF(file, { multiHint }) : processImage(file, { multiHint }), sourceNote);
   });
 
@@ -568,6 +592,7 @@ async function renderImportForm(container) {
     if (capturedPhotos.length === 0) return;
     const files = [...capturedPhotos];
     const sourceNote = $('#sourceNoteFile', container).value.trim();
+    lastImportMeta = { tab: 'file', keepOpen: $('#keepOpenFile', container).checked };
     resetCameraCollector();
     await doImport(() => processImages(files), sourceNote);
   });
@@ -581,6 +606,7 @@ async function renderImportForm(container) {
     if (!text) { showToast(t('import.noTextError'), 'warning'); return; }
     const multiHint = $('#multiHintText', container).checked;
     const sourceNote = $('#sourceNoteText', container).value.trim();
+    lastImportMeta = { tab: 'text', keepOpen: $('#keepOpenText', container).checked };
     await doImport(() => processText(text, { multiHint }), sourceNote);
   });
 
@@ -678,7 +704,14 @@ async function renderImportForm(container) {
       }
       showToast(t('import.importSuccess', recipe.title), 'success');
       currentData = null;
-      window.location.hash = '#overview';
+
+      if (lastImportMeta.keepOpen && lastImportMeta.tab) {
+        $('#importPreview', container).classList.add('hidden');
+        resetSingleImportInput(lastImportMeta.tab);
+        container.querySelector(`.tab[data-tab="${lastImportMeta.tab}"]`)?.click();
+      } else {
+        window.location.hash = '#overview';
+      }
     } catch (err) {
       showToast(t('import.saveError', err.message), 'error');
     }
@@ -734,6 +767,7 @@ async function renderImportForm(container) {
             const imgData = await imgResp.json();
             currentData._imageBlob = imgData.imageBlob;
             currentData._imageMimeType = imgData.imageMimeType;
+            updateFormImage($('#previewForm', container), imgData.imageBlob, imgData.imageMimeType);
             showToast(t('detail.aiImageSelected'), 'success');
           } catch (e) {
             showToast(e.message, 'error');
