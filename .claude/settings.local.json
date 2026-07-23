@@ -137,7 +137,14 @@
       "WebFetch(domain:www.chefkoch.de)",
       "Bash(Get-Process -Name node -ErrorAction SilentlyContinue)",
       "Bash(Stop-Process -Force)",
-      "Bash(Write-Host \"Done\")"
+      "Bash(Write-Host \"Done\")",
+      "Bash(npx kill-port *)",
+      "Bash(sqlite3 *)",
+      "Bash(python -c \"import json,sys; r=json.load\\(sys.stdin\\); print\\('createdByUsername:', r.get\\('createdByUsername'\\), '| createdBy:', r.get\\('createdBy'\\)\\)\")",
+      "Bash(python -c \"import json,sys; print\\(json.dumps\\(json.load\\(sys.stdin\\), indent=2\\)\\)\")",
+      "Bash(python -c \"import json,sys; rs=json.load\\(sys.stdin\\); r=[x for x in rs if x.get\\('createdByUsername'\\)]; print\\('Rezepte mit createdByUsername:', len\\(r\\)\\); print\\(json.dumps\\(r[0] if r else {}, indent=2\\)[:300] if r else 'keine'\\)\")",
+      "Bash(python -c \"import json,sys; pkg=json.load\\(sys.stdin\\); [print\\(k,':', v\\) for k,v in pkg.get\\('scripts',{}\\).items\\(\\)]\")",
+      "Bash(findstr LISTENING)"
     ]
   }
 }
