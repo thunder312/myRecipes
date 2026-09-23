@@ -126,6 +126,7 @@ Wichtige Regeln:
 - Für die Zeitfelder: Unterscheide 'workTime' (aktive Handarbeit: Schälen, Schneiden, Rühren), 'cookTime' (am Herd/Ofen/Pfanne), 'restTime' (passives Warten: Marinieren, Kühlen, Gehen lassen, Ziehen). 'prepTime' ist immer die Summe aller drei. Wenn nur eine Gesamtzeit angegeben ist und keine Aufteilung erkennbar ist, setze nur 'prepTime' und lasse 'workTime'/'cookTime'/'restTime' null. Wenn z.B. "Vorbereitungszeit: 20 Min, Zubereitungszeit: 15 Min, Ruhezeit: 30 Min", dann workTime=20, cookTime=15, restTime=30, prepTime=65
 - Gewürzmischungen (z.B. Hähnchen-Gewürz, Gyros-Gewürz, Rubs, Marinaden-Mischungen) gehören in die Kategorie "Gewürzmischungen" – NICHT in "Beilage" oder "Snack". Bei Gewürzmischungen ist "sides" ein leeres Array.
 - Trenne die Rezepte sauber voneinander – jedes bekommt seinen eigenen recipeText nur mit den Zubereitungsschritten
+- Anführungszeichen innerhalb von Texten IMMER als „…“ schreiben oder als \\" escapen – NIEMALS ein unescaptes " innerhalb eines JSON-Strings
 - Antworte NUR mit dem JSON, kein anderer Text`;
 
   if (multiHint) {
@@ -171,6 +172,7 @@ Important rules:
 - For time fields: Distinguish 'workTime' (active hands-on: peeling, chopping, mixing), 'cookTime' (hob/oven/pan), 'restTime' (passive waiting: marinating, chilling, proving, steeping). 'prepTime' is always the sum of all three. If only a total time is given with no breakdown, set only 'prepTime' and leave 'workTime'/'cookTime'/'restTime' null. If e.g. "Prep: 20 min, Cook: 15 min, Rest: 30 min", then workTime=20, cookTime=15, restTime=30, prepTime=65
 - Spice blends (e.g. chicken seasoning, gyros spice, rubs, marinade mixes) belong in category "Spice Blend" – NOT in "Side Dish" or "Snack". For spice blends, "sides" is an empty array.
 - Separate recipes cleanly – each gets its own recipeText with only its preparation steps
+- Quotation marks inside text values must ALWAYS be escaped as \\" or written as “…” – NEVER an unescaped " inside a JSON string
 - Respond ONLY with the JSON, no other text`;
 
   if (multiHint) {
@@ -304,32 +306,52 @@ function parseRecipeResponse(content) {
     cleaned = fenceMatch[1].trim();
   }
 
-  // Try direct parse
-  try {
-    const parsed = JSON.parse(cleaned);
-    if (Array.isArray(parsed)) return parsed;
-    return [parsed];
-  } catch { /* fallback to regex extraction */ }
-
-  // Try array regex first (catches [] for empty)
+  const candidates = [cleaned];
   const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
-  if (arrayMatch) {
-    try {
-      const parsed = JSON.parse(arrayMatch[0]);
-      return Array.isArray(parsed) ? parsed : [parsed];
-    } catch { /* continue */ }
-  }
-
-  // Try object regex (single recipe)
+  if (arrayMatch) candidates.push(arrayMatch[0]);
   const objMatch = cleaned.match(/\{[\s\S]*\}/);
-  if (objMatch) {
+  if (objMatch) candidates.push(objMatch[0]);
+
+  // Erst unverändert, dann mit reparierten Anführungszeichen versuchen
+  for (const candidate of [...candidates, ...candidates.map(repairJsonQuotes)]) {
     try {
-      const parsed = JSON.parse(objMatch[0]);
+      const parsed = JSON.parse(candidate);
       return Array.isArray(parsed) ? parsed : [parsed];
-    } catch { /* continue */ }
+    } catch { /* next candidate */ }
   }
 
+  console.error('[API] Unparseable response:', content);
   throw new Error(t('apiErrors.parseError'));
+}
+
+/**
+ * Repariert unescapte Anführungszeichen innerhalb von JSON-Strings.
+ * Typischer Fall: deutscher Text wie „Steckerl" – die KI schreibt das
+ * schließende Zeichen als ASCII-" und beendet damit den String vorzeitig.
+ */
+function repairJsonQuotes(json) {
+  // „Wort" → „Wort“ (bereits korrektes „Wort“ bleibt unverändert)
+  const fixed = json.replace(/„([^"“\n]{0,200}?)"/g, '„$1“');
+
+  // Ein " innerhalb eines Strings gilt nur dann als Stringende,
+  // wenn danach ein JSON-Strukturzeichen folgt – sonst wird es escaped.
+  let out = '';
+  let inString = false;
+  for (let i = 0; i < fixed.length; i++) {
+    const ch = fixed[i];
+    if (inString && ch === '\\') { out += ch + (fixed[++i] ?? ''); continue; }
+    if (ch === '"') {
+      if (!inString) { inString = true; out += ch; continue; }
+      const next = fixed.slice(i + 1).match(/^\s*(.)/)?.[1];
+      if (next === undefined || /[,:}\]]/.test(next)) { inString = false; out += ch; }
+      else out += '\\"';
+      continue;
+    }
+    if (inString && ch === '\n') { out += '\\n'; continue; }
+    if (inString && ch === '\r') continue;
+    out += ch;
+  }
+  return out;
 }
 
 /**
