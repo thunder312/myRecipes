@@ -3,6 +3,11 @@ import { getAuthToken } from './utils/auth.js';
 
 const CHANGELOG = [
   {
+    date: '2026-11-07',
+    de: 'Neues Erscheinungsbild im Eulenwerk-Design: überarbeitetes Design-System, stilisiertes Logo, neuer Standard-Login und ein „Über"-Dialog.',
+    en: 'New Eulenwerk look: revised design system, stylized logo, new default login and an About dialog.',
+  },
+  {
     date: '2026-07-05',
     de: 'Import verbessert: Ein neuer Haken „Weitere Rezepte mit diesen Einstellungen" hält die Import-Ansicht nach dem Speichern offen und behält Kochbuch- und Quellenauswahl bei. Außerdem wird das gefundene bzw. ausgewählte Rezeptbild jetzt direkt in der Import-Vorschau angezeigt.',
     en: 'Import improved: A new "More recipes with these settings" checkbox keeps the import view open after saving and retains the cookbook and source selection. The found or selected recipe image is now also shown directly in the import preview.',
