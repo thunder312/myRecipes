@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de" id="htmlRoot">
+<html lang="de" id="htmlRoot" data-eulenwerk="alltag">
 
 <head>
   <meta charset="utf-8">
@@ -8,21 +8,23 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/eulenwerk.css">
   <link rel="stylesheet" href="css/style.css">
-  <script>(function(){var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+  <script>/* Eulenwerk: festes dunkles Theme */document.documentElement.setAttribute('data-theme','dark');</script>
   <meta name="description" content="Persönliche Rezeptsammlung mit KI-Kategorisierung">
 
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="manifest" href="site.webmanifest">
-  <meta name="theme-color" content="#e8590c">
+  <meta name="theme-color" content="#121417">
 </head>
 
 <body>
   <div class="app">
     <nav class="nav hidden">
       <div class="nav__brand">
-        <span class="nav__logo"><img width="50px" src="icon.png" /></span>
+        <span class="nav__logo"><img width="44" height="44" src="icon.svg" alt="" style="border-radius:11px" /></span>
       </div>
       <div class="nav__links">
         <a href="#overview" class="nav__link nav__link--active">
@@ -62,8 +64,28 @@
         <div class="spinner"></div>
       </div>
     </main>
+    <footer class="ew-footer ">
+      <a class="ew-brand" href="https://daniel-ertl.de" target="_blank" rel="noopener"><svg class="ew-logo" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5 C11 12 16 13 24 13 C28 13 30 15 32 16 C34 15 36 13 40 13 C48 13 53 12 56 5"/><circle cx="22" cy="28" r="9"/><circle cx="42" cy="28" r="9"/><circle fill="currentColor" stroke="none" cx="22" cy="28" r="3.2"/><circle fill="currentColor" stroke="none" cx="42" cy="28" r="3.2"/><path d="M29.5 39 L32 42.5 L34.5 39"/><path d="M13 28 V48 C13 54 18 59 24 59 H40 C46 59 51 54 51 48 V28"/><path d="M19 40 C18.5 48 19.5 54 23 59"/><path d="M45 40 C45.5 48 44.5 54 41 59"/></svg>Ein Eulenwerk-Projekt</a>
+      <button type="button" class="ew-btn ew-btn--ghost ew-btn--sm" data-ew-about>Über myRecipes</button>
+    </footer>
   </div>
 
+  <script src="js/eulenwerk-about.js"></script>
+  <script>window.__ewAboutCfg = {
+  "app": "myRecipes",
+  "version": "1.0.0",
+  "description": "Persönliche Rezeptsammlung mit KI-Kategorisierung, Import aus Fotos und Webseiten, Kochbüchern und Vorschlägen für heute.",
+  "stack": [
+    "Node.js",
+    "Vanilla JS",
+    "SQLite",
+    "Claude API",
+    "Pixabay API"
+  ],
+  "github": "https://github.com/thunder312/myRecipes",
+  "logo": "icon.svg"
+};
+  EulenwerkAbout.init(window.__ewAboutCfg);</script>
 </body>
 
 </html>

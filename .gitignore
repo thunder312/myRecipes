@@ -19,3 +19,7 @@ DB-Backup/*.txt
 DB-Backup/*.json
 DB-Backup/*.pdf
 DB-Backup/*.html
+
+# Zugangsdaten nie versionieren
+API-Keys/
+_to_delete/

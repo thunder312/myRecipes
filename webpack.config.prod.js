@@ -17,6 +17,8 @@ module.exports = merge(common, {
 { from: 'favicon.ico', to: 'favicon.ico' },
         { from: 'robots.txt', to: 'robots.txt' },
         { from: 'icon.png', to: 'icon.png' },
+        { from: 'icon.svg', to: 'icon.svg' },
+        { from: 'js/eulenwerk-about.js', to: 'js/eulenwerk-about.js' },
         { from: '404.html', to: '404.html' },
         { from: 'site.webmanifest', to: 'site.webmanifest' },
       ],
