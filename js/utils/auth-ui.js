@@ -1,6 +1,7 @@
 import { $, showToast } from './helpers.js';
 import { isAuthenticated, setAuthenticated, getAuthToken, setShowNewsPopup } from './auth.js';
 import { t, setLanguage, getLanguage } from '../i18n.js';
+import { applyTheme } from './theme.js';
 
 export async function ensureAuthenticated(container, onSuccess) {
   if (isAuthenticated()) {
@@ -122,10 +123,7 @@ function renderLogin(container, onSuccess) {
         }
 
         // Apply saved theme from server
-        if (data.theme) {
-          document.documentElement.setAttribute('data-theme', data.theme);
-          localStorage.setItem('theme', data.theme);
-        }
+        if (data.theme) applyTheme(data.theme);
 
         setAuthenticated(data.token, data.username, data.role);
         setShowNewsPopup(data.showNewsPopup !== false);

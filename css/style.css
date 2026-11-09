@@ -3,7 +3,8 @@
    ========================================================================== */
 
 :root {
-  /* Eulenwerk Design-System (Kategorie Alltag = Terrakotta), festes dunkles Theme.
+  /* Eulenwerk Design-System (Kategorie Alltag = Terrakotta). Standard dunkel, hell über
+     Einstellungen → Erscheinungsbild (data-theme + data-ew-theme am <html>, js/utils/theme.js).
      Die App-Variablen werden auf die Tokens aus eulenwerk.css gemappt. */
   --color-primary: var(--ew-accent);
   --color-primary-hover: var(--ew-accent-hover);
@@ -17,7 +18,7 @@
   --color-surface: var(--ew-surface);
   --color-surface-raised: var(--ew-surface-2);
   --color-surface-alt: var(--ew-surface-hover);
-  --color-surface-overlay: rgba(18, 20, 23, 0.92);
+  --color-surface-overlay: color-mix(in srgb, var(--ew-bg) 92%, transparent);
 
   /* Text */
   --color-text: var(--ew-text);
@@ -91,8 +92,16 @@
    ========================================================================== */
 
 [data-theme="dark"] {
-  /* Dark ist jetzt das einzige Theme (Eulenwerk); Block bleibt für den Umschalter kompatibel */
   --color-primary-light: var(--ew-accent-soft);
+}
+
+/* Helles Design: Farben kommen aus den Eulenwerk-Tokens, hier nur weichere Schatten */
+[data-theme="light"] {
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow:    0 4px 6px -1px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 8px 16px -4px rgba(16, 24, 40, 0.10), 0 4px 6px -2px rgba(16, 24, 40, 0.05);
+  --shadow-lg: 0 20px 40px -8px rgba(16, 24, 40, 0.14), 0 8px 16px -4px rgba(16, 24, 40, 0.06);
 }
 
 /* Hard-coded hover/active backgrounds */

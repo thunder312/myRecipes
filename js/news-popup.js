@@ -3,6 +3,11 @@ import { getAuthToken } from './utils/auth.js';
 
 const CHANGELOG = [
   {
+    date: '2026-11-09',
+    de: 'Helles Design: Unter Einstellungen → Erscheinungsbild lässt sich jetzt zwischen dunklem (Standard) und hellem Design wählen. Die Wahl wird pro Benutzer gespeichert.',
+    en: 'Light theme: Settings → Appearance now lets you switch between the dark (default) and a light theme. Your choice is saved per user.',
+  },
+  {
     date: '2026-11-07',
     de: 'Neues Erscheinungsbild im Eulenwerk-Design: überarbeitetes Design-System, stilisiertes Logo, neuer Standard-Login und ein „Über"-Dialog.',
     en: 'New Eulenwerk look: revised design system, stylized logo, new default login and an About dialog.',

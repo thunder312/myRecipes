@@ -4,6 +4,7 @@ import { ensureAuthenticated } from '../utils/auth-ui.js';
 import { validateApiKey, BILLING_URL } from '../api.js';
 import { getAuthToken, getAuthUser, isAdmin, getShowNewsPopup, setShowNewsPopup } from '../utils/auth.js';
 import { t, getLanguage, setLanguage, translateCategory } from '../i18n.js';
+import { getTheme, applyTheme } from '../utils/theme.js';
 import { loadPantryItems, savePantryItems, DEFAULT_PANTRY_DE, DEFAULT_PANTRY_EN } from '../shopping-list.js';
 
 export async function render(container) {
@@ -106,8 +107,8 @@ async function renderSettings(container) {
         <h2>${t('settings.themeSection')}</h2>
         <p class="settings__hint">${t('settings.themeHint')}</p>
         <div class="lang-toggle" id="themeToggle">
-          <button class="btn btn--sm ${(localStorage.getItem('theme') || 'light') !== 'dark' ? 'btn--primary' : 'btn--ghost'}" data-theme-val="light">${t('nav.themeLight')}</button>
-          <button class="btn btn--sm ${(localStorage.getItem('theme') || 'light') === 'dark' ? 'btn--primary' : 'btn--ghost'}" data-theme-val="dark">${t('nav.themeDark')}</button>
+          <button class="btn btn--sm ${getTheme() === 'dark' ? 'btn--primary' : 'btn--ghost'}" data-theme-val="dark" aria-pressed="${getTheme() === 'dark'}">${t('nav.themeDark')}</button>
+          <button class="btn btn--sm ${getTheme() === 'light' ? 'btn--primary' : 'btn--ghost'}" data-theme-val="light" aria-pressed="${getTheme() === 'light'}">${t('nav.themeLight')}</button>
         </div>
       </section>
 
@@ -281,11 +282,10 @@ async function renderSettings(container) {
   $('#themeToggle', container)?.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-theme-val]');
     if (!btn) return;
-    const theme = btn.dataset.themeVal;
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
+    const theme = applyTheme(btn.dataset.themeVal);
     $('#themeToggle', container).querySelectorAll('button').forEach(b => {
       b.className = `btn btn--sm ${b === btn ? 'btn--primary' : 'btn--ghost'}`;
+      b.setAttribute('aria-pressed', String(b === btn));
     });
     try {
       const token = getAuthToken();

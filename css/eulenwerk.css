@@ -1,6 +1,7 @@
 /* ==========================================================================
-   Eulenwerk Design-System  ·  eulenwerk.css  ·  v1.0
+   Eulenwerk Design-System  ·  eulenwerk.css  ·  v1.1
    Ein Look für alle Projekte, nur die Akzentfarbe wechselt je Kategorie.
+   Standard dunkel; optional hell per data-ew-theme="light" (Abschnitt 2b).
 
    Einbindung:
      <link rel="stylesheet" href="eulenwerk.css">
@@ -59,6 +60,8 @@
   --ew-header-h:      56px;
 
   --ew-shadow:        0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  --ew-backdrop:      rgba(0,0,0,.6);
+  --ew-input-bg:      var(--ew-bg);
   --ew-focus:         0 0 0 3px var(--ew-accent-soft), 0 0 0 1px var(--ew-accent);
   --ew-transition:    140ms ease;
 
@@ -107,10 +110,77 @@
 }
 
 /* --------------------------------------------------------------------------
+   2b. Helles Theme (optional) – für alle, denen das dunkle nicht gefällt
+       <html data-eulenwerk="…" data-ew-theme="light">   hell
+                                data-ew-theme="dark"    dunkel (Standard, auch ohne Attribut)
+                                data-ew-theme="auto"    folgt dem Betriebssystem
+       Umschalter: eulenwerk-theme.js (merkt sich die Wahl im Browser).
+       Im hellen Theme ist "accent-light" die DUNKLERE Textvariante des Akzents
+       (lesbar auf Weiß) – der Name bleibt, damit Komponenten nichts wissen müssen.
+   -------------------------------------------------------------------------- */
+:root[data-ew-theme="light"] {
+  --ew-bg:            #f5f6f8;
+  --ew-surface:       #ffffff;
+  --ew-surface-2:     #f0f2f5;
+  --ew-surface-hover: #e8ebef;
+  --ew-border:        #dfe3e8;
+  --ew-border-strong: #c8ced6;
+  --ew-text:          #1a1d21;
+  --ew-text-muted:    #58616c;
+  --ew-text-faint:    #8a929c;
+  --ew-text-on-accent:#ffffff;
+  --ew-ok:            #138a5b;
+  --ew-warn:          #b7791f;
+  --ew-danger:        #d64545;
+  --ew-info:          #2f6fe0;
+  --ew-shadow:        0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.08);
+  --ew-backdrop:      rgba(20,24,30,.35);
+  --ew-input-bg:      #ffffff;
+  --ew-accent: #2f6fe0; --ew-accent-hover: #2a5fc4; --ew-accent-soft: #e3ebfc; --ew-accent-light: #2557b8;
+  color-scheme: light;
+}
+:root[data-eulenwerk="organisation"][data-ew-theme="light"] { --ew-accent: #2f6fe0; --ew-accent-hover: #2a5fc4; --ew-accent-soft: #e3ebfc; --ew-accent-light: #2557b8; --ew-text-on-accent: #ffffff; }
+:root[data-eulenwerk="kreativ"][data-ew-theme="light"] { --ew-accent: #16a06a; --ew-accent-hover: #138a5b; --ew-accent-soft: #dcf4e9; --ew-accent-light: #0f7a4f; --ew-text-on-accent: #0b1f16; }
+:root[data-eulenwerk="medien"][data-ew-theme="light"] { --ew-accent: #7c5ce6; --ew-accent-hover: #6b4bd6; --ew-accent-soft: #ece6fd; --ew-accent-light: #5b3fc4; --ew-text-on-accent: #ffffff; }
+:root[data-eulenwerk="technik"][data-ew-theme="light"] { --ew-accent: #d99400; --ew-accent-hover: #c28400; --ew-accent-soft: #fbefd2; --ew-accent-light: #8a5d00; --ew-text-on-accent: #1f1600; }
+:root[data-eulenwerk="spielerei"][data-ew-theme="light"] { --ew-accent: #d9468f; --ew-accent-hover: #c2377d; --ew-accent-soft: #fce4f0; --ew-accent-light: #ad2e6c; --ew-text-on-accent: #ffffff; }
+:root[data-eulenwerk="alltag"][data-ew-theme="light"] { --ew-accent: #d2583d; --ew-accent-hover: #ba4a32; --ew-accent-soft: #fbe5df; --ew-accent-light: #a6412b; --ew-text-on-accent: #ffffff; }
+@media (prefers-color-scheme: light) {
+  :root[data-ew-theme="auto"] {
+    --ew-bg:            #f5f6f8;
+    --ew-surface:       #ffffff;
+    --ew-surface-2:     #f0f2f5;
+    --ew-surface-hover: #e8ebef;
+    --ew-border:        #dfe3e8;
+    --ew-border-strong: #c8ced6;
+    --ew-text:          #1a1d21;
+    --ew-text-muted:    #58616c;
+    --ew-text-faint:    #8a929c;
+    --ew-text-on-accent:#ffffff;
+    --ew-ok:            #138a5b;
+    --ew-warn:          #b7791f;
+    --ew-danger:        #d64545;
+    --ew-info:          #2f6fe0;
+    --ew-shadow:        0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.08);
+    --ew-backdrop:      rgba(20,24,30,.35);
+    --ew-input-bg:      #ffffff;
+    --ew-accent: #2f6fe0; --ew-accent-hover: #2a5fc4; --ew-accent-soft: #e3ebfc; --ew-accent-light: #2557b8;
+    color-scheme: light;
+  }
+  :root[data-eulenwerk="organisation"][data-ew-theme="auto"] { --ew-accent: #2f6fe0; --ew-accent-hover: #2a5fc4; --ew-accent-soft: #e3ebfc; --ew-accent-light: #2557b8; --ew-text-on-accent: #ffffff; }
+  :root[data-eulenwerk="kreativ"][data-ew-theme="auto"] { --ew-accent: #16a06a; --ew-accent-hover: #138a5b; --ew-accent-soft: #dcf4e9; --ew-accent-light: #0f7a4f; --ew-text-on-accent: #0b1f16; }
+  :root[data-eulenwerk="medien"][data-ew-theme="auto"] { --ew-accent: #7c5ce6; --ew-accent-hover: #6b4bd6; --ew-accent-soft: #ece6fd; --ew-accent-light: #5b3fc4; --ew-text-on-accent: #ffffff; }
+  :root[data-eulenwerk="technik"][data-ew-theme="auto"] { --ew-accent: #d99400; --ew-accent-hover: #c28400; --ew-accent-soft: #fbefd2; --ew-accent-light: #8a5d00; --ew-text-on-accent: #1f1600; }
+  :root[data-eulenwerk="spielerei"][data-ew-theme="auto"] { --ew-accent: #d9468f; --ew-accent-hover: #c2377d; --ew-accent-soft: #fce4f0; --ew-accent-light: #ad2e6c; --ew-text-on-accent: #ffffff; }
+  :root[data-eulenwerk="alltag"][data-ew-theme="auto"] { --ew-accent: #d2583d; --ew-accent-hover: #ba4a32; --ew-accent-soft: #fbe5df; --ew-accent-light: #a6412b; --ew-text-on-accent: #ffffff; }
+}
+
+/* --------------------------------------------------------------------------
    3. Basis
    -------------------------------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; }
 html { color-scheme: dark; -webkit-text-size-adjust: 100%; }
+html[data-ew-theme="light"] { color-scheme: light; }
 body {
   margin: 0;
   background: var(--ew-bg);
@@ -249,7 +319,7 @@ hr { border: 0; border-top: 1px solid var(--ew-border); margin: var(--ew-space-5
 .ew-hint { font-size: .8rem; color: var(--ew-text-faint); }
 .ew-input, .ew-select, .ew-textarea {
   width: 100%; min-height: 38px; padding: 8px 12px;
-  background: var(--ew-bg); color: var(--ew-text);
+  background: var(--ew-input-bg); color: var(--ew-text);
   border: 1px solid var(--ew-border-strong); border-radius: var(--ew-radius-sm);
   font: inherit; line-height: 1.4;
   transition: border-color var(--ew-transition), box-shadow var(--ew-transition);
@@ -270,7 +340,7 @@ hr { border: 0; border-top: 1px solid var(--ew-border); margin: var(--ew-space-5
 
 /* Checkbox / Radio / Switch */
 .ew-check { display: inline-flex; align-items: center; gap: var(--ew-space-2); cursor: pointer; user-select: none; }
-.ew-check input { appearance: none; width: 18px; height: 18px; margin: 0; border: 1px solid var(--ew-border-strong); border-radius: 5px; background: var(--ew-bg); display: grid; place-content: center; transition: background var(--ew-transition), border-color var(--ew-transition); }
+.ew-check input { appearance: none; width: 18px; height: 18px; margin: 0; border: 1px solid var(--ew-border-strong); border-radius: 5px; background: var(--ew-input-bg); display: grid; place-content: center; transition: background var(--ew-transition), border-color var(--ew-transition); }
 .ew-check input[type="radio"] { border-radius: 50%; }
 .ew-check input::before { content: ""; width: 10px; height: 10px; transform: scale(0); transition: transform 100ms ease; background: var(--ew-text-on-accent); clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%); }
 .ew-check input[type="radio"]::before { clip-path: none; border-radius: 50%; width: 8px; height: 8px; }
@@ -361,8 +431,13 @@ hr { border: 0; border-top: 1px solid var(--ew-border); margin: var(--ew-space-5
    10. Dialog / Modal
    -------------------------------------------------------------------------- */
 .ew-dialog { margin: auto; border: 1px solid var(--ew-border-strong); border-radius: var(--ew-radius-lg); background: var(--ew-surface); color: var(--ew-text); padding: var(--ew-space-5); max-width: min(560px, 92vw); box-shadow: var(--ew-shadow); }
-.ew-dialog::backdrop { background: rgba(0,0,0,.6); backdrop-filter: blur(2px); }
+.ew-dialog::backdrop { background: var(--ew-backdrop, rgba(0,0,0,.6)); backdrop-filter: blur(2px); }
 .ew-dialog__actions { display: flex; justify-content: flex-end; gap: var(--ew-space-2); margin-top: var(--ew-space-5); }
+
+/* Hell/Dunkel-Umschalter (eulenwerk-theme.js): zeigt jeweils das Ziel-Design */
+.ew-theme-toggle .ew-theme-toggle__moon { display: none; }
+[data-ew-theme="light"] .ew-theme-toggle .ew-theme-toggle__sun { display: none; }
+[data-ew-theme="light"] .ew-theme-toggle .ew-theme-toggle__moon { display: inline-block; }
 
 /* --------------------------------------------------------------------------
    11. Hilfsklassen

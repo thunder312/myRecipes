@@ -208,6 +208,11 @@ function migrateSchema() {
   if (!userCols.includes('theme')) {
     db.exec("ALTER TABLE users ADD COLUMN theme TEXT NOT NULL DEFAULT 'light'");
   }
+  // Eulenwerk: Standard ist dunkel. Der alte Spalten-Default 'light' war nie bewusst gewählt –
+  // erst wer in den Einstellungen umschaltet, bekommt themeChosen = 1 und seine Wahl zurück.
+  if (!userCols.includes('themeChosen')) {
+    db.exec('ALTER TABLE users ADD COLUMN themeChosen INTEGER NOT NULL DEFAULT 0');
+  }
   if (!userCols.includes('bringEmail')) {
     db.exec('ALTER TABLE users ADD COLUMN bringEmail TEXT');
   }
@@ -945,12 +950,12 @@ function setUserLanguage(id, lang) {
 }
 
 function getUserTheme(id) {
-  const row = getDB().prepare('SELECT theme FROM users WHERE id = ?').get(id);
-  return row ? (row.theme || 'light') : 'light';
+  const row = getDB().prepare('SELECT theme, themeChosen FROM users WHERE id = ?').get(id);
+  return row && row.themeChosen && row.theme === 'light' ? 'light' : 'dark';
 }
 
 function setUserTheme(id, theme) {
-  getDB().prepare('UPDATE users SET theme = ? WHERE id = ?').run(theme, id);
+  getDB().prepare('UPDATE users SET theme = ?, themeChosen = 1 WHERE id = ?').run(theme, id);
 }
 
 function getUserLastLogin(id) {
